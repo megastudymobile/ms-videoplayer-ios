@@ -52,11 +52,11 @@ let package = Package(
             dependencies: ["VideoPlayerCore"],
             path: "Sources/VideoPlayerModule",
             sources: [
-                "Module/PlayerModuleConfiguration.swift",
-                "Module/PlayerModuleWiring.swift",
                 "ShellSupport/PlayerAudioSessionManager.swift",
                 "ShellSupport/PlayerError+NSError.swift",
                 "ShellSupport/PlayerLifecycleCoordinator.swift",
+                "ShellSupport/PlayerModuleConfiguration.swift",
+                "ShellSupport/PlayerModuleWiring.swift",
                 "ShellSupport/PlayerRenderBindingEngine.swift",
                 "ShellSupport/PlayerRenderSurface.swift",
                 "ShellSupport/PlayerStateBinder.swift"
