@@ -59,6 +59,8 @@ cat >"$SIM_FRAMEWORK_DIR/Info.plist" <<'EOF'
 <dict>
   <key>CFBundleIdentifier</key>
   <string>com.codex.stub.PallyConFPSSDK</string>
+  <key>CFBundleExecutable</key>
+  <string>PallyConFPSSDK</string>
   <key>CFBundleName</key>
   <string>PallyConFPSSDK</string>
   <key>CFBundlePackageType</key>
