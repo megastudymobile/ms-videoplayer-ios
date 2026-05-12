@@ -216,11 +216,6 @@ public actor KollusPlayerAdapter: PlayerEngineAdapter {
         eventContinuation.yield(event)
     }
 
-    private func mapError(_ error: NSError?, fallback: String) -> PlayerError {
-        let message = error?.localizedDescription ?? fallback
-        return .engineError(message)
-    }
-
     private func mapToPlayerError(_ error: Error) -> PlayerError {
         if let playerError = error as? PlayerError {
             return playerError
