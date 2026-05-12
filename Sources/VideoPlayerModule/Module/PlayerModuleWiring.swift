@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import VideoPlayerCore
 
 public struct PlayerModule {
     public let core: PlayerCore

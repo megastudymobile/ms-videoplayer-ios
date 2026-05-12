@@ -44,13 +44,7 @@ let package = Package(
                 "Core/UseCase/ControlPlaybackUseCase.swift",
                 "Core/UseCase/ObservePlaybackStateUseCase.swift",
                 "Core/UseCase/StartPlaybackUseCase.swift",
-                "Engine/PlayerEngineAdapter.swift",
-                "Module/PlayerModuleConfiguration.swift",
-                "Module/PlayerModuleWiring.swift",
-                "ShellSupport/PlayerRenderSurface.swift"
-            ],
-            linkerSettings: [
-                .linkedFramework("UIKit", .when(platforms: [.iOS]))
+                "Engine/PlayerEngineAdapter.swift"
             ]
         ),
         .target(
@@ -58,9 +52,13 @@ let package = Package(
             dependencies: ["VideoPlayerCore"],
             path: "Sources/VideoPlayerModule",
             sources: [
+                "Module/PlayerModuleConfiguration.swift",
+                "Module/PlayerModuleWiring.swift",
                 "ShellSupport/PlayerAudioSessionManager.swift",
                 "ShellSupport/PlayerError+NSError.swift",
                 "ShellSupport/PlayerLifecycleCoordinator.swift",
+                "ShellSupport/PlayerRenderBindingEngine.swift",
+                "ShellSupport/PlayerRenderSurface.swift",
                 "ShellSupport/PlayerStateBinder.swift"
             ],
             linkerSettings: [
@@ -70,7 +68,7 @@ let package = Package(
         ),
         .target(
             name: "VideoPlayerEngineNative",
-            dependencies: ["VideoPlayerCore"],
+            dependencies: ["VideoPlayerShellSupport"],
             path: "Sources/VideoPlayerModule",
             sources: [
                 "Engine/Native/AVPlayerAdapter.swift"
@@ -83,7 +81,7 @@ let package = Package(
         .target(
             name: "VideoPlayerEngineKollus",
             dependencies: [
-                "VideoPlayerCore",
+                "VideoPlayerShellSupport",
                 "VideoPlayerKollusBinary",
                 "VideoPlayerPallyConBinary"
             ],

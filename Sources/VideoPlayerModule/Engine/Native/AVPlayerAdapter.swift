@@ -9,6 +9,7 @@
 import AVFoundation
 import UIKit
 import VideoPlayerCore
+import VideoPlayerShellSupport
 
 public actor AVPlayerAdapter: PlayerEngineAdapter {
     public nonisolated static let capabilities: EngineCapabilities = [

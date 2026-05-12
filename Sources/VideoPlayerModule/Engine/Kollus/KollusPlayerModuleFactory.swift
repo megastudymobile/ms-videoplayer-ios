@@ -1,5 +1,6 @@
 import Foundation
 import VideoPlayerCore
+import VideoPlayerShellSupport
 
 public struct KollusPlayerModuleFactory {
     public init() {}

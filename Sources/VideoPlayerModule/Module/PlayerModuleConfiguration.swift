@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import VideoPlayerCore
 
 public struct PlayerModuleConfiguration {
     public let initialPolicy: PlayerFeaturePolicy

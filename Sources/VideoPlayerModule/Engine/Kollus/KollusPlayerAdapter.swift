@@ -10,6 +10,7 @@ import Foundation
 import KollusSDKBinary
 import UIKit
 import VideoPlayerCore
+import VideoPlayerShellSupport
 
 public actor KollusPlayerAdapter: PlayerEngineAdapter {
     public nonisolated static let capabilities: EngineCapabilities = []

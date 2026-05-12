@@ -20,7 +20,7 @@ public struct EngineCapabilities: OptionSet, Sendable {
     public static let nativePiP = EngineCapabilities(rawValue: 1 << 2)
 }
 
-public protocol PlayerEngineAdapter: Actor {
+public protocol PlayerPlaybackEngine: Actor {
     nonisolated static var capabilities: EngineCapabilities { get }
 
     func prepare(source: PlaybackSource) async throws
@@ -28,8 +28,6 @@ public protocol PlayerEngineAdapter: Actor {
     func pause()
     func seek(to time: TimeInterval) async
     func stop()
-    func bind(renderSurface: PlayerRenderSurface)
-    func unbindRenderSurface()
 
     var currentState: PlaybackState { get }
     var eventStream: AsyncStream<PlayerEvent> { get }

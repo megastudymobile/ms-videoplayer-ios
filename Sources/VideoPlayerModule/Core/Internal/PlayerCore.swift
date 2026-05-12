@@ -12,7 +12,7 @@ public actor PlayerCore {
     public nonisolated let stateStream: AsyncStream<PlaybackState>
     public nonisolated let eventStream: AsyncStream<PlayerEvent>
 
-    private let engine: PlayerEngineAdapter
+    private let engine: PlayerPlaybackEngine
     private let engineCapabilities: EngineCapabilities
     private var pendingPrepareTask: Task<Void, Error>?
     private var engineEventTask: Task<Void, Never>?
@@ -23,7 +23,7 @@ public actor PlayerCore {
     private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
 
     public init(
-        engine: PlayerEngineAdapter,
+        engine: PlayerPlaybackEngine,
         engineCapabilities: EngineCapabilities,
         initialPolicy: PlayerFeaturePolicy = .default
     ) {
