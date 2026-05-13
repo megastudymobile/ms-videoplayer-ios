@@ -14,4 +14,5 @@ public enum PlaybackCommand: Equatable, Sendable {
     case pause
     case seek(to: TimeInterval)
     case stop
+    case smartLearning(SmartLearningPlayerCommand)
 }

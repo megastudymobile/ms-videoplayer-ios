@@ -138,6 +138,11 @@ public actor PlayerCore {
             await engine.stop()
             currentSource = nil
             transition(to: .idle)
+        case .smartLearning(let command):
+            guard let smartLearningEngine = engine as? any SmartLearningPlayerCommandHandling else {
+                throw PlayerError.engineError("SmartLearning command is not supported by the current playback engine.")
+            }
+            try await smartLearningEngine.executeSmartLearningCommand(command)
         }
     }
 
