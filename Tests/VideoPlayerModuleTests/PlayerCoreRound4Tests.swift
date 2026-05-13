@@ -1,5 +1,5 @@
 import XCTest
-@testable import VideoPlayerModule
+@testable import VideoPlayerCore
 
 final class PlayerCoreRound4Tests: XCTestCase {
     private var streamTasks: [Task<Void, Never>] = []
@@ -220,7 +220,7 @@ final class PlayerCoreRound4Tests: XCTestCase {
 
 }
 
-private actor TestPlayerEngineAdapter: PlayerEngineAdapter {
+private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
     nonisolated static let capabilities: EngineCapabilities = [.continuesWithoutSurface]
 
     var currentState: PlaybackState {
@@ -292,10 +292,6 @@ private actor TestPlayerEngineAdapter: PlayerEngineAdapter {
         stopCount += 1
         state = .idle
     }
-
-    func bind(renderSurface: PlayerRenderSurface) {}
-
-    func unbindRenderSurface() {}
 
     func emit(_ event: PlayerEvent) {
         continuation.yield(event)

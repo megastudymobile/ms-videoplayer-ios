@@ -1,3 +1,5 @@
+#if canImport(UIKit)
+
 //
 //  AVPlayerContractFactory.swift
 //  SmartPlayer
@@ -32,3 +34,5 @@ enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
 final class AVPlayerEngineContractTests: PlayerEngineContractTestShared<AVPlayerContractFactory> {
     // 추가 AVPlayer 전용 assertion이 필요하면 이 subclass에서만 선언한다.
 }
+
+#endif

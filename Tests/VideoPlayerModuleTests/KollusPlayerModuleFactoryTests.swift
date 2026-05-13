@@ -1,3 +1,5 @@
+#if canImport(UIKit)
+
 import XCTest
 @testable import VideoPlayerModule
 
@@ -76,3 +78,5 @@ private actor FactoryTestEngineAdapter: PlayerEngineAdapter {
 
     func unbindRenderSurface() {}
 }
+
+#endif

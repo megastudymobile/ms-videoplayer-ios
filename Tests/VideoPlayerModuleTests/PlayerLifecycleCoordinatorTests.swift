@@ -1,3 +1,5 @@
+#if canImport(UIKit)
+
 import AVFoundation
 import UIKit
 import XCTest
@@ -168,3 +170,5 @@ private final class EventRecorder {
         events.append(event)
     }
 }
+
+#endif

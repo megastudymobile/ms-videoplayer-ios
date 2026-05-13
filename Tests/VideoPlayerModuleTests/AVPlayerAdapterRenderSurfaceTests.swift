@@ -6,6 +6,8 @@
 //  Copyright © 2026 megastudyedu. All rights reserved.
 //
 
+#if canImport(UIKit)
+
 import AVFoundation
 import UIKit
 import XCTest
@@ -117,3 +119,5 @@ private final class TestRenderSurface: PlayerRenderSurface {
         detachCount += 1
     }
 }
+
+#endif

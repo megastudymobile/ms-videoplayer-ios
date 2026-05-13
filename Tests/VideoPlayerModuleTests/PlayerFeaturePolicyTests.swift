@@ -1,5 +1,5 @@
 import XCTest
-@testable import VideoPlayerModule
+@testable import VideoPlayerCore
 
 final class PlayerFeaturePolicyTests: XCTestCase {
     func testDefaultPolicyDisablesBackgroundPlayback() {

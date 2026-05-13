@@ -1,3 +1,5 @@
+#if canImport(UIKit)
+
 //
 //  KollusContractFactory.swift
 //  SmartPlayer
@@ -36,3 +38,5 @@ enum KollusContractFactory: PlayerEngineAdapterContractTestable {
 
 final class KollusPlayerEngineContractTests: PlayerEngineContractTestShared<KollusContractFactory> {
 }
+
+#endif

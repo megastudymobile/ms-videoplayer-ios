@@ -5,7 +5,8 @@ import PackageDescription
 let package = Package(
     name: "videoplayer-ios-ms",
     platforms: [
-        .iOS(.v15)
+        .iOS(.v15),
+        .macOS(.v12)
     ],
     products: [
         .library(
@@ -40,9 +41,10 @@ let package = Package(
                 "Core/Domain/PlayerError.swift",
                 "Core/Domain/PlayerEvent.swift",
                 "Core/Domain/PlayerFeaturePolicy.swift",
-                "Core/Domain/SmartLearningPlayerCommand.swift",
-                "Core/Domain/SmartLearningPlayerFeatureSet.swift",
-                "Core/Domain/SmartLearningPlayerState.swift",
+                "Core/Domain/PlayerCapabilities.swift",
+                "Core/Domain/PlayerFeatureSet.swift",
+                "Core/Domain/PlayerIdentity.swift",
+                "Core/Domain/PlayerStateSnapshot.swift",
                 "Core/Internal/PlayerCore.swift",
                 "Core/UseCase/ControlPlaybackUseCase.swift",
                 "Core/UseCase/ObservePlaybackStateUseCase.swift",
@@ -118,11 +120,11 @@ let package = Package(
         .testTarget(
             name: "VideoPlayerModuleTests",
             dependencies: [
-                "VideoPlayerModule",
                 "VideoPlayerCore",
-                "VideoPlayerShellSupport",
-                "VideoPlayerEngineNative",
-                "VideoPlayerEngineKollus"
+                .target(name: "VideoPlayerShellSupport", condition: .when(platforms: [.iOS])),
+                .target(name: "VideoPlayerEngineNative", condition: .when(platforms: [.iOS])),
+                .target(name: "VideoPlayerEngineKollus", condition: .when(platforms: [.iOS])),
+                .target(name: "VideoPlayerModule", condition: .when(platforms: [.iOS]))
             ],
             path: "Tests/VideoPlayerModuleTests"
         )

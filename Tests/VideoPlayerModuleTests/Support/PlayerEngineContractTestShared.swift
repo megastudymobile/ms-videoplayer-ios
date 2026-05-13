@@ -1,3 +1,5 @@
+#if canImport(UIKit)
+
 //
 //  PlayerEngineContractTestShared.swift
 //  SmartPlayer
@@ -86,3 +88,5 @@ class PlayerEngineContractTestShared<AdapterFactory: PlayerEngineAdapterContract
         }
     }
 }
+
+#endif

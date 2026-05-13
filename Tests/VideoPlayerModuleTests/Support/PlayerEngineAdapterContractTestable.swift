@@ -1,3 +1,5 @@
+#if canImport(UIKit)
+
 //
 //  PlayerEngineAdapterContractTestable.swift
 //  SmartPlayer
@@ -16,3 +18,5 @@ protocol PlayerEngineAdapterContractTestable {
     static var isSupportedInCurrentEnvironment: Bool { get }
     static var expectedCapabilities: EngineCapabilities { get }
 }
+
+#endif

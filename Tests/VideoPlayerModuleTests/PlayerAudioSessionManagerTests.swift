@@ -1,3 +1,5 @@
+#if canImport(UIKit)
+
 import AVFoundation
 import XCTest
 @testable import VideoPlayerModule
@@ -138,3 +140,5 @@ private final class FakeAudioSession: PlayerAudioSessionControlling {
         }
     }
 }
+
+#endif

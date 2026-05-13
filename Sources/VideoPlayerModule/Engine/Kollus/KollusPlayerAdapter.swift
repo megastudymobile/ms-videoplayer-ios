@@ -1,9 +1,9 @@
 //
 //  KollusPlayerAdapter.swift
-//  SmartPlayer
+//  VideoPlayerModule
 //
 //  Created by 모바일개발팀_정준영 on 2026/05/11.
-//  Copyright © 2026 megastudyedu. All rights reserved.
+//  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
 //
 
 import Foundation

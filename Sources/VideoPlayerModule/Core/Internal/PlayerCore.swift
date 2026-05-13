@@ -1,9 +1,9 @@
 //
 //  PlayerCore.swift
-//  SmartPlayer
+//  VideoPlayerModule
 //
 //  Created by 모바일개발팀_정준영 on 2026/04/17.
-//  Copyright © 2026 megastudyedu. All rights reserved.
+//  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
 //
 
 import Foundation
@@ -132,17 +132,17 @@ public actor PlayerCore {
         case .seek(let time):
             await engine.seek(to: time)
             transition(to: currentState.updating(currentTime: time))
+        case .seekWithOrigin(let time, _):
+            await engine.seek(to: time)
+            transition(to: currentState.updating(currentTime: time))
+        case .setPlaybackRate(let rate):
+            throw PlayerError.engineError("Playback rate \(rate)x is not supported by the current playback engine.")
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
             await engine.stop()
             currentSource = nil
             transition(to: .idle)
-        case .smartLearning(let command):
-            guard let smartLearningEngine = engine as? any SmartLearningPlayerCommandHandling else {
-                throw PlayerError.engineError("SmartLearning command is not supported by the current playback engine.")
-            }
-            try await smartLearningEngine.executeSmartLearningCommand(command)
         }
     }
 
