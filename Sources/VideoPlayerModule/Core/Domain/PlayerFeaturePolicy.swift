@@ -12,20 +12,24 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
     public let allowsBackgroundPlayback: Bool
     public let maxPlaybackRate: Float
     public let allowsAutoplay: Bool
+    public let skipInterval: TimeInterval
 
     public static let `default` = PlayerFeaturePolicy(
         allowsBackgroundPlayback: false,
         maxPlaybackRate: 2.0,
-        allowsAutoplay: true
+        allowsAutoplay: true,
+        skipInterval: 10
     )
 
     public init(
         allowsBackgroundPlayback: Bool,
         maxPlaybackRate: Float,
-        allowsAutoplay: Bool
+        allowsAutoplay: Bool,
+        skipInterval: TimeInterval = 10
     ) {
         self.allowsBackgroundPlayback = allowsBackgroundPlayback
         self.maxPlaybackRate = maxPlaybackRate
         self.allowsAutoplay = allowsAutoplay
+        self.skipInterval = skipInterval > 0 ? skipInterval : 10
     }
 }

@@ -126,6 +126,43 @@ final class PlayerInterfaceTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testPlayerCoreResolvesSkipOriginFromCurrentPlaybackTime() async throws {
+        let engine = SeekRecordingEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: SeekRecordingEngine.capabilities
+        )
+        try await core.execute(command: .seek(to: 40))
+        await engine.resetRecordedSeekTimes()
+
+        try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipForward))
+        try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipBackward))
+
+        let recordedSeekTimes = await engine.recordedSeekTimes
+        XCTAssertEqual(recordedSeekTimes, [50, 40])
+    }
+
+    func testPlayerCoreClampsSkipOriginToPlaybackBounds() async throws {
+        let engine = SeekRecordingEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: SeekRecordingEngine.capabilities,
+            initialPolicy: PlayerFeaturePolicy(
+                allowsBackgroundPlayback: false,
+                maxPlaybackRate: 2,
+                allowsAutoplay: true,
+                skipInterval: 30
+            )
+        )
+        try await core.execute(command: .seek(to: 5))
+        await engine.resetRecordedSeekTimes()
+
+        try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipBackward))
+
+        let recordedSeekTimes = await engine.recordedSeekTimes
+        XCTAssertEqual(recordedSeekTimes, [0])
+    }
 }
 
 private actor CoreOnlyEngine: PlayerPlaybackEngine {
@@ -174,4 +211,49 @@ private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEn
     func setPlaybackRate(_ rate: Double) async throws {
         recordedRate = rate
     }
+}
+
+private actor SeekRecordingEngine: PlayerPlaybackEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+
+    var currentState: PlaybackState {
+        state
+    }
+
+    let eventStream: AsyncStream<PlayerEvent>
+
+    private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
+    private var state: PlaybackState = .idle
+    private(set) var recordedSeekTimes: [TimeInterval] = []
+
+    init() {
+        var continuation: AsyncStream<PlayerEvent>.Continuation?
+        eventStream = AsyncStream<PlayerEvent>(bufferingPolicy: .bufferingNewest(8)) {
+            continuation = $0
+        }
+        self.eventContinuation = continuation!
+    }
+
+    deinit {
+        eventContinuation.finish()
+    }
+
+    func setState(_ state: PlaybackState) {
+        self.state = state
+    }
+
+    func resetRecordedSeekTimes() {
+        recordedSeekTimes = []
+    }
+
+    func prepare(source: PlaybackSource) async throws {}
+    func play() {}
+    func pause() {}
+
+    func seek(to time: TimeInterval) async {
+        recordedSeekTimes.append(time)
+        state = state.updating(currentTime: time)
+    }
+
+    func stop() {}
 }

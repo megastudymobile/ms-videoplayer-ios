@@ -132,9 +132,10 @@ public actor PlayerCore {
         case .seek(let time):
             await engine.seek(to: time)
             transition(to: currentState.updating(currentTime: time))
-        case .seekWithOrigin(let time, _):
-            await engine.seek(to: time)
-            transition(to: currentState.updating(currentTime: time))
+        case .seekWithOrigin(let time, let origin):
+            let targetTime = seekTargetTime(for: time, origin: origin)
+            await engine.seek(to: targetTime)
+            transition(to: currentState.updating(currentTime: targetTime))
         case .setPlaybackRate(let rate):
             try await setPlaybackRate(rate)
         case .stop:
@@ -211,7 +212,8 @@ public actor PlayerCore {
                 PlayerFeaturePolicy(
                     allowsBackgroundPlayback: false,
                     maxPlaybackRate: policy.maxPlaybackRate,
-                    allowsAutoplay: policy.allowsAutoplay
+                    allowsAutoplay: policy.allowsAutoplay,
+                    skipInterval: policy.skipInterval
                 ),
                 .missingContinuesWithoutSurface
             )
@@ -234,6 +236,28 @@ public actor PlayerCore {
         }
 
         try await rateEngine.setPlaybackRate(rate)
+    }
+
+    private func seekTargetTime(
+        for requestedTime: TimeInterval,
+        origin: PlayerSeekOrigin
+    ) -> TimeInterval {
+        let rawTargetTime: TimeInterval
+
+        switch origin {
+        case .skipForward:
+            rawTargetTime = currentState.currentTime + currentPolicy.skipInterval
+        case .skipBackward:
+            rawTargetTime = currentState.currentTime - currentPolicy.skipInterval
+        default:
+            rawTargetTime = requestedTime
+        }
+
+        guard currentState.duration > 0 else {
+            return max(0, rawTargetTime)
+        }
+
+        return min(max(0, rawTargetTime), currentState.duration)
     }
 
     private func mapToPlayerError(_ error: Error) -> PlayerError {
