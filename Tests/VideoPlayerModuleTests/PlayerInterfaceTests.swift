@@ -84,6 +84,48 @@ final class PlayerInterfaceTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testPlayerCoreDelegatesGenericRateCommandWhenEngineSupportsRateControl() async throws {
+        let engine = RateControllableEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: RateControllableEngine.capabilities
+        )
+
+        try await core.execute(command: .setPlaybackRate(1.5))
+
+        let recordedRate = await engine.recordedRate
+        XCTAssertEqual(recordedRate, 1.5)
+    }
+
+    func testPlayerCoreRejectsRateAboveCurrentPolicy() async throws {
+        let engine = RateControllableEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: RateControllableEngine.capabilities
+        )
+
+        try await core.start(
+            source: .url(URL(string: "https://example.com/video.mp4")!),
+            policy: PlayerFeaturePolicy(
+                allowsBackgroundPlayback: false,
+                maxPlaybackRate: 1.25,
+                allowsAutoplay: false
+            )
+        )
+
+        do {
+            try await core.execute(command: .setPlaybackRate(1.5))
+            XCTFail("Rate above policy should fail explicitly.")
+        } catch let error as PlayerError {
+            XCTAssertEqual(
+                error,
+                .engineError("Playback rate 1.5x exceeds max policy rate 1.25x.")
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
 }
 
 private actor CoreOnlyEngine: PlayerPlaybackEngine {
@@ -99,4 +141,37 @@ private actor CoreOnlyEngine: PlayerPlaybackEngine {
     func pause() {}
     func seek(to time: TimeInterval) async {}
     func stop() {}
+}
+
+private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+
+    var currentState: PlaybackState {
+        state
+    }
+
+    let eventStream = AsyncStream<PlayerEvent> { continuation in
+        continuation.finish()
+    }
+
+    private var state: PlaybackState = .idle
+    private(set) var recordedRate: Double?
+
+    func prepare(source: PlaybackSource) async throws {
+        state = PlaybackState(
+            status: .readyToPlay,
+            currentTime: 0,
+            duration: 60,
+            isBuffering: false
+        )
+    }
+
+    func play() {}
+    func pause() {}
+    func seek(to time: TimeInterval) async {}
+    func stop() {}
+
+    func setPlaybackRate(_ rate: Double) async throws {
+        recordedRate = rate
+    }
 }

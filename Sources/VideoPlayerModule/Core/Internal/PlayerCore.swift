@@ -136,7 +136,7 @@ public actor PlayerCore {
             await engine.seek(to: time)
             transition(to: currentState.updating(currentTime: time))
         case .setPlaybackRate(let rate):
-            throw PlayerError.engineError("Playback rate \(rate)x is not supported by the current playback engine.")
+            try await setPlaybackRate(rate)
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
@@ -218,6 +218,22 @@ public actor PlayerCore {
         }
 
         return (policy, nil)
+    }
+
+    private func setPlaybackRate(_ rate: Double) async throws {
+        guard rate > 0 else {
+            throw PlayerError.engineError("Playback rate must be greater than 0. rate=\(rate)")
+        }
+
+        guard rate <= Double(currentPolicy.maxPlaybackRate) else {
+            throw PlayerError.engineError("Playback rate \(rate)x exceeds max policy rate \(currentPolicy.maxPlaybackRate)x.")
+        }
+
+        guard let rateEngine = engine as? any PlayerPlaybackRateEngine else {
+            throw PlayerError.engineError("Playback rate \(rate)x is not supported by the current playback engine.")
+        }
+
+        try await rateEngine.setPlaybackRate(rate)
     }
 
     private func mapToPlayerError(_ error: Error) -> PlayerError {

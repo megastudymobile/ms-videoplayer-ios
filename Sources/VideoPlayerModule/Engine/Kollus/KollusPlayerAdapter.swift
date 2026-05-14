@@ -12,7 +12,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor KollusPlayerAdapter: PlayerEngineAdapter {
+public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
     public nonisolated static let capabilities: EngineCapabilities = []
 
     public var currentState: PlaybackState {
@@ -121,6 +121,24 @@ public actor KollusPlayerAdapter: PlayerEngineAdapter {
 
         Task {
             await performStop()
+        }
+    }
+
+    public func setPlaybackRate(_ rate: Double) async throws {
+        guard rate > 0 else {
+            throw PlayerError.engineError("Kollus playback rate must be greater than 0. rate=\(rate)")
+        }
+
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+
+            guard playerView.disablePlayRate == false else {
+                throw PlayerError.engineError("Kollus 컨텐츠가 배속 제어를 지원하지 않습니다.")
+            }
+
+            playerView.currentPlaybackRate = Float(rate)
         }
     }
 

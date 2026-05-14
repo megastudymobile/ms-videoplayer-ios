@@ -32,3 +32,7 @@ public protocol PlayerPlaybackEngine: Actor {
     var currentState: PlaybackState { get }
     var eventStream: AsyncStream<PlayerEvent> { get }
 }
+
+public protocol PlayerPlaybackRateEngine: Actor {
+    func setPlaybackRate(_ rate: Double) async throws
+}

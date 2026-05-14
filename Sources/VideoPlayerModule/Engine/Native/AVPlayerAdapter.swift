@@ -11,7 +11,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor AVPlayerAdapter: PlayerEngineAdapter {
+public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
     public nonisolated static let capabilities: EngineCapabilities = [
         .continuesWithoutSurface,
         .seamlessSurfaceSwap
@@ -142,6 +142,16 @@ public actor AVPlayerAdapter: PlayerEngineAdapter {
                 return
             }
             self.detachCurrentSurface()
+        }
+    }
+
+    public func setPlaybackRate(_ rate: Double) async throws {
+        guard rate > 0 else {
+            throw PlayerError.engineError("AVPlayer playback rate must be greater than 0. rate=\(rate)")
+        }
+
+        await MainActor.run { [player] in
+            player.rate = Float(rate)
         }
     }
 
