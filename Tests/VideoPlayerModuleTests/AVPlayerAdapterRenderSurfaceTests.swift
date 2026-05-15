@@ -9,13 +9,16 @@
 #if canImport(UIKit)
 
 import AVFoundation
+import Foundation
+import Testing
 import UIKit
-import XCTest
 @testable import VideoPlayerModule
 
-final class AVPlayerAdapterRenderSurfaceTests: XCTestCase {
+@Suite("AVPlayer adapter render surface")
+struct AVPlayerAdapterRenderSurfaceTests {
+    @Test("Bind attaches player layer to surface")
     @MainActor
-    func testBindAttachesPlayerLayerToSurface() async throws {
+    func bindAttachesPlayerLayerToSurface() async throws {
         let adapter = AVPlayerAdapter(player: AVPlayer())
         let surface = TestRenderSurface()
 
@@ -30,8 +33,9 @@ final class AVPlayerAdapterRenderSurfaceTests: XCTestCase {
         }
     }
 
+    @Test("Rebind detaches previous surface and moves player layer")
     @MainActor
-    func testRebindDetachesPreviousSurfaceAndMovesPlayerLayer() async throws {
+    func rebindDetachesPreviousSurfaceAndMovesPlayerLayer() async throws {
         let adapter = AVPlayerAdapter(player: AVPlayer())
         let firstSurface = TestRenderSurface()
         let secondSurface = TestRenderSurface()
@@ -55,8 +59,9 @@ final class AVPlayerAdapterRenderSurfaceTests: XCTestCase {
         }
     }
 
+    @Test("Unbind detaches current surface and removes player layer")
     @MainActor
-    func testUnbindDetachesCurrentSurfaceAndRemovesPlayerLayer() async throws {
+    func unbindDetachesCurrentSurfaceAndRemovesPlayerLayer() async throws {
         let adapter = AVPlayerAdapter(player: AVPlayer())
         let surface = TestRenderSurface()
 
@@ -79,8 +84,6 @@ final class AVPlayerAdapterRenderSurfaceTests: XCTestCase {
     private func waitUntil(
         timeout: TimeInterval = 1.0,
         pollInterval: UInt64 = 10_000_000,
-        file: StaticString = #filePath,
-        line: UInt = #line,
         condition: @escaping @Sendable () async -> Bool
     ) async throws {
         let deadline = Date().addingTimeInterval(timeout)
@@ -93,8 +96,12 @@ final class AVPlayerAdapterRenderSurfaceTests: XCTestCase {
             try await Task.sleep(nanoseconds: pollInterval)
         }
 
-        XCTFail("조건을 만족하지 못했습니다.", file: file, line: line)
+        throw WaitUntilTimeoutError()
     }
+}
+
+private struct WaitUntilTimeoutError: Error, CustomStringConvertible {
+    let description = "조건을 만족하지 못했습니다."
 }
 
 private final class TestRenderSurface: PlayerRenderSurface {
