@@ -16,5 +16,8 @@ public enum PlaybackCommand: Equatable, Sendable {
     case seekWithOrigin(to: TimeInterval, origin: PlayerSeekOrigin)
     case setPlaybackRate(Double)
     case setSkipInterval(TimeInterval)
+    case setSubtitleVisible(Bool)
+    case selectSubtitleTrack(PlayerSubtitleTrackID?)
+    case setCaptionFontSize(Int)
     case stop
 }

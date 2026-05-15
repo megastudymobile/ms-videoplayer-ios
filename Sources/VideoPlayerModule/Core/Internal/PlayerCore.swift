@@ -140,6 +140,12 @@ public actor PlayerCore {
             try await setPlaybackRate(rate)
         case .setSkipInterval(let interval):
             try setSkipInterval(interval)
+        case .setSubtitleVisible(let isVisible):
+            try await setSubtitleVisible(isVisible)
+        case .selectSubtitleTrack(let trackID):
+            try await selectSubtitleTrack(trackID)
+        case .setCaptionFontSize(let fontSize):
+            try await setCaptionFontSize(fontSize)
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
@@ -251,6 +257,34 @@ public actor PlayerCore {
             allowsAutoplay: currentPolicy.allowsAutoplay,
             skipInterval: interval
         )
+    }
+
+    private func setSubtitleVisible(_ isVisible: Bool) async throws {
+        guard let subtitleEngine = engine as? any PlayerSubtitleEngine else {
+            throw PlayerError.engineError("Subtitle visibility is not supported by the current playback engine.")
+        }
+
+        try await subtitleEngine.setSubtitleVisible(isVisible)
+    }
+
+    private func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {
+        guard let subtitleEngine = engine as? any PlayerSubtitleEngine else {
+            throw PlayerError.engineError("Subtitle track selection is not supported by the current playback engine.")
+        }
+
+        try await subtitleEngine.selectSubtitleTrack(trackID)
+    }
+
+    private func setCaptionFontSize(_ fontSize: Int) async throws {
+        guard fontSize > 0 else {
+            throw PlayerError.engineError("Caption font size must be greater than 0. fontSize=\(fontSize)")
+        }
+
+        guard let subtitleEngine = engine as? any PlayerSubtitleEngine else {
+            throw PlayerError.engineError("Caption font size is not supported by the current playback engine.")
+        }
+
+        try await subtitleEngine.setCaptionFontSize(fontSize)
     }
 
     private func seekTargetTime(

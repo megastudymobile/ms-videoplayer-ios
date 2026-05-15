@@ -36,3 +36,9 @@ public protocol PlayerPlaybackEngine: Actor {
 public protocol PlayerPlaybackRateEngine: Actor {
     func setPlaybackRate(_ rate: Double) async throws
 }
+
+public protocol PlayerSubtitleEngine: Actor {
+    func setSubtitleVisible(_ isVisible: Bool) async throws
+    func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws
+    func setCaptionFontSize(_ fontSize: Int) async throws
+}

@@ -53,6 +53,10 @@ final class PlayerInterfaceTests: XCTestCase {
     func testPlaybackCommandCarriesGenericRateAndSeekOrigin() {
         let rateCommand = PlaybackCommand.setPlaybackRate(1.5)
         let skipIntervalCommand = PlaybackCommand.setSkipInterval(30)
+        let subtitleVisibleCommand = PlaybackCommand.setSubtitleVisible(true)
+        let subtitleTrackID = PlayerSubtitleTrackID(rawValue: "caption-ko")
+        let subtitleTrackCommand = PlaybackCommand.selectSubtitleTrack(subtitleTrackID)
+        let captionFontSizeCommand = PlaybackCommand.setCaptionFontSize(20)
         let metadataID = PlayerTimedMetadataID(rawValue: "metadata-1")
         let seekCommand = PlaybackCommand.seekWithOrigin(
             to: 45,
@@ -61,6 +65,9 @@ final class PlayerInterfaceTests: XCTestCase {
 
         XCTAssertEqual(rateCommand, .setPlaybackRate(1.5))
         XCTAssertEqual(skipIntervalCommand, .setSkipInterval(30))
+        XCTAssertEqual(subtitleVisibleCommand, .setSubtitleVisible(true))
+        XCTAssertEqual(subtitleTrackCommand, .selectSubtitleTrack(subtitleTrackID))
+        XCTAssertEqual(captionFontSizeCommand, .setCaptionFontSize(20))
         XCTAssertEqual(
             seekCommand,
             .seekWithOrigin(to: 45, origin: .timedMetadata(metadataID))
@@ -127,6 +134,66 @@ final class PlayerInterfaceTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+    }
+
+    func testPlayerCoreRejectsUnsupportedGenericSubtitleCommandExplicitly() async {
+        let engine = CoreOnlyEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: CoreOnlyEngine.capabilities
+        )
+
+        do {
+            try await core.execute(command: .setSubtitleVisible(true))
+            XCTFail("Unsupported subtitle visibility command should fail explicitly.")
+        } catch let error as PlayerError {
+            XCTAssertEqual(
+                error,
+                .engineError("Subtitle visibility is not supported by the current playback engine.")
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testPlayerCoreRejectsInvalidCaptionFontSize() async {
+        let engine = SubtitleControllableEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: SubtitleControllableEngine.capabilities
+        )
+
+        do {
+            try await core.execute(command: .setCaptionFontSize(0))
+            XCTFail("Invalid caption font size should fail explicitly.")
+        } catch let error as PlayerError {
+            XCTAssertEqual(
+                error,
+                .engineError("Caption font size must be greater than 0. fontSize=0")
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testPlayerCoreDelegatesGenericSubtitleCommandsWhenEngineSupportsSubtitleControl() async throws {
+        let engine = SubtitleControllableEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: SubtitleControllableEngine.capabilities
+        )
+        let trackID = PlayerSubtitleTrackID(rawValue: "caption-ko")
+
+        try await core.execute(command: .setSubtitleVisible(true))
+        try await core.execute(command: .selectSubtitleTrack(trackID))
+        try await core.execute(command: .setCaptionFontSize(20))
+
+        let recordedSubtitleVisibility = await engine.recordedSubtitleVisibility
+        let recordedSubtitleTrackID = await engine.recordedSubtitleTrackID
+        let recordedCaptionFontSize = await engine.recordedCaptionFontSize
+        XCTAssertEqual(recordedSubtitleVisibility, true)
+        XCTAssertEqual(recordedSubtitleTrackID, trackID)
+        XCTAssertEqual(recordedCaptionFontSize, 20)
     }
 
     func testPlayerCoreResolvesSkipOriginFromCurrentPlaybackTime() async throws {
@@ -248,6 +315,38 @@ private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEn
 
     func setPlaybackRate(_ rate: Double) async throws {
         recordedRate = rate
+    }
+}
+
+private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+
+    var currentState: PlaybackState { .idle }
+
+    let eventStream = AsyncStream<PlayerEvent> { continuation in
+        continuation.finish()
+    }
+
+    private(set) var recordedSubtitleVisibility: Bool?
+    private(set) var recordedSubtitleTrackID: PlayerSubtitleTrackID?
+    private(set) var recordedCaptionFontSize: Int?
+
+    func prepare(source: PlaybackSource) async throws {}
+    func play() {}
+    func pause() {}
+    func seek(to time: TimeInterval) async {}
+    func stop() {}
+
+    func setSubtitleVisible(_ isVisible: Bool) async throws {
+        recordedSubtitleVisibility = isVisible
+    }
+
+    func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {
+        recordedSubtitleTrackID = trackID
+    }
+
+    func setCaptionFontSize(_ fontSize: Int) async throws {
+        recordedCaptionFontSize = fontSize
     }
 }
 
