@@ -23,7 +23,7 @@ public actor KollusSessionBootstrapper {
 
     public init(environment: KollusEnvironment) {
         self.environment = environment
-        self.storageFactory = Self.defaultStorageFactory
+        self.storageFactory = { Self.defaultStorageFactory() }
     }
 
     init(

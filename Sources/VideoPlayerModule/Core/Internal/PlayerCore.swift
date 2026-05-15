@@ -124,17 +124,25 @@ public actor PlayerCore {
         case .load(let source):
             try await start(source: source, policy: currentPolicy)
         case .play:
-            await engine.play()
+            try await executeEngineCommand {
+                try await engine.play()
+            }
             transition(to: currentState.updating(status: .playing, isBuffering: false))
         case .pause:
-            await engine.pause()
+            try await executeEngineCommand {
+                try await engine.pause()
+            }
             transition(to: currentState.updating(status: .paused, isBuffering: false))
         case .seek(let time):
-            await engine.seek(to: time)
+            try await executeEngineCommand {
+                try await engine.seek(to: time)
+            }
             transition(to: currentState.updating(currentTime: time))
         case .seekWithOrigin(let time, let origin):
             let targetTime = seekTargetTime(for: time, origin: origin)
-            await engine.seek(to: targetTime)
+            try await executeEngineCommand {
+                try await engine.seek(to: targetTime)
+            }
             transition(to: currentState.updating(currentTime: targetTime))
         case .setPlaybackRate(let rate):
             try await setPlaybackRate(rate)
@@ -163,7 +171,9 @@ public actor PlayerCore {
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
-            await engine.stop()
+            try await executeEngineCommand {
+                try await engine.stop(reason: .userClosed)
+            }
             currentSource = nil
             transition(to: .idle)
         }
@@ -175,7 +185,18 @@ public actor PlayerCore {
         try Task.checkCancellation()
 
         if policy.allowsAutoplay {
-            await engine.play()
+            try await engine.play()
+        }
+    }
+
+    private func executeEngineCommand(_ operation: () async throws -> Void) async throws {
+        do {
+            try await operation()
+        } catch {
+            let playerError = mapToPlayerError(error)
+            transition(to: currentState.updating(status: .failed(playerError), isBuffering: false))
+            publish(event: .didFail(playerError))
+            throw playerError
         }
     }
 

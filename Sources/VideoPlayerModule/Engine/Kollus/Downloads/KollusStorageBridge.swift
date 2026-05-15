@@ -10,36 +10,46 @@ import Foundation
 
 /// KollusStorageEventReceiving 채택. KollusStorageProtocol delegate 콜백을
 /// `KollusDownloadCenter.contents` AsyncStream으로 yield하고
-/// LMS 콜백은 `KollusObserver`로 forward한다.
+/// DRM/LMS 콜백은 `KollusObserver`로 forward한다.
 @MainActor
 final class KollusStorageBridge: KollusStorageEventReceiving {
     private weak var observer: AnyObject?
     private let snapshotsContinuation: AsyncStream<[KollusContentSnapshot]>.Continuation
-    private weak var storage: AnyObject?
 
     init(
         observer: KollusObserver?,
-        snapshotsContinuation: AsyncStream<[KollusContentSnapshot]>.Continuation,
-        storage: KollusStorageProtocol
+        snapshotsContinuation: AsyncStream<[KollusContentSnapshot]>.Continuation
     ) {
         self.observer = observer.map { $0 as AnyObject }
         self.snapshotsContinuation = snapshotsContinuation
-        self.storage = storage as AnyObject
     }
 
     func storageDidUpdateContents(_ snapshots: [KollusContentSnapshot]) {
         snapshotsContinuation.yield(snapshots)
     }
 
-    func storageDidPostLMS(data: String, result: [String: Any]) {
+    func storageDidResolveDRM(_ resolution: KollusStorageDRMResolution) {
         if let observer = observer as? KollusObserver {
-            observer.kollus(didPostLMS: data, result: result)
+            observer.kollus(
+                didResolveDRM: resolution.request,
+                response: resolution.response,
+                error: resolution.error
+            )
         }
     }
 
-    func storageDidCompleteStoredLMS(success: Int, failure: Int) {
+    func storageDidPostLMS(_ post: KollusStorageLMSPost) {
         if let observer = observer as? KollusObserver {
-            observer.kollusStorage(didCompleteStoredLMS: success, failure: failure)
+            observer.kollus(didPostLMS: post.data, result: post.result)
+        }
+    }
+
+    func storageDidCompleteStoredLMS(_ completion: KollusStoredLMSCompletion) {
+        if let observer = observer as? KollusObserver {
+            observer.kollusStorage(
+                didCompleteStoredLMS: completion.successCount,
+                failure: completion.failureCount
+            )
         }
     }
 }

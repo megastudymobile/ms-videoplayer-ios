@@ -123,15 +123,15 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    public func play() {
-        Task { await performPlay() }
+    public func play() async throws {
+        try await performPlay()
     }
 
-    public func pause() {
-        Task { await performPause() }
+    public func pause() async throws {
+        try await performPause()
     }
 
-    public func seek(to time: TimeInterval) async {
+    public func seek(to time: TimeInterval) async throws {
         let clampedTime = max(0, time)
         await MainActor.run {
             self.playerView?.currentPlaybackTime = clampedTime
@@ -141,10 +141,13 @@ public actor KollusPlayerAdapter:
         publish(event: .timeDidChange(currentTime: clampedTime, duration: nextState.duration))
     }
 
-    public func stop() {
-        state = .idle
-        publish(event: .stateDidChange(.idle))
-        Task { await performStop() }
+    public func stop(reason: PlayerStopReason) async throws {
+        try await performStop()
+        let nextState = stateAfterStop(reason: reason)
+        transition(to: nextState)
+        if reason == .finished {
+            publish(event: .didFinish)
+        }
     }
 
     // MARK: - PlayerPlaybackRateEngine
@@ -501,15 +504,20 @@ public actor KollusPlayerAdapter:
                 self.attach(playerView: playerView, to: boundSurface)
             }
 
-            // 4) prepareToPlay 호출 — 이후 SDK가 prepareToPlayWithError delegate 호출
-            try playerView.prepareToPlay(withMode: playerType)
-
             self.playerView = playerView
             self.bridge = bridge
         }
 
         // 신규 path에서는 상태 전이를 SDK delegate(prepareToPlayCompleted)에 의존.
         transition(to: state.updating(status: .preparing, isBuffering: false))
+
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+            // 4) prepareToPlay 호출 — 이후 SDK가 prepareToPlayWithError delegate 호출
+            try playerView.prepareToPlay(withMode: playerType)
+        }
     }
 
     private func prepareWithLegacyStorage(source: PlaybackSource) async throws {
@@ -551,7 +559,7 @@ public actor KollusPlayerAdapter:
 
     // MARK: - Signal handling (bootstrapped path)
 
-    private func handleSignal(_ signal: KollusEngineSignal) async {
+    func handleSignal(_ signal: KollusEngineSignal) async {
         switch signal {
         case .prepareToPlayCompleted(let error):
             if let error {
@@ -563,13 +571,25 @@ public actor KollusPlayerAdapter:
                 transition(to: snapshot)
             }
 
-        case .playStarted:
+        case .playStarted(_, let error):
+            if let error {
+                handleFailure(.engineError("Kollus play 실패: \(error.localizedDescription)"))
+                return
+            }
             transition(to: state.updating(status: .playing, isBuffering: false))
 
-        case .pauseStarted:
+        case .pauseStarted(_, let error):
+            if let error {
+                handleFailure(.engineError("Kollus pause 실패: \(error.localizedDescription)"))
+                return
+            }
             transition(to: state.updating(status: .paused, isBuffering: false))
 
-        case .bufferingChanged(let buffering, _, _):
+        case .bufferingChanged(let buffering, _, let error):
+            if let error {
+                handleFailure(.engineError("Kollus buffering 실패: \(error.localizedDescription)"))
+                return
+            }
             let nextStatus: PlaybackState.Status
             if buffering {
                 nextStatus = .buffering
@@ -581,7 +601,11 @@ public actor KollusPlayerAdapter:
             transition(to: state.updating(status: nextStatus, isBuffering: buffering), emitStateEvent: false)
             publish(event: .bufferingDidChange(isBuffering: buffering))
 
-        case .stopStarted(let userInteraction, _):
+        case .stopStarted(let userInteraction, let error):
+            if let error {
+                handleFailure(.engineError("Kollus stop 실패: \(error.localizedDescription)"))
+                return
+            }
             let nextStatus: PlaybackState.Status = userInteraction ? .idle : .finished
             transition(to: state.updating(status: nextStatus, isBuffering: false))
             if nextStatus == .finished {
@@ -721,78 +745,46 @@ public actor KollusPlayerAdapter:
 
     @MainActor
     private static func snapshot(from content: KollusContent) -> KollusContentSnapshot {
-        let drmStatus: KollusContentSnapshot.DRMStatus
-        if content.drmExpired {
-            drmStatus = .expired
-        } else if content.drmExpireDate != nil {
-            let remaining = Int(content.drmExpireCountMax - content.drmExpireCount)
-            drmStatus = .valid(
-                expiresAt: content.drmExpireDate,
-                playCountRemaining: remaining > 0 ? remaining : nil
-            )
-        } else {
-            drmStatus = .unknown
-        }
-        return KollusContentSnapshot(
-            id: content.mediaContentKey ?? "",
-            title: content.title ?? "",
-            course: content.course ?? "",
-            teacher: content.teacher ?? "",
-            synopsis: content.synopsis,
-            thumbnailPath: content.thumbnail,
-            snapshotPath: content.snapshot,
-            descriptionURL: content.descriptionURL.flatMap { URL(string: $0) },
-            naturalSize: content.naturalSize,
-            duration: content.duration,
-            position: content.position,
-            contentType: .streaming,
-            drm: drmStatus,
-            download: .notDownloaded,
-            fileSize: 0,
-            downloadedAt: nil
-        )
+        KollusContentSnapshot.fromSDKContent(content)
     }
 
     // MARK: - Performers
 
-    private func performPlay() async {
-        do {
-            try await MainActor.run {
-                guard let playerView else {
-                    throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
-                }
-                try playerView.play()
+    private func performPlay() async throws {
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
             }
-            let nextState = state.updating(status: .playing, isBuffering: false)
-            transition(to: nextState)
-        } catch {
-            handleFailure(mapToPlayerError(error))
+            try playerView.play()
         }
     }
 
-    private func performPause() async {
-        do {
-            try await MainActor.run {
-                guard let playerView else {
-                    throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
-                }
-                try playerView.pause()
+    private func performPause() async throws {
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
             }
-            let nextState = state.updating(status: .paused, isBuffering: false)
-            transition(to: nextState)
-        } catch {
-            handleFailure(mapToPlayerError(error))
+            try playerView.pause()
         }
     }
 
-    private func performStop() async {
-        await MainActor.run {
+    private func performStop() async throws {
+        try await MainActor.run {
             if let playerView {
-                _ = try? playerView.stop()
+                try playerView.stop()
                 playerView.removeFromSuperview()
             }
             self.playerView = nil
             self.bridge = nil
+        }
+    }
+
+    private func stateAfterStop(reason: PlayerStopReason) -> PlaybackState {
+        switch reason {
+        case .finished:
+            state.updating(status: .finished, isBuffering: false)
+        case .userClosed, .replacedSource, .appLifecycle:
+            .idle
         }
     }
 

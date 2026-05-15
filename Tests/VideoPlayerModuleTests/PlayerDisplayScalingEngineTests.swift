@@ -51,10 +51,10 @@ private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, PlayerDisplayScali
     private(set) var toggleDisplayScalingCallCount = 0
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 
     func setDisplayScaled(_ isScaled: Bool) async throws {
         recordedDisplayScale = isScaled

@@ -26,7 +26,7 @@ enum KollusContractFactory: PlayerEngineAdapterContractTestable {
     }
 
     static func cleanupTestAdapter(_ adapter: PlayerEngineAdapter) async {
-        await adapter.stop()
+        try? await adapter.stop(reason: .userClosed)
     }
 
     static var maxPreparationSeconds: TimeInterval { 5 }

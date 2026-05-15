@@ -28,10 +28,10 @@ public protocol PlayerPlaybackEngine: Actor {
     nonisolated static var capabilities: EngineCapabilities { get }
 
     func prepare(source: PlaybackSource) async throws
-    func play()
-    func pause()
-    func seek(to time: TimeInterval) async
-    func stop()
+    func play() async throws
+    func pause() async throws
+    func seek(to time: TimeInterval) async throws
+    func stop(reason: PlayerStopReason) async throws
 
     var currentState: PlaybackState { get }
     var eventStream: AsyncStream<PlayerEvent> { get }

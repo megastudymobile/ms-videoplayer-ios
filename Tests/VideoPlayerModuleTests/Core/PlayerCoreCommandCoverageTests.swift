@@ -159,10 +159,10 @@ private actor PlaybackOnlyEngine: PlayerPlaybackEngine {
     deinit { continuation.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 }
 
 private actor TitledBookmarkEngine: PlayerPlaybackEngine, PlayerTitledBookmarkEngine {
@@ -185,10 +185,10 @@ private actor TitledBookmarkEngine: PlayerPlaybackEngine, PlayerTitledBookmarkEn
     deinit { continuation.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 
     func addBookmark(at time: TimeInterval) async throws {
         recorded.append((time: time, title: ""))
@@ -225,10 +225,10 @@ private actor ExternalSubtitleEngine: PlayerPlaybackEngine, PlayerExternalSubtit
     deinit { continuation.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 
     func setSubtitleVisible(_ isVisible: Bool) async throws {}
     func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {}

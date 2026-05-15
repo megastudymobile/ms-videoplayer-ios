@@ -49,11 +49,22 @@ class PlayerEngineContractTestShared<AdapterFactory: PlayerEngineAdapterContract
         let adapter = AdapterFactory.makeTestAdapter()
         defer { Task { await AdapterFactory.cleanupTestAdapter(adapter) } }
 
-        await adapter.stop()
-        await adapter.stop()
+        try await adapter.stop(reason: .userClosed)
+        try await adapter.stop(reason: .userClosed)
 
         let state = await adapter.currentState
         XCTAssertEqual(state.status, .idle)
+    }
+
+    func test_stopWithFinishedReason_transitionsToFinished() async throws {
+        try skipIfUnsupported()
+        let adapter = AdapterFactory.makeTestAdapter()
+        defer { Task { await AdapterFactory.cleanupTestAdapter(adapter) } }
+
+        try await adapter.stop(reason: .finished)
+
+        let state = await adapter.currentState
+        XCTAssertEqual(state.status, .finished)
     }
 
     func test_unbindRenderSurface_withoutBind_doesNotCrash() async throws {

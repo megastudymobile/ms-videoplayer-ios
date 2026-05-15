@@ -72,13 +72,13 @@ private actor FactoryTestEngineAdapter: PlayerEngineAdapter {
 
     func prepare(source: PlaybackSource) async throws {}
 
-    func play() {}
+    func play() async throws {}
 
-    func pause() {}
+    func pause() async throws {}
 
-    func seek(to time: TimeInterval) async {}
+    func seek(to time: TimeInterval) async throws {}
 
-    func stop() {
+    func stop(reason: PlayerStopReason) async throws {
         stopCount += 1
     }
 

@@ -116,12 +116,16 @@ final class FakeKollusStorage: KollusStorageProtocol {
         storageDelegate?.storageDidUpdateContents(snapshots)
     }
 
+    func emitDRMResponse(request: [String: Any], response: [String: Any], error: Error?) {
+        storageDelegate?.storageDidResolveDRM(.init(request: request, response: response, error: error))
+    }
+
     func emitLMSPost(data: String, result: [String: Any]) {
-        storageDelegate?.storageDidPostLMS(data: data, result: result)
+        storageDelegate?.storageDidPostLMS(.init(data: data, result: result))
     }
 
     func emitStoredLMSComplete(success: Int, failure: Int) {
-        storageDelegate?.storageDidCompleteStoredLMS(success: success, failure: failure)
+        storageDelegate?.storageDidCompleteStoredLMS(.init(successCount: success, failureCount: failure))
     }
 }
 

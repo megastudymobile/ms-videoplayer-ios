@@ -107,37 +107,7 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
     }
 
     private static func snapshot(from content: KollusContent) -> KollusContentSnapshot {
-        let drmStatus: KollusContentSnapshot.DRMStatus
-        if content.drmExpired {
-            drmStatus = .expired
-        } else if content.drmExpireDate != nil {
-            let remaining = Int(content.drmExpireCountMax - content.drmExpireCount)
-            drmStatus = .valid(
-                expiresAt: content.drmExpireDate,
-                playCountRemaining: remaining > 0 ? remaining : nil
-            )
-        } else {
-            drmStatus = .unknown
-        }
-
-        return KollusContentSnapshot(
-            id: content.mediaContentKey ?? "",
-            title: content.title ?? "",
-            course: content.course ?? "",
-            teacher: content.teacher ?? "",
-            synopsis: content.synopsis,
-            thumbnailPath: content.thumbnail,
-            snapshotPath: content.snapshot,
-            descriptionURL: content.descriptionURL.flatMap { URL(string: $0) },
-            naturalSize: content.naturalSize,
-            duration: content.duration,
-            position: content.position,
-            contentType: .streaming,
-            drm: drmStatus,
-            download: .notDownloaded,
-            fileSize: 0,
-            downloadedAt: nil
-        )
+        KollusContentSnapshot.fromSDKContent(content)
     }
 
     // MARK: - KollusStorageDelegate (forwards to storageDelegate as snapshot refresh)
@@ -147,7 +117,11 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
     }
 
     func kollusStorage(_ kollusStorage: KollusStorage, request: [AnyHashable: Any], json: [AnyHashable: Any], error: Error?) {
-        // Storage 측 DRM 콜백은 다운로드 플로용. Phase 6에서 처리.
+        storageDelegate?.storageDidResolveDRM(.init(
+            request: Self.normalize(request),
+            response: Self.normalize(json),
+            error: error
+        ))
     }
 
     func kollusStorage(_ kollusStorage: KollusStorage, cur: Int32, count: Int32, error: Error?) {
@@ -155,15 +129,21 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
     }
 
     func kollusStorage(_ kollusStorage: KollusStorage, lmsData: String, resultJson: [AnyHashable: Any]) {
-        let normalized = Dictionary(uniqueKeysWithValues: resultJson.compactMap { key, value -> (String, Any)? in
-            guard let stringKey = key as? String else { return nil }
-            return (stringKey, value)
-        })
-        storageDelegate?.storageDidPostLMS(data: lmsData, result: normalized)
+        storageDelegate?.storageDidPostLMS(.init(data: lmsData, result: Self.normalize(resultJson)))
     }
 
     func onSendCompleteStoredLms(_ successCount: Int32, failCount: Int32) {
-        storageDelegate?.storageDidCompleteStoredLMS(success: Int(successCount), failure: Int(failCount))
+        storageDelegate?.storageDidCompleteStoredLMS(.init(
+            successCount: Int(successCount),
+            failureCount: Int(failCount)
+        ))
+    }
+
+    private static func normalize(_ dict: [AnyHashable: Any]) -> [String: Any] {
+        Dictionary(uniqueKeysWithValues: dict.compactMap { key, value -> (String, Any)? in
+            guard let stringKey = key as? String else { return nil }
+            return (stringKey, value)
+        })
     }
 }
 

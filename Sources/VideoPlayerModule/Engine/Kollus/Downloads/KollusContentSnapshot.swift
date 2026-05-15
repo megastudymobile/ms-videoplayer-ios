@@ -9,6 +9,10 @@
 import CoreGraphics
 import Foundation
 
+#if canImport(KollusSDKBinary)
+import KollusSDKBinary
+#endif
+
 public struct KollusContentSnapshot: Sendable, Hashable, Identifiable {
     public enum ContentType: Sendable, Hashable {
         case streaming
@@ -83,3 +87,77 @@ public struct KollusContentSnapshot: Sendable, Hashable, Identifiable {
         self.downloadedAt = downloadedAt
     }
 }
+
+#if canImport(KollusSDKBinary)
+
+extension KollusContentSnapshot {
+    static func fromSDKContent(_ content: KollusContent) -> KollusContentSnapshot {
+        KollusContentSnapshot(
+            id: content.mediaContentKey ?? "",
+            title: content.title ?? "",
+            course: content.course ?? "",
+            teacher: content.teacher ?? "",
+            synopsis: content.synopsis,
+            thumbnailPath: content.thumbnail,
+            snapshotPath: content.snapshot,
+            descriptionURL: content.descriptionURL.flatMap { URL(string: $0) },
+            naturalSize: content.naturalSize,
+            duration: content.duration,
+            position: content.position,
+            contentType: contentType(from: content.contentType),
+            drm: drmStatus(from: content),
+            download: downloadStatus(from: content),
+            fileSize: max(0, Int64(content.fileSize)),
+            downloadedAt: downloadedAt(from: content.downloadedTime)
+        )
+    }
+
+    private static func contentType(from sdkType: KollusContentType) -> ContentType {
+        switch sdkType.rawValue {
+        case 1:
+            return .downloading
+        case 2:
+            return .sample
+        case 3:
+            return .hlsStreaming
+        case 4:
+            return .hlsDownload
+        default:
+            return .streaming
+        }
+    }
+
+    private static func drmStatus(from content: KollusContent) -> DRMStatus {
+        if content.drmExpired {
+            return .expired
+        }
+        if content.drmExpireDate != nil {
+            let remaining = Int(content.drmExpireCountMax - content.drmExpireCount)
+            return .valid(
+                expiresAt: content.drmExpireDate,
+                playCountRemaining: remaining > 0 ? remaining : nil
+            )
+        }
+        return .unknown
+    }
+
+    private static func downloadStatus(from content: KollusContent) -> DownloadStatus {
+        if content.downloaded {
+            return .completed
+        }
+
+        let downloadedBytes = max(0, Int64(content.downloadSize))
+        let percent = min(100, max(0, Double(content.downloadProgress)))
+        if percent > 0 || downloadedBytes > 0 {
+            return .inProgress(percent: percent, downloadedBytes: downloadedBytes)
+        }
+        return .notDownloaded
+    }
+
+    private static func downloadedAt(from downloadedTime: Int32) -> Date? {
+        guard downloadedTime > 0 else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(downloadedTime))
+    }
+}
+
+#endif

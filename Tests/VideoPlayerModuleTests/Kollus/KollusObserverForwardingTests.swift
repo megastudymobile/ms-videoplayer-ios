@@ -40,20 +40,23 @@ final class KollusObserverForwardingTests: XCTestCase {
         }
     }
 
-    /// Storage delegate path 전용 fake (KollusObserver와 별개 타입).
     private final class FakeStorageEvents: KollusStorageEventReceiving {
-        var lmsPosts: [(data: String, result: [String: Any])] = []
-        var storedLMSComplete: [(success: Int, failure: Int)] = []
+        var lmsPosts: [KollusStorageLMSPost] = []
+        var storedLMSComplete: [KollusStoredLMSCompletion] = []
         var contentsUpdates: [Int] = []
+        var drmCalls: [KollusStorageDRMResolution] = []
 
         func storageDidUpdateContents(_ snapshots: [KollusContentSnapshot]) {
             contentsUpdates.append(snapshots.count)
         }
-        func storageDidPostLMS(data: String, result: [String: Any]) {
-            lmsPosts.append((data, result))
+        func storageDidPostLMS(_ post: KollusStorageLMSPost) {
+            lmsPosts.append(post)
         }
-        func storageDidCompleteStoredLMS(success: Int, failure: Int) {
-            storedLMSComplete.append((success, failure))
+        func storageDidCompleteStoredLMS(_ completion: KollusStoredLMSCompletion) {
+            storedLMSComplete.append(completion)
+        }
+        func storageDidResolveDRM(_ resolution: KollusStorageDRMResolution) {
+            drmCalls.append(resolution)
         }
     }
 
@@ -128,8 +131,33 @@ final class KollusObserverForwardingTests: XCTestCase {
         storage.emitStoredLMSComplete(success: 3, failure: 1)
 
         XCTAssertEqual(storageEvents.storedLMSComplete.count, 1)
-        XCTAssertEqual(storageEvents.storedLMSComplete[0].success, 3)
-        XCTAssertEqual(storageEvents.storedLMSComplete[0].failure, 1)
+        XCTAssertEqual(storageEvents.storedLMSComplete[0].successCount, 3)
+        XCTAssertEqual(storageEvents.storedLMSComplete[0].failureCount, 1)
+    }
+
+    func test_storageBridge_forwardsStorageDRMResponseToObserver() {
+        let observer = FakeObserver()
+        let storage = FakeKollusStorage()
+        var continuation: AsyncStream<[KollusContentSnapshot]>.Continuation?
+        _ = AsyncStream<[KollusContentSnapshot]> {
+            continuation = $0
+        }
+        let bridge = KollusStorageBridge(
+            observer: observer,
+            snapshotsContinuation: continuation!
+        )
+        let error = NSError(domain: "kollus.storage.drm", code: 12)
+
+        bridge.storageDidResolveDRM(.init(
+            request: ["kind": "download"],
+            response: ["status": 200],
+            error: error
+        ))
+
+        XCTAssertEqual(observer.drmCalls.count, 1)
+        XCTAssertEqual(observer.drmCalls[0].request["kind"] as? String, "download")
+        XCTAssertEqual(observer.drmCalls[0].response["status"] as? Int, 200)
+        XCTAssertEqual(observer.drmCalls[0].errorCode, 12)
     }
 }
 

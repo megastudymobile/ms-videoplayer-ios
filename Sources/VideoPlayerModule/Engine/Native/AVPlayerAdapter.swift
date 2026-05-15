@@ -89,8 +89,8 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
         transition(to: nextState)
     }
 
-    public func play() {
-        Task { @MainActor [player] in
+    public func play() async throws {
+        await MainActor.run { [player] in
             player.play()
         }
 
@@ -98,8 +98,8 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
         transition(to: nextState)
     }
 
-    public func pause() {
-        Task { @MainActor [player] in
+    public func pause() async throws {
+        await MainActor.run { [player] in
             player.pause()
         }
 
@@ -107,15 +107,19 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
         transition(to: nextState)
     }
 
-    public func seek(to time: TimeInterval) async {
+    public func seek(to time: TimeInterval) async throws {
         let clampedTime = max(0, time)
         let targetTime = CMTime(seconds: clampedTime, preferredTimescale: 600)
 
-        await withCheckedContinuation { continuation in
-            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+        try await withCheckedThrowingContinuation { continuation in
+            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
                 Task {
                     guard let self else {
                         continuation.resume()
+                        return
+                    }
+                    guard finished else {
+                        continuation.resume(throwing: PlayerError.engineError("AVPlayer seek가 완료되지 않았습니다."))
                         return
                     }
 
@@ -128,14 +132,17 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
         }
     }
 
-    public func stop() {
+    public func stop(reason: PlayerStopReason) async throws {
         cleanupCurrentItemObservers()
         player.cancelPendingPrerolls()
         player.currentItem?.cancelPendingSeeks()
         player.replaceCurrentItem(with: nil)
 
-        let nextState = PlaybackState.idle
-        state = nextState
+        let nextState = stateAfterStop(reason: reason)
+        transition(to: nextState)
+        if reason == .finished {
+            publish(event: .didFinish)
+        }
 
         Task { @MainActor [player, weak self] in
             player.pause()
@@ -143,6 +150,15 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
                 return
             }
             self.detachCurrentSurface()
+        }
+    }
+
+    private func stateAfterStop(reason: PlayerStopReason) -> PlaybackState {
+        switch reason {
+        case .finished:
+            state.updating(status: .finished, isBuffering: false)
+        case .userClosed, .replacedSource, .appLifecycle:
+            .idle
         }
     }
 

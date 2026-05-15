@@ -9,6 +9,22 @@
 import CoreGraphics
 import Foundation
 
+struct KollusStorageDRMResolution {
+    let request: [String: Any]
+    let response: [String: Any]
+    let error: Error?
+}
+
+struct KollusStorageLMSPost {
+    let data: String
+    let result: [String: Any]
+}
+
+struct KollusStoredLMSCompletion {
+    let successCount: Int
+    let failureCount: Int
+}
+
 @MainActor
 protocol KollusStorageProtocol: AnyObject {
     var applicationKey: String? { get set }
@@ -38,6 +54,7 @@ protocol KollusStorageProtocol: AnyObject {
 @MainActor
 protocol KollusStorageEventReceiving: AnyObject {
     func storageDidUpdateContents(_ snapshots: [KollusContentSnapshot])
-    func storageDidPostLMS(data: String, result: [String: Any])
-    func storageDidCompleteStoredLMS(success: Int, failure: Int)
+    func storageDidResolveDRM(_ resolution: KollusStorageDRMResolution)
+    func storageDidPostLMS(_ post: KollusStorageLMSPost)
+    func storageDidCompleteStoredLMS(_ completion: KollusStoredLMSCompletion)
 }

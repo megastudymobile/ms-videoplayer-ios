@@ -177,6 +177,56 @@ final class PlayerCoreRound4Tests: XCTestCase {
         }
     }
 
+    func testExecutePlayFailureTransitionsToFailedAndRethrows() async throws {
+        let engine = TestPlayerEngineAdapter()
+        await engine.setPlayError(.engineError("play blocked"))
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: TestPlayerEngineAdapter.capabilities
+        )
+        await core.activate()
+
+        let eventRecorder = startRecording(core.eventStream)
+
+        do {
+            try await core.execute(command: .play)
+            XCTFail("Expected play command to throw")
+        } catch let error as PlayerError {
+            XCTAssertEqual(error, .engineError("play blocked"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        try await waitUntil {
+            await eventRecorder.failureError == .engineError("play blocked")
+        }
+    }
+
+    func testExecuteSeekFailureTransitionsToFailedAndRethrows() async throws {
+        let engine = TestPlayerEngineAdapter()
+        await engine.setSeekError(.engineError("seek denied"))
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: TestPlayerEngineAdapter.capabilities
+        )
+        await core.activate()
+
+        let eventRecorder = startRecording(core.eventStream)
+
+        do {
+            try await core.execute(command: .seek(to: 10))
+            XCTFail("Expected seek command to throw")
+        } catch let error as PlayerError {
+            XCTAssertEqual(error, .engineError("seek denied"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        try await waitUntil {
+            await eventRecorder.failureError == .engineError("seek denied")
+        }
+    }
+
     private func startRecording<Value: Sendable>(
         _ stream: AsyncStream<Value>,
         consumeDelay: UInt64 = 0
@@ -236,6 +286,8 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
     private(set) var playCount = 0
     private(set) var stopCount = 0
     private(set) var preparedSourceKeys: [String] = []
+    private var playError: PlayerError?
+    private var seekError: PlayerError?
 
     init() {
         var continuation: AsyncStream<PlayerEvent>.Continuation?
@@ -251,6 +303,14 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
 
     func setPrepareBehavior(_ behavior: PrepareBehavior, for source: PlaybackSource) {
         prepareBehaviors[source.testKey] = behavior
+    }
+
+    func setPlayError(_ error: PlayerError?) {
+        playError = error
+    }
+
+    func setSeekError(_ error: PlayerError?) {
+        seekError = error
     }
 
     func prepare(source: PlaybackSource) async throws {
@@ -272,23 +332,29 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
         }
     }
 
-    func play() {
+    func play() async throws {
+        if let playError {
+            throw playError
+        }
         playCount += 1
         state = state.updating(status: .playing, isBuffering: false)
         continuation.yield(.stateDidChange(state))
     }
 
-    func pause() {
+    func pause() async throws {
         state = state.updating(status: .paused, isBuffering: false)
         continuation.yield(.stateDidChange(state))
     }
 
-    func seek(to time: TimeInterval) async {
+    func seek(to time: TimeInterval) async throws {
+        if let seekError {
+            throw seekError
+        }
         state = state.updating(currentTime: time)
         continuation.yield(.timeDidChange(currentTime: time, duration: state.duration))
     }
 
-    func stop() {
+    func stop(reason: PlayerStopReason) async throws {
         stopCount += 1
         state = .idle
     }

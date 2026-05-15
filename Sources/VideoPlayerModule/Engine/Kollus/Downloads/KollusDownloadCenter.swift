@@ -120,8 +120,7 @@ public actor KollusDownloadCenter {
         let newBridge = await MainActor.run { () -> KollusStorageBridge in
             let bridge = KollusStorageBridge(
                 observer: observer,
-                snapshotsContinuation: continuation,
-                storage: resolved
+                snapshotsContinuation: continuation
             )
             resolved.storageDelegate = bridge
             return bridge

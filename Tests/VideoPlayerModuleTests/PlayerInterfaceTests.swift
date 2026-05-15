@@ -379,10 +379,10 @@ private actor CoreOnlyEngine: PlayerPlaybackEngine {
     }
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 }
 
 private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEngine {
@@ -408,10 +408,10 @@ private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEn
         )
     }
 
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 
     func setPlaybackRate(_ rate: Double) async throws {
         recordedRate = rate
@@ -432,10 +432,10 @@ private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEn
     private(set) var recordedCaptionFontSize: Int?
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 
     func setSubtitleVisible(_ isVisible: Bool) async throws {
         recordedSubtitleVisibility = isVisible
@@ -464,10 +464,10 @@ private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngi
     private(set) var toggleDisplayScalingCallCount = 0
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 
     func setDisplayLocked(_ isLocked: Bool) async throws {
         recordedDisplayLock = isLocked
@@ -494,10 +494,10 @@ private actor BookmarkControllableEngine: PlayerPlaybackEngine, PlayerBookmarkEn
     private(set) var recordedBookmarkTime: TimeInterval?
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
-    func seek(to time: TimeInterval) async {}
-    func stop() {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
 
     func addBookmark(at time: TimeInterval) async throws {
         recordedBookmarkTime = time
@@ -538,13 +538,13 @@ private actor SeekRecordingEngine: PlayerPlaybackEngine {
     }
 
     func prepare(source: PlaybackSource) async throws {}
-    func play() {}
-    func pause() {}
+    func play() async throws {}
+    func pause() async throws {}
 
-    func seek(to time: TimeInterval) async {
+    func seek(to time: TimeInterval) async throws {
         recordedSeekTimes.append(time)
         state = state.updating(currentTime: time)
     }
 
-    func stop() {}
+    func stop(reason: PlayerStopReason) async throws {}
 }
