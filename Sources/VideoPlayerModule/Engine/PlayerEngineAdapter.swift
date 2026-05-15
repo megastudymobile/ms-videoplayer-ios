@@ -6,7 +6,11 @@
 //  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
 //
 
+import CoreGraphics
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct EngineCapabilities: OptionSet, Sendable {
     public let rawValue: Int
@@ -47,6 +51,16 @@ public protocol PlayerBookmarkEngine: Actor {
     func addBookmark(at time: TimeInterval) async throws
 }
 
+public protocol PlayerTitledBookmarkEngine: PlayerBookmarkEngine {
+    func addBookmark(at time: TimeInterval, title: String) async throws
+    func removeBookmark(at time: TimeInterval) async throws
+    func currentBookmarks() async -> [Bookmark]
+}
+
+public protocol PlayerExternalSubtitleEngine: PlayerSubtitleEngine {
+    func selectSubtitleFile(_ fileURL: URL?) async throws
+}
+
 public protocol PlayerDisplayLockEngine: Actor {
     func setDisplayLocked(_ isLocked: Bool) async throws
 }
@@ -57,3 +71,28 @@ public protocol PlayerDisplayScalingEngine: Actor {
 }
 
 public protocol PlayerDisplayEngine: PlayerDisplayLockEngine, PlayerDisplayScalingEngine {}
+
+#if canImport(UIKit)
+public protocol PlayerZoomEngine: Actor {
+    func zoom(_ recognizer: UIPinchGestureRecognizer) async throws
+    func setZoomOutDisabled(_ disabled: Bool) async
+    func zoomValue() async -> CGFloat
+    var isZoomedIn: Bool { get async }
+}
+#endif
+
+public protocol PlayerScrollEngine: Actor {
+    func scroll(by distance: CGPoint) async throws
+    func stopScroll() async throws
+}
+
+public protocol PlayerAdaptiveStreamingEngine: Actor {
+    func changeBandwidth(_ bps: Int) async throws
+    func streamInfoList() async -> [StreamInfo]
+}
+
+public protocol PlayerPiPCapability: Actor {
+    func startPiP() async throws
+    func stopPiP() async throws
+    var isPiPActive: Bool { get async }
+}

@@ -24,6 +24,8 @@ public struct PlaybackState: Equatable, Sendable {
     public let currentTime: TimeInterval
     public let duration: TimeInterval
     public let isBuffering: Bool
+    public let isLive: Bool
+    public let liveDuration: TimeInterval?
 
     public static let idle = PlaybackState(
         status: .idle,
@@ -36,25 +38,33 @@ public struct PlaybackState: Equatable, Sendable {
         status: Status,
         currentTime: TimeInterval,
         duration: TimeInterval,
-        isBuffering: Bool
+        isBuffering: Bool,
+        isLive: Bool = false,
+        liveDuration: TimeInterval? = nil
     ) {
         self.status = status
         self.currentTime = currentTime
         self.duration = duration
         self.isBuffering = isBuffering
+        self.isLive = isLive
+        self.liveDuration = liveDuration
     }
 
     public func updating(
         status: Status? = nil,
         currentTime: TimeInterval? = nil,
         duration: TimeInterval? = nil,
-        isBuffering: Bool? = nil
+        isBuffering: Bool? = nil,
+        isLive: Bool? = nil,
+        liveDuration: TimeInterval?? = nil
     ) -> PlaybackState {
         PlaybackState(
             status: status ?? self.status,
             currentTime: currentTime ?? self.currentTime,
             duration: duration ?? self.duration,
-            isBuffering: isBuffering ?? self.isBuffering
+            isBuffering: isBuffering ?? self.isBuffering,
+            isLive: isLive ?? self.isLive,
+            liveDuration: liveDuration ?? self.liveDuration
         )
     }
 }

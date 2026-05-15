@@ -35,9 +35,12 @@ let package = Package(
             name: "VideoPlayerCore",
             path: "Sources/VideoPlayerModule",
             sources: [
+                "Core/Domain/Bookmark.swift",
+                "Core/Domain/NextEpisodeInfo.swift",
                 "Core/Domain/PlaybackCommand.swift",
                 "Core/Domain/PlaybackSource.swift",
                 "Core/Domain/PlaybackState.swift",
+                "Core/Domain/PlayerCaption.swift",
                 "Core/Domain/PlayerError.swift",
                 "Core/Domain/PlayerEvent.swift",
                 "Core/Domain/PlayerFeaturePolicy.swift",
@@ -45,6 +48,7 @@ let package = Package(
                 "Core/Domain/PlayerFeatureSet.swift",
                 "Core/Domain/PlayerIdentity.swift",
                 "Core/Domain/PlayerStateSnapshot.swift",
+                "Core/Domain/StreamInfo.swift",
                 "Core/Internal/PlayerCore.swift",
                 "Core/UseCase/ControlPlaybackUseCase.swift",
                 "Core/UseCase/ObservePlaybackStateUseCase.swift",
@@ -92,8 +96,19 @@ let package = Package(
             ],
             path: "Sources/VideoPlayerModule",
             sources: [
+                "Engine/Kollus/KollusDRMConfiguration.swift",
+                "Engine/Kollus/KollusDelegateBridge.swift",
+                "Engine/Kollus/KollusDiagnosticsSink.swift",
+                "Engine/Kollus/KollusEngineSignal.swift",
+                "Engine/Kollus/KollusEnvironment.swift",
+                "Engine/Kollus/KollusLiveChatProfile.swift",
+                "Engine/Kollus/KollusObserver.swift",
                 "Engine/Kollus/KollusPlayerAdapter.swift",
-                "Engine/Kollus/KollusPlayerModuleFactory.swift"
+                "Engine/Kollus/KollusPlayerModuleFactory.swift",
+                "Engine/Kollus/KollusSessionBootstrapper.swift",
+                "Engine/Kollus/KollusStorageAdapter.swift",
+                "Engine/Kollus/KollusStorageProtocol.swift",
+                "Engine/Kollus/Downloads/KollusContentSnapshot.swift"
             ],
             linkerSettings: [
                 .linkedFramework("UIKit",               .when(platforms: [.iOS])),

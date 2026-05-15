@@ -147,7 +147,13 @@ public actor PlayerCore {
         case .setCaptionFontSize(let fontSize):
             try await setCaptionFontSize(fontSize)
         case .addBookmark(let time):
-            try await addBookmark(at: time)
+            try await addBookmark(at: time, title: "")
+        case .addBookmarkWithTitle(let time, let title):
+            try await addBookmark(at: time, title: title)
+        case .removeBookmark(let time):
+            try await removeBookmark(at: time)
+        case .selectSubtitleFile(let fileURL):
+            try await selectSubtitleFile(fileURL)
         case .setDisplayLocked(let isLocked):
             try await setDisplayLocked(isLocked)
         case .setDisplayScaled(let isScaled):
@@ -201,6 +207,16 @@ public actor PlayerCore {
             transition(to: currentState.updating(status: .failed(error), isBuffering: false))
             publish(event: .didFail(error))
         case .policyDowngraded:
+            publish(event: engineEvent)
+        case .captionDidUpdate,
+             .bookmarksDidLoad,
+             .bitrateDidChange,
+             .heightDidChange,
+             .externalOutputDidChange,
+             .naturalSizeDidResolve,
+             .framerateDidResolve,
+             .deviceLockPolicyChanged,
+             .nextEpisodeAvailable:
             publish(event: engineEvent)
         }
     }
@@ -295,7 +311,7 @@ public actor PlayerCore {
         try await subtitleEngine.setCaptionFontSize(fontSize)
     }
 
-    private func addBookmark(at time: TimeInterval) async throws {
+    private func addBookmark(at time: TimeInterval, title: String) async throws {
         guard time >= 0 else {
             throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
         }
@@ -304,7 +320,33 @@ public actor PlayerCore {
             throw PlayerError.engineError("Bookmark mutation is not supported by the current playback engine.")
         }
 
-        try await bookmarkEngine.addBookmark(at: time)
+        if title.isEmpty {
+            try await bookmarkEngine.addBookmark(at: time)
+        } else if let titledEngine = bookmarkEngine as? any PlayerTitledBookmarkEngine {
+            try await titledEngine.addBookmark(at: time, title: title)
+        } else {
+            try await bookmarkEngine.addBookmark(at: time)
+        }
+    }
+
+    private func removeBookmark(at time: TimeInterval) async throws {
+        guard time >= 0 else {
+            throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
+        }
+
+        guard let bookmarkEngine = engine as? any PlayerTitledBookmarkEngine else {
+            throw PlayerError.engineError("Bookmark removal is not supported by the current playback engine.")
+        }
+
+        try await bookmarkEngine.removeBookmark(at: time)
+    }
+
+    private func selectSubtitleFile(_ fileURL: URL?) async throws {
+        guard let subtitleEngine = engine as? any PlayerExternalSubtitleEngine else {
+            throw PlayerError.engineError("External subtitle file selection is not supported by the current playback engine.")
+        }
+
+        try await subtitleEngine.selectSubtitleFile(fileURL)
     }
 
     private func setDisplayLocked(_ isLocked: Bool) async throws {

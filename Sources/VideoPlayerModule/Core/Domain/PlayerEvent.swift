@@ -6,6 +6,7 @@
 //  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
 //
 
+import CoreGraphics
 import Foundation
 
 public enum PolicyDowngradeReason: Equatable, Sendable {
@@ -20,4 +21,13 @@ public enum PlayerEvent: Equatable, Sendable {
     case didFinish
     case didFail(PlayerError)
     case policyDowngraded(reason: PolicyDowngradeReason)
+    case captionDidUpdate(text: String, isSecondary: Bool)
+    case bookmarksDidLoad([Bookmark])
+    case bitrateDidChange(Int)
+    case heightDidChange(Int)
+    case externalOutputDidChange(enabled: Bool)
+    case naturalSizeDidResolve(CGSize)
+    case framerateDidResolve(Int)
+    case deviceLockPolicyChanged(locked: Bool)
+    case nextEpisodeAvailable(NextEpisodeInfo)
 }
