@@ -108,7 +108,9 @@ let package = Package(
                 "Engine/Kollus/KollusSessionBootstrapper.swift",
                 "Engine/Kollus/KollusStorageAdapter.swift",
                 "Engine/Kollus/KollusStorageProtocol.swift",
-                "Engine/Kollus/Downloads/KollusContentSnapshot.swift"
+                "Engine/Kollus/Downloads/KollusContentSnapshot.swift",
+                "Engine/Kollus/Downloads/KollusDownloadCenter.swift",
+                "Engine/Kollus/Downloads/KollusStorageBridge.swift"
             ],
             linkerSettings: [
                 .linkedFramework("UIKit",               .when(platforms: [.iOS])),

@@ -1,0 +1,156 @@
+//
+//  KollusDownloadCenter.swift
+//  VideoPlayerModule
+//
+//  Created by 모바일개발팀_정준영 on 2026/05/15 (Phase 6 T043).
+//  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
+//
+
+import Foundation
+import VideoPlayerCore
+
+/// KollusStorage 위에 다운로드/오프라인 라이프사이클을 actor-based facade로 노출한다.
+/// Shell은 `KollusStorage`를 직접 import하지 않고도 모든 다운로드 운영 동작을 수행할 수 있다.
+public actor KollusDownloadCenter {
+    private let bootstrapper: KollusSessionBootstrapper
+    private let environment: KollusEnvironment
+    private let snapshotsContinuation: AsyncStream<[KollusContentSnapshot]>.Continuation
+    public nonisolated let contents: AsyncStream<[KollusContentSnapshot]>
+
+    private var storageProto: KollusStorageProtocol?
+    private var bridge: KollusStorageBridge?
+
+    public init(
+        bootstrapper: KollusSessionBootstrapper,
+        environment: KollusEnvironment
+    ) {
+        self.bootstrapper = bootstrapper
+        self.environment = environment
+
+        var continuation: AsyncStream<[KollusContentSnapshot]>.Continuation?
+        self.contents = AsyncStream<[KollusContentSnapshot]>(bufferingPolicy: .bufferingNewest(8)) {
+            continuation = $0
+        }
+        self.snapshotsContinuation = continuation!
+    }
+
+    deinit {
+        snapshotsContinuation.finish()
+    }
+
+    // MARK: - Resolve / check
+
+    public func resolve(contentURL: String) async throws -> String {
+        let storage = try await ensureStorage()
+        return try await MainActor.run {
+            try await storage.loadContentURL(contentURL)
+        }.value
+    }
+
+    public func check(contentURL: String) async throws -> String? {
+        let storage = try await ensureStorage()
+        return await MainActor.run {
+            storage.checkContentURL(contentURL)
+        }
+    }
+
+    // MARK: - Download lifecycle
+
+    public func startDownload(mediaContentKey: String) async throws {
+        let storage = try await ensureStorage()
+        try await MainActor.run {
+            try storage.downloadContent(mediaContentKey)
+        }
+    }
+
+    public func cancelDownload(mediaContentKey: String) async throws {
+        let storage = try await ensureStorage()
+        try await MainActor.run {
+            try storage.downloadCancelContent(mediaContentKey)
+        }
+    }
+
+    public func remove(mediaContentKey: String) async throws {
+        let storage = try await ensureStorage()
+        try await MainActor.run {
+            try storage.removeContent(mediaContentKey)
+        }
+    }
+
+    // MARK: - Cache / DRM / LMS
+
+    public func clearStreamingCache() async throws {
+        let storage = try await ensureStorage()
+        try await MainActor.run {
+            try storage.removeCacheWithError()
+        }
+    }
+
+    public func updateDRM(includeExpiredOnly: Bool) async throws {
+        let storage = try await ensureStorage()
+        try await MainActor.run {
+            try storage.updateDownloadDRMInfo(includeExpired: includeExpiredOnly)
+        }
+    }
+
+    public func sendStoredLMS() async throws {
+        let storage = try await ensureStorage()
+        await MainActor.run {
+            storage.sendStoredLms()
+        }
+    }
+
+    // MARK: - Operational policy
+
+    public func setCacheSize(megabytes: Int) async throws {
+        let storage = try await ensureStorage()
+        await MainActor.run {
+            storage.setCacheSize(megabytes: megabytes)
+        }
+    }
+
+    public func setBackgroundDownload(enabled: Bool) async throws {
+        let storage = try await ensureStorage()
+        await MainActor.run {
+            storage.setBackgroundDownload(enabled)
+        }
+    }
+
+    public func setNetworkTimeout(seconds: Int, retry: Int) async throws {
+        let storage = try await ensureStorage()
+        await MainActor.run {
+            storage.setNetworkTimeOut(seconds: seconds, retry: retry)
+        }
+    }
+
+    // MARK: - Snapshot
+
+    public func currentSnapshots() async throws -> [KollusContentSnapshot] {
+        let storage = try await ensureStorage()
+        return await MainActor.run {
+            storage.contentSnapshots
+        }
+    }
+
+    // MARK: - Internal
+
+    private func ensureStorage() async throws -> KollusStorageProtocol {
+        if let storageProto {
+            return storageProto
+        }
+        let resolved = try await bootstrapper.resolveStorage()
+        let continuation = snapshotsContinuation
+        let observer = environment.observer
+        try await MainActor.run {
+            let bridge = KollusStorageBridge(
+                observer: observer,
+                snapshotsContinuation: continuation,
+                storage: resolved
+            )
+            resolved.storageDelegate = bridge
+            self.bridge = bridge
+        }
+        self.storageProto = resolved
+        return resolved
+    }
+}
