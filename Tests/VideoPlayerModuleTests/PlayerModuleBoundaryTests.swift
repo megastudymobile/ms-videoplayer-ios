@@ -1,7 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 
-final class PlayerModuleBoundaryTests: XCTestCase {
-    func testPackageSourceDoesNotContainServiceAppVocabulary() throws {
+@Suite("Player module boundary")
+struct PlayerModuleBoundaryTests {
+    @Test("Package source does not contain service app vocabulary")
+    func packageSourceDoesNotContainServiceAppVocabulary() throws {
         let packageRoot = try Self.findPackageRoot()
         let sourceRoot = packageRoot.appendingPathComponent("Sources/VideoPlayerModule")
         let bannedTerms = [
@@ -28,7 +31,13 @@ final class PlayerModuleBoundaryTests: XCTestCase {
             }
         }
 
-        XCTAssertTrue(matches.isEmpty, matches.joined(separator: "\n"))
+        if !matches.isEmpty {
+            throw NSError(
+                domain: "PlayerModuleBoundaryTests",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: matches.joined(separator: "\n")]
+            )
+        }
     }
 
     private static func findPackageRoot() throws -> URL {

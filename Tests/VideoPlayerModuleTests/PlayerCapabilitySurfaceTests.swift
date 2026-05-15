@@ -1,8 +1,10 @@
-import XCTest
+import Testing
 @testable import VideoPlayerCore
 
-final class PlayerCapabilitySurfaceTests: XCTestCase {
-    func testPlaybackFeaturesNormalizeRatesAndSkipIntervals() {
+@Suite("Player capability surface")
+struct PlayerCapabilitySurfaceTests {
+    @Test("Playback features normalize rates and skip intervals")
+    func playbackFeaturesNormalizeRatesAndSkipIntervals() {
         let features = PlayerPlaybackFeatures(
             allowedPlaybackRates: [1.5, 1.0, 1.5],
             initialPlaybackRate: 2.0,
@@ -10,13 +12,14 @@ final class PlayerCapabilitySurfaceTests: XCTestCase {
             initialSkipInterval: 5
         )
 
-        XCTAssertEqual(features.allowedPlaybackRates, [1.0, 1.5])
-        XCTAssertEqual(features.initialPlaybackRate, 1.0)
-        XCTAssertEqual(features.skipIntervals, [10, 30])
-        XCTAssertEqual(features.initialSkipInterval, 10)
+        #expect(features.allowedPlaybackRates == [1.0, 1.5])
+        #expect(features.initialPlaybackRate == 1.0)
+        #expect(features.skipIntervals == [10, 30])
+        #expect(features.initialSkipInterval == 10)
     }
 
-    func testGenericSurfaceNamesCoverExpectedPlayerConcepts() {
+    @Test("Generic surface names cover expected player concepts")
+    func genericSurfaceNamesCoverExpectedPlayerConcepts() {
         let featureSet = PlayerFeatureSet(
             playback: PlayerPlaybackFeatures(allowsBackgroundPlayback: true),
             subtitle: PlayerSubtitleFeatures(
@@ -44,14 +47,13 @@ final class PlayerCapabilitySurfaceTests: XCTestCase {
             ]
         )
 
-        XCTAssertTrue(featureSet.playback.allowsBackgroundPlayback)
-        XCTAssertEqual(featureSet.subtitle.availableTracks[0].id.rawValue, "track-ko")
-        XCTAssertTrue(featureSet.offline.supportsOfflinePlayback)
-        XCTAssertEqual(snapshot.selectedPlaybackRate, 1.25)
-        XCTAssertEqual(snapshot.subtitleState.captionFontSize, 18)
-        XCTAssertEqual(
-            snapshot.unavailableCapabilities,
-            [.timedMetadata(PlayerTimedMetadataID(rawValue: "chapter-3"))]
-        )
+        #expect(featureSet.playback.allowsBackgroundPlayback)
+        #expect(featureSet.subtitle.availableTracks[0].id.rawValue == "track-ko")
+        #expect(featureSet.offline.supportsOfflinePlayback)
+        #expect(snapshot.selectedPlaybackRate == 1.25)
+        #expect(snapshot.subtitleState.captionFontSize == 18)
+        #expect(snapshot.unavailableCapabilities == [
+            .timedMetadata(PlayerTimedMetadataID(rawValue: "chapter-3"))
+        ])
     }
 }
