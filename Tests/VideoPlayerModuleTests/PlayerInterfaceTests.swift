@@ -52,6 +52,7 @@ final class PlayerInterfaceTests: XCTestCase {
 
     func testPlaybackCommandCarriesGenericRateAndSeekOrigin() {
         let rateCommand = PlaybackCommand.setPlaybackRate(1.5)
+        let skipIntervalCommand = PlaybackCommand.setSkipInterval(30)
         let metadataID = PlayerTimedMetadataID(rawValue: "metadata-1")
         let seekCommand = PlaybackCommand.seekWithOrigin(
             to: 45,
@@ -59,6 +60,7 @@ final class PlayerInterfaceTests: XCTestCase {
         )
 
         XCTAssertEqual(rateCommand, .setPlaybackRate(1.5))
+        XCTAssertEqual(skipIntervalCommand, .setSkipInterval(30))
         XCTAssertEqual(
             seekCommand,
             .seekWithOrigin(to: 45, origin: .timedMetadata(metadataID))
@@ -141,6 +143,42 @@ final class PlayerInterfaceTests: XCTestCase {
 
         let recordedSeekTimes = await engine.recordedSeekTimes
         XCTAssertEqual(recordedSeekTimes, [50, 40])
+    }
+
+    func testPlayerCoreUsesUpdatedSkipIntervalForSkipOrigin() async throws {
+        let engine = SeekRecordingEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: SeekRecordingEngine.capabilities
+        )
+        try await core.execute(command: .seek(to: 40))
+        try await core.execute(command: .setSkipInterval(30))
+        await engine.resetRecordedSeekTimes()
+
+        try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipForward))
+
+        let recordedSeekTimes = await engine.recordedSeekTimes
+        XCTAssertEqual(recordedSeekTimes, [70])
+    }
+
+    func testPlayerCoreRejectsInvalidSkipInterval() async throws {
+        let engine = SeekRecordingEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: SeekRecordingEngine.capabilities
+        )
+
+        do {
+            try await core.execute(command: .setSkipInterval(0))
+            XCTFail("Invalid skip interval should fail explicitly.")
+        } catch let error as PlayerError {
+            XCTAssertEqual(
+                error,
+                .engineError("Skip interval must be greater than 0. interval=0.0")
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     func testPlayerCoreClampsSkipOriginToPlaybackBounds() async throws {

@@ -15,5 +15,6 @@ public enum PlaybackCommand: Equatable, Sendable {
     case seek(to: TimeInterval)
     case seekWithOrigin(to: TimeInterval, origin: PlayerSeekOrigin)
     case setPlaybackRate(Double)
+    case setSkipInterval(TimeInterval)
     case stop
 }

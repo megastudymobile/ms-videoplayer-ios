@@ -138,6 +138,8 @@ public actor PlayerCore {
             transition(to: currentState.updating(currentTime: targetTime))
         case .setPlaybackRate(let rate):
             try await setPlaybackRate(rate)
+        case .setSkipInterval(let interval):
+            try setSkipInterval(interval)
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
@@ -236,6 +238,19 @@ public actor PlayerCore {
         }
 
         try await rateEngine.setPlaybackRate(rate)
+    }
+
+    private func setSkipInterval(_ interval: TimeInterval) throws {
+        guard interval > 0 else {
+            throw PlayerError.engineError("Skip interval must be greater than 0. interval=\(interval)")
+        }
+
+        currentPolicy = PlayerFeaturePolicy(
+            allowsBackgroundPlayback: currentPolicy.allowsBackgroundPlayback,
+            maxPlaybackRate: currentPolicy.maxPlaybackRate,
+            allowsAutoplay: currentPolicy.allowsAutoplay,
+            skipInterval: interval
+        )
     }
 
     private func seekTargetTime(
