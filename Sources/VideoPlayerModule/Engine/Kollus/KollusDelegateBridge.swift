@@ -22,10 +22,10 @@ import VideoPlayerCore
 /// `handle*` 메서드는 `KollusPlayerView` 의존 없이 호출 가능해 단위 테스트가 매핑을 검증할 수 있다.
 @MainActor
 final class KollusDelegateBridge: NSObject,
-    KollusPlayerDelegate,
-    KollusPlayerDRMDelegate,
-    KollusPlayerLMSDelegate,
-    KollusPlayerBookmarkDelegate {
+    @preconcurrency KollusPlayerDelegate,
+    @preconcurrency KollusPlayerDRMDelegate,
+    @preconcurrency KollusPlayerLMSDelegate,
+    @preconcurrency KollusPlayerBookmarkDelegate {
 
     private let onSignal: @MainActor (KollusEngineSignal) -> Void
     private let onBookmarks: @MainActor ([Bookmark]) -> Void
@@ -273,7 +273,7 @@ final class KollusDelegateBridge: NSObject,
                 position: kb.position,
                 title: Self.bookmarkTitle(from: kb),
                 kind: kb.kind == .index ? .index : .user,
-                createdAt: kb.time
+                createdAt: kb.time as Date?
             )
         }
         handleBookmarks(mapped)

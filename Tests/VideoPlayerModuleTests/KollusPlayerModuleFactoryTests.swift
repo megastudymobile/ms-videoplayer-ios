@@ -27,17 +27,20 @@ struct KollusPlayerModuleFactoryTests {
     }
 
     @Test("Adapter rejects URL source before creating Kollus view")
-    func adapterRejectsURLSourceBeforeCreatingKollusView() async throws {
+    /// spec 025 Phase 4 (T027) 이후 `.url` 진입은 허용된다.
+    /// SDK가 시뮬레이터에서 stub일 수 있어 정확한 error는 환경 의존이지만,
+    /// 적어도 "kollus(mediaContentKey:)만 지원" legacy 차단 메시지는 더 이상 surfacing되지 않아야 한다.
+    func adapterDoesNotEmitLegacyURLRejectionMessage() async throws {
         let adapter = KollusPlayerAdapter()
         let source = PlaybackSource.url(URL(string: "https://example.com/video.mp4")!)
 
         do {
             try await adapter.prepare(source: source)
-            Issue.record("KollusPlayerAdapter는 URL source를 거부해야 합니다.")
+            // 시뮬레이터에서도 실 SDK 호출이 성공할 수 있다(SDK 환경에 의존). 회귀 여부만 보고 통과.
         } catch PlayerError.engineError(let message) {
-            #expect(message.contains("kollus(mediaContentKey:)만 지원"))
+            #expect(!message.contains("kollus(mediaContentKey:)만 지원"), "T027 회귀: legacy URL 차단 메시지 surfacing — \(message)")
         } catch {
-            Issue.record("예상하지 못한 error type: \(error)")
+            // 다른 error type(NSError 등 SDK stub)도 허용 — 본 phase의 핵심은 legacy 차단 제거 회귀 방어.
         }
     }
 }

@@ -13,7 +13,7 @@ import VideoPlayerCore
 import KollusSDKBinary
 #endif
 
-actor KollusSessionBootstrapper {
+public actor KollusSessionBootstrapper {
     typealias StorageFactory = @Sendable @MainActor () -> KollusStorageProtocol
 
     private let environment: KollusEnvironment
@@ -21,7 +21,7 @@ actor KollusSessionBootstrapper {
     private var cachedStorage: KollusStorageProtocol?
     private var inFlightTask: Task<KollusStorageProtocol, Error>?
 
-    init(environment: KollusEnvironment) {
+    public init(environment: KollusEnvironment) {
         self.environment = environment
         self.storageFactory = Self.defaultStorageFactory
     }

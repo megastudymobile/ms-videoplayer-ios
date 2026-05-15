@@ -211,7 +211,7 @@ public actor KollusPlayerAdapter:
                     position: kb.position,
                     title: title,
                     kind: kb.kind == .index ? .index : .user,
-                    createdAt: kb.time
+                    createdAt: kb.time as Date?
                 )
             }
         }
@@ -315,7 +315,6 @@ public actor KollusPlayerAdapter:
         guard let storageAdapter = storageProto as? KollusStorageAdapter else {
             throw PlayerError.engineError("KollusPlayerAdapter: KollusStorageAdapter가 아닌 storage protocol 구현은 미지원.")
         }
-        let storage = storageAdapter.storage
 
         let boundSurface = renderSurface
         let isDisplayScaled = self.isDisplayScaled
@@ -351,8 +350,8 @@ public actor KollusPlayerAdapter:
             playerView.lmsDelegate = bridge
             playerView.bookmarkDelegate = bridge
 
-            // 2) storage / DRM 설정 주입
-            playerView.storage = storage
+            // 2) storage / DRM 설정 주입 (KollusStorageAdapter는 @MainActor — 본 블록 안에서 안전 접근)
+            playerView.storage = storageAdapter.storage
             playerView.debug = false
             playerView.scalingMode = Self.scalingMode(isScaled: isDisplayScaled)
             if let cert = environment.drm.fpsCertificateURL {

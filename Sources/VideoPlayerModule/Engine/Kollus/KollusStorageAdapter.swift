@@ -13,7 +13,7 @@ import KollusSDKBinary
 import VideoPlayerCore
 
 @MainActor
-final class KollusStorageAdapter: NSObject, KollusStorageProtocol, KollusStorageDelegate {
+final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurrency KollusStorageDelegate {
     let storage: KollusStorage
     weak var storageDelegate: KollusStorageEventReceiving?
 
@@ -60,76 +60,35 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, KollusStorage
     }
 
     func startStorage() throws {
-        var nsError: NSError?
-        let ok = withUnsafeMutablePointer(to: &nsError) { ptr -> Bool in
-            storage.startStorage(AutoreleasingUnsafeMutablePointer<NSError?>(ptr))
-        }
-        if !ok {
-            throw nsError ?? PlayerError.engineError("KollusStorage startStorage 실패: unknown")
-        }
+        // KollusSDK `NS_SWIFT_NAME(start())`로 명명 변경됨 — `start()` throws로 import.
+        try storage.start()
     }
 
     // MARK: - Phase 6 surface (T043 implementation)
 
     func loadContentURL(_ url: String) async throws -> String {
-        var nsError: NSError?
-        let mck = withUnsafeMutablePointer(to: &nsError) { ptr -> String? in
-            storage.loadContentURL(url, error: AutoreleasingUnsafeMutablePointer<NSError?>(ptr))
-        }
-        if let nsError {
-            throw nsError
-        }
-        guard let mck else {
-            throw PlayerError.engineError("loadContentURL이 nil mediaContentKey를 반환했습니다. url=\(url)")
-        }
+        let mck = try storage.loadContentURL(url)
         return mck
     }
 
     func checkContentURL(_ url: String) -> String? {
-        var nsError: NSError?
-        return withUnsafeMutablePointer(to: &nsError) { ptr -> String? in
-            storage.checkContentURL(url, error: AutoreleasingUnsafeMutablePointer<NSError?>(ptr))
-        }
+        try? storage.checkContentURL(url)
     }
 
     func downloadContent(_ mediaContentKey: String) throws {
-        var nsError: NSError?
-        let ok = withUnsafeMutablePointer(to: &nsError) { ptr -> Bool in
-            storage.downloadContent(mediaContentKey, error: AutoreleasingUnsafeMutablePointer<NSError?>(ptr))
-        }
-        if !ok {
-            throw nsError ?? PlayerError.engineError("downloadContent 실패: \(mediaContentKey)")
-        }
+        try storage.downloadContent(mediaContentKey)
     }
 
     func downloadCancelContent(_ mediaContentKey: String) throws {
-        var nsError: NSError?
-        let ok = withUnsafeMutablePointer(to: &nsError) { ptr -> Bool in
-            storage.downloadCancelContent(mediaContentKey, error: AutoreleasingUnsafeMutablePointer<NSError?>(ptr))
-        }
-        if !ok {
-            throw nsError ?? PlayerError.engineError("downloadCancelContent 실패: \(mediaContentKey)")
-        }
+        try storage.downloadCancelContent(mediaContentKey)
     }
 
     func removeContent(_ mediaContentKey: String) throws {
-        var nsError: NSError?
-        let ok = withUnsafeMutablePointer(to: &nsError) { ptr -> Bool in
-            storage.removeContent(mediaContentKey, error: AutoreleasingUnsafeMutablePointer<NSError?>(ptr))
-        }
-        if !ok {
-            throw nsError ?? PlayerError.engineError("removeContent 실패: \(mediaContentKey)")
-        }
+        try storage.removeContent(mediaContentKey)
     }
 
     func removeCacheWithError() throws {
-        var nsError: NSError?
-        let ok = withUnsafeMutablePointer(to: &nsError) { ptr -> Bool in
-            storage.removeCache(withError: AutoreleasingUnsafeMutablePointer<NSError?>(ptr))
-        }
-        if !ok {
-            throw nsError ?? PlayerError.engineError("removeCache 실패")
-        }
+        try storage.removeCache()
     }
 
     func updateDownloadDRMInfo(includeExpired: Bool) throws {

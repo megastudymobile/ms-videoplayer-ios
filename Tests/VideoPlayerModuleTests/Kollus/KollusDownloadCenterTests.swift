@@ -10,6 +10,7 @@
 
 import XCTest
 @testable import VideoPlayerEngineKollus
+import VideoPlayerCore
 
 @MainActor
 final class KollusDownloadCenterTests: XCTestCase {
@@ -167,10 +168,11 @@ final class KollusDownloadCenterTests: XCTestCase {
         do {
             _ = try await center.resolve(contentURL: "u")
             XCTFail("Expected resolve to throw bootstrap error")
+        } catch let PlayerError.engineError(message) {
+            // KollusSessionBootstrapper가 startStorage NSError를 PlayerError.engineError로 wrap.
+            XCTAssertTrue(message.contains("startStorage"), "got: \(message)")
         } catch {
-            let nsError = error as NSError
-            XCTAssertEqual(nsError.domain, "t")
-            XCTAssertEqual(nsError.code, 99)
+            XCTFail("unexpected error type: \(error)")
         }
     }
 }

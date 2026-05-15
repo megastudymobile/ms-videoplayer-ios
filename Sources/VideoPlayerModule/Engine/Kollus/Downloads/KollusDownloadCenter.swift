@@ -42,94 +42,70 @@ public actor KollusDownloadCenter {
 
     public func resolve(contentURL: String) async throws -> String {
         let storage = try await ensureStorage()
-        return try await MainActor.run {
-            try await storage.loadContentURL(contentURL)
-        }.value
+        return try await storage.loadContentURL(contentURL)
     }
 
     public func check(contentURL: String) async throws -> String? {
         let storage = try await ensureStorage()
-        return await MainActor.run {
-            storage.checkContentURL(contentURL)
-        }
+        return await storage.checkContentURL(contentURL)
     }
 
     // MARK: - Download lifecycle
 
     public func startDownload(mediaContentKey: String) async throws {
         let storage = try await ensureStorage()
-        try await MainActor.run {
-            try storage.downloadContent(mediaContentKey)
-        }
+        try await storage.downloadContent(mediaContentKey)
     }
 
     public func cancelDownload(mediaContentKey: String) async throws {
         let storage = try await ensureStorage()
-        try await MainActor.run {
-            try storage.downloadCancelContent(mediaContentKey)
-        }
+        try await storage.downloadCancelContent(mediaContentKey)
     }
 
     public func remove(mediaContentKey: String) async throws {
         let storage = try await ensureStorage()
-        try await MainActor.run {
-            try storage.removeContent(mediaContentKey)
-        }
+        try await storage.removeContent(mediaContentKey)
     }
 
     // MARK: - Cache / DRM / LMS
 
     public func clearStreamingCache() async throws {
         let storage = try await ensureStorage()
-        try await MainActor.run {
-            try storage.removeCacheWithError()
-        }
+        try await storage.removeCacheWithError()
     }
 
     public func updateDRM(includeExpiredOnly: Bool) async throws {
         let storage = try await ensureStorage()
-        try await MainActor.run {
-            try storage.updateDownloadDRMInfo(includeExpired: includeExpiredOnly)
-        }
+        try await storage.updateDownloadDRMInfo(includeExpired: includeExpiredOnly)
     }
 
     public func sendStoredLMS() async throws {
         let storage = try await ensureStorage()
-        await MainActor.run {
-            storage.sendStoredLms()
-        }
+        await storage.sendStoredLms()
     }
 
     // MARK: - Operational policy
 
     public func setCacheSize(megabytes: Int) async throws {
         let storage = try await ensureStorage()
-        await MainActor.run {
-            storage.setCacheSize(megabytes: megabytes)
-        }
+        await storage.setCacheSize(megabytes: megabytes)
     }
 
     public func setBackgroundDownload(enabled: Bool) async throws {
         let storage = try await ensureStorage()
-        await MainActor.run {
-            storage.setBackgroundDownload(enabled)
-        }
+        await storage.setBackgroundDownload(enabled)
     }
 
     public func setNetworkTimeout(seconds: Int, retry: Int) async throws {
         let storage = try await ensureStorage()
-        await MainActor.run {
-            storage.setNetworkTimeOut(seconds: seconds, retry: retry)
-        }
+        await storage.setNetworkTimeOut(seconds: seconds, retry: retry)
     }
 
     // MARK: - Snapshot
 
     public func currentSnapshots() async throws -> [KollusContentSnapshot] {
         let storage = try await ensureStorage()
-        return await MainActor.run {
-            storage.contentSnapshots
-        }
+        return await storage.contentSnapshots
     }
 
     // MARK: - Internal
@@ -141,15 +117,16 @@ public actor KollusDownloadCenter {
         let resolved = try await bootstrapper.resolveStorage()
         let continuation = snapshotsContinuation
         let observer = environment.observer
-        try await MainActor.run {
+        let newBridge = await MainActor.run { () -> KollusStorageBridge in
             let bridge = KollusStorageBridge(
                 observer: observer,
                 snapshotsContinuation: continuation,
                 storage: resolved
             )
             resolved.storageDelegate = bridge
-            self.bridge = bridge
+            return bridge
         }
+        self.bridge = newBridge
         self.storageProto = resolved
         return resolved
     }

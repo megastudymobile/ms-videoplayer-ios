@@ -10,6 +10,7 @@
 
 import CoreGraphics
 import Foundation
+import VideoPlayerCore
 import XCTest
 @testable import VideoPlayerEngineKollus
 
