@@ -12,7 +12,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
+public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, PlayerBookmarkEngine, PlayerDisplayScalingEngine {
     public nonisolated static let capabilities: EngineCapabilities = []
 
     public var currentState: PlaybackState {
@@ -26,6 +26,7 @@ public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine 
     private let playerType: KollusPlayerType
     private var state: PlaybackState
     private weak var renderSurface: PlayerRenderSurface?
+    private var isDisplayScaled = false
     @MainActor private var playerView: KollusPlayerView?
 
     public init() {
@@ -63,6 +64,7 @@ public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine 
         }
 
         let boundSurface = renderSurface
+        let isDisplayScaled = self.isDisplayScaled
         let preparedState = try await MainActor.run { () throws -> PlaybackState in
             self.playerView?.removeFromSuperview()
 
@@ -71,6 +73,7 @@ public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine 
             }
             playerView.storage = storage
             playerView.debug = false
+            playerView.scalingMode = Self.scalingMode(isScaled: isDisplayScaled)
 
             if let boundSurface {
                 attach(playerView: playerView, to: boundSurface)
@@ -140,6 +143,43 @@ public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine 
 
             playerView.currentPlaybackRate = Float(rate)
         }
+    }
+
+    public func addBookmark(at time: TimeInterval) async throws {
+        guard time >= 0 else {
+            throw PlayerError.engineError("Kollus bookmark time must be greater than or equal to 0. time=\(time)")
+        }
+
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+
+            guard playerView.bookmarkModifyEnabled else {
+                throw PlayerError.engineError("Kollus 컨텐츠가 북마크 추가를 지원하지 않습니다.")
+            }
+
+            try playerView.addBookmark(time, value: "")
+        }
+    }
+
+    public func setDisplayScaled(_ isScaled: Bool) async throws {
+        self.isDisplayScaled = isScaled
+        await MainActor.run {
+            self.playerView?.scalingMode = Self.scalingMode(isScaled: isScaled)
+        }
+    }
+
+    public func toggleDisplayScaling() async throws {
+        let fallbackValue = !isDisplayScaled
+        let nextValue = await MainActor.run {
+            if let playerView {
+                return playerView.scalingMode != .scaleAspectFill
+            }
+            return fallbackValue
+        }
+
+        try await setDisplayScaled(nextValue)
     }
 
     public func bind(renderSurface: PlayerRenderSurface) {
@@ -240,5 +280,9 @@ public actor KollusPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine 
         }
 
         return .unknown((error as NSError).localizedDescription)
+    }
+
+    private static func scalingMode(isScaled: Bool) -> KollusPlayerContentMode {
+        isScaled ? .scaleAspectFill : .scaleAspectFit
     }
 }

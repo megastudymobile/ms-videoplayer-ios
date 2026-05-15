@@ -308,7 +308,7 @@ public actor PlayerCore {
     }
 
     private func setDisplayLocked(_ isLocked: Bool) async throws {
-        guard let displayEngine = engine as? any PlayerDisplayEngine else {
+        guard let displayEngine = engine as? any PlayerDisplayLockEngine else {
             throw PlayerError.engineError("Display lock is not supported by the current playback engine.")
         }
 
@@ -316,7 +316,7 @@ public actor PlayerCore {
     }
 
     private func setDisplayScaled(_ isScaled: Bool) async throws {
-        guard let displayEngine = engine as? any PlayerDisplayEngine else {
+        guard let displayEngine = engine as? any PlayerDisplayScalingEngine else {
             throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
         }
 
@@ -324,7 +324,7 @@ public actor PlayerCore {
     }
 
     private func toggleDisplayScaling() async throws {
-        guard let displayEngine = engine as? any PlayerDisplayEngine else {
+        guard let displayEngine = engine as? any PlayerDisplayScalingEngine else {
             throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
         }
 

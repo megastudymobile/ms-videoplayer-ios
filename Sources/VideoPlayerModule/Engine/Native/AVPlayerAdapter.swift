@@ -11,7 +11,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
+public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine {
     public nonisolated static let capabilities: EngineCapabilities = [
         .continuesWithoutSurface,
         .seamlessSurfaceSwap
@@ -33,6 +33,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
     private var endObserver: NSObjectProtocol?
     private var failedToEndObserver: NSObjectProtocol?
     private var timeObserverToken: Any?
+    private var isDisplayScaled = false
 
     public init(player: AVPlayer = AVPlayer()) {
         var continuation: AsyncStream<PlayerEvent>.Continuation?
@@ -155,9 +156,21 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
         }
     }
 
+    public func setDisplayScaled(_ isScaled: Bool) async throws {
+        self.isDisplayScaled = isScaled
+        await MainActor.run {
+            self.playerLayer?.videoGravity = Self.videoGravity(isScaled: isScaled)
+        }
+    }
+
+    public func toggleDisplayScaling() async throws {
+        try await setDisplayScaled(!isDisplayScaled)
+    }
+
     public func bind(renderSurface: PlayerRenderSurface) {
         let previousSurface = self.renderSurface
         self.renderSurface = renderSurface
+        let isDisplayScaled = self.isDisplayScaled
 
         Task { @MainActor [weak self] in
             guard let self else {
@@ -165,7 +178,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
             }
 
             previousSurface?.engineDidDetach()
-            self.attachPlayerLayer(to: renderSurface)
+            self.attachPlayerLayer(to: renderSurface, isDisplayScaled: isDisplayScaled)
             renderSurface.engineDidAttach()
         }
     }
@@ -363,18 +376,21 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
     }
 
     @MainActor
-    private func attachPlayerLayer(to renderSurface: PlayerRenderSurface) {
+    private func attachPlayerLayer(
+        to renderSurface: PlayerRenderSurface,
+        isDisplayScaled: Bool
+    ) {
         let layer: AVPlayerLayer
         if let existingLayer = playerLayer {
             layer = existingLayer
             existingLayer.removeFromSuperlayer()
         } else {
             layer = AVPlayerLayer(player: player)
-            layer.videoGravity = .resizeAspect
             playerLayer = layer
         }
 
         layer.player = player
+        layer.videoGravity = Self.videoGravity(isScaled: isDisplayScaled)
         layer.frame = renderSurface.containerView.bounds
         layer.needsDisplayOnBoundsChange = true
         renderSurface.containerView.layer.addSublayer(layer)
@@ -396,5 +412,9 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine {
         }
 
         return max(0, seconds)
+    }
+
+    private static func videoGravity(isScaled: Bool) -> AVLayerVideoGravity {
+        isScaled ? .resizeAspectFill : .resizeAspect
     }
 }

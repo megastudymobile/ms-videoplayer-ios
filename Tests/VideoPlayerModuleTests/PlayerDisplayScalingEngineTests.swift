@@ -1,0 +1,66 @@
+import Foundation
+import Testing
+@testable import VideoPlayerCore
+
+@Suite("Player display scaling engine")
+struct PlayerDisplayScalingEngineTests {
+    @Test("Display scaling commands are delegated when the engine only supports scaling")
+    func delegatesDisplayScalingWhenEngineSupportsOnlyScalingControl() async throws {
+        let engine = DisplayScalingOnlyEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: DisplayScalingOnlyEngine.capabilities
+        )
+
+        try await core.execute(command: .setDisplayScaled(true))
+        try await core.execute(command: .toggleDisplayScaling)
+
+        #expect(await engine.recordedDisplayScale == true)
+        #expect(await engine.toggleDisplayScalingCallCount == 1)
+    }
+
+    @Test("Display lock is rejected when the engine only supports scaling")
+    func rejectsDisplayLockWhenEngineSupportsOnlyScalingControl() async throws {
+        let engine = DisplayScalingOnlyEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: DisplayScalingOnlyEngine.capabilities
+        )
+
+        do {
+            try await core.execute(command: .setDisplayLocked(true))
+            Issue.record("Display lock should fail when only display scaling is supported.")
+        } catch let error as PlayerError {
+            #expect(error == .engineError("Display lock is not supported by the current playback engine."))
+        } catch {
+            Issue.record("Unexpected error: \(error)")
+        }
+    }
+}
+
+private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, PlayerDisplayScalingEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+
+    var currentState: PlaybackState { .idle }
+
+    let eventStream = AsyncStream<PlayerEvent> { continuation in
+        continuation.finish()
+    }
+
+    private(set) var recordedDisplayScale: Bool?
+    private(set) var toggleDisplayScalingCallCount = 0
+
+    func prepare(source: PlaybackSource) async throws {}
+    func play() {}
+    func pause() {}
+    func seek(to time: TimeInterval) async {}
+    func stop() {}
+
+    func setDisplayScaled(_ isScaled: Bool) async throws {
+        recordedDisplayScale = isScaled
+    }
+
+    func toggleDisplayScaling() async throws {
+        toggleDisplayScalingCallCount += 1
+    }
+}
