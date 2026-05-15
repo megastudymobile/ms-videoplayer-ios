@@ -41,6 +41,10 @@ public actor KollusPlayerAdapter:
     private var isDisplayScaled = false
     @MainActor private var playerView: KollusPlayerView?
     @MainActor private var bridge: KollusDelegateBridge?
+    /// `setSubTitlePath`에 전달한 C-string의 backing storage.
+    /// SDK가 path를 비동기 보관할 가능성에 대비해 NSString을 actor가 retain한다.
+    /// utf8String 포인터는 NSString lifetime 동안 유효.
+    @MainActor private var subtitlePathBuffer: NSString?
     private var lastKnownBookmarks: [Bookmark] = []
     private var isSubtitleVisible: Bool = true
 
@@ -239,14 +243,19 @@ public actor KollusPlayerAdapter:
     }
 
     private func applySubtitlePath(_ path: String?) async throws {
-        try await MainActor.run {
-            guard let playerView else {
+        try await MainActor.run { [weak self] in
+            guard let self else { return }
+            guard let playerView = self.playerView else {
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
             }
-            let resolved = path ?? ""
-            resolved.withCString { cstr in
-                _ = playerView.setSubTitlePath(UnsafeMutablePointer(mutating: cstr))
+            let resolved = (path ?? "") as NSString
+            // SDK가 path 포인터를 비동기 보관하더라도 use-after-free가 발생하지 않도록
+            // NSString backing storage를 actor가 retain한다. 다음 호출 시 교체될 때까지 유효.
+            self.subtitlePathBuffer = resolved
+            guard let cstr = resolved.utf8String else {
+                throw PlayerError.engineError("자막 파일 경로 인코딩 실패.")
             }
+            _ = playerView.setSubTitlePath(UnsafeMutablePointer(mutating: cstr))
         }
     }
 
