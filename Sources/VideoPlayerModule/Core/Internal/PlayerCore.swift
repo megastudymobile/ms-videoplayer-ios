@@ -148,6 +148,12 @@ public actor PlayerCore {
             try await setCaptionFontSize(fontSize)
         case .addBookmark(let time):
             try await addBookmark(at: time)
+        case .setDisplayLocked(let isLocked):
+            try await setDisplayLocked(isLocked)
+        case .setDisplayScaled(let isScaled):
+            try await setDisplayScaled(isScaled)
+        case .toggleDisplayScaling:
+            try await toggleDisplayScaling()
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
@@ -299,6 +305,30 @@ public actor PlayerCore {
         }
 
         try await bookmarkEngine.addBookmark(at: time)
+    }
+
+    private func setDisplayLocked(_ isLocked: Bool) async throws {
+        guard let displayEngine = engine as? any PlayerDisplayEngine else {
+            throw PlayerError.engineError("Display lock is not supported by the current playback engine.")
+        }
+
+        try await displayEngine.setDisplayLocked(isLocked)
+    }
+
+    private func setDisplayScaled(_ isScaled: Bool) async throws {
+        guard let displayEngine = engine as? any PlayerDisplayEngine else {
+            throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
+        }
+
+        try await displayEngine.setDisplayScaled(isScaled)
+    }
+
+    private func toggleDisplayScaling() async throws {
+        guard let displayEngine = engine as? any PlayerDisplayEngine else {
+            throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
+        }
+
+        try await displayEngine.toggleDisplayScaling()
     }
 
     private func seekTargetTime(

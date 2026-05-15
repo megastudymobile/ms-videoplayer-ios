@@ -58,6 +58,9 @@ final class PlayerInterfaceTests: XCTestCase {
         let subtitleTrackCommand = PlaybackCommand.selectSubtitleTrack(subtitleTrackID)
         let captionFontSizeCommand = PlaybackCommand.setCaptionFontSize(20)
         let addBookmarkCommand = PlaybackCommand.addBookmark(at: 45)
+        let displayLockedCommand = PlaybackCommand.setDisplayLocked(true)
+        let displayScaledCommand = PlaybackCommand.setDisplayScaled(true)
+        let toggleDisplayScalingCommand = PlaybackCommand.toggleDisplayScaling
         let metadataID = PlayerTimedMetadataID(rawValue: "metadata-1")
         let seekCommand = PlaybackCommand.seekWithOrigin(
             to: 45,
@@ -70,6 +73,9 @@ final class PlayerInterfaceTests: XCTestCase {
         XCTAssertEqual(subtitleTrackCommand, .selectSubtitleTrack(subtitleTrackID))
         XCTAssertEqual(captionFontSizeCommand, .setCaptionFontSize(20))
         XCTAssertEqual(addBookmarkCommand, .addBookmark(at: 45))
+        XCTAssertEqual(displayLockedCommand, .setDisplayLocked(true))
+        XCTAssertEqual(displayScaledCommand, .setDisplayScaled(true))
+        XCTAssertEqual(toggleDisplayScalingCommand, .toggleDisplayScaling)
         XCTAssertEqual(
             seekCommand,
             .seekWithOrigin(to: 45, origin: .timedMetadata(metadataID))
@@ -251,6 +257,45 @@ final class PlayerInterfaceTests: XCTestCase {
         XCTAssertEqual(recordedBookmarkTime, 45)
     }
 
+    func testPlayerCoreRejectsUnsupportedGenericDisplayCommandExplicitly() async {
+        let engine = CoreOnlyEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: CoreOnlyEngine.capabilities
+        )
+
+        do {
+            try await core.execute(command: .setDisplayLocked(true))
+            XCTFail("Unsupported display command should fail explicitly.")
+        } catch let error as PlayerError {
+            XCTAssertEqual(
+                error,
+                .engineError("Display lock is not supported by the current playback engine.")
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testPlayerCoreDelegatesGenericDisplayCommandsWhenEngineSupportsDisplayControl() async throws {
+        let engine = DisplayControllableEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: DisplayControllableEngine.capabilities
+        )
+
+        try await core.execute(command: .setDisplayLocked(true))
+        try await core.execute(command: .setDisplayScaled(true))
+        try await core.execute(command: .toggleDisplayScaling)
+
+        let recordedDisplayLock = await engine.recordedDisplayLock
+        let recordedDisplayScale = await engine.recordedDisplayScale
+        let toggleDisplayScalingCallCount = await engine.toggleDisplayScalingCallCount
+        XCTAssertEqual(recordedDisplayLock, true)
+        XCTAssertEqual(recordedDisplayScale, true)
+        XCTAssertEqual(toggleDisplayScalingCallCount, 1)
+    }
+
     func testPlayerCoreResolvesSkipOriginFromCurrentPlaybackTime() async throws {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
@@ -402,6 +447,38 @@ private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEn
 
     func setCaptionFontSize(_ fontSize: Int) async throws {
         recordedCaptionFontSize = fontSize
+    }
+}
+
+private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+
+    var currentState: PlaybackState { .idle }
+
+    let eventStream = AsyncStream<PlayerEvent> { continuation in
+        continuation.finish()
+    }
+
+    private(set) var recordedDisplayLock: Bool?
+    private(set) var recordedDisplayScale: Bool?
+    private(set) var toggleDisplayScalingCallCount = 0
+
+    func prepare(source: PlaybackSource) async throws {}
+    func play() {}
+    func pause() {}
+    func seek(to time: TimeInterval) async {}
+    func stop() {}
+
+    func setDisplayLocked(_ isLocked: Bool) async throws {
+        recordedDisplayLock = isLocked
+    }
+
+    func setDisplayScaled(_ isScaled: Bool) async throws {
+        recordedDisplayScale = isScaled
+    }
+
+    func toggleDisplayScaling() async throws {
+        toggleDisplayScalingCallCount += 1
     }
 }
 

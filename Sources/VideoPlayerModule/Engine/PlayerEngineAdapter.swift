@@ -46,3 +46,9 @@ public protocol PlayerSubtitleEngine: Actor {
 public protocol PlayerBookmarkEngine: Actor {
     func addBookmark(at time: TimeInterval) async throws
 }
+
+public protocol PlayerDisplayEngine: Actor {
+    func setDisplayLocked(_ isLocked: Bool) async throws
+    func setDisplayScaled(_ isScaled: Bool) async throws
+    func toggleDisplayScaling() async throws
+}

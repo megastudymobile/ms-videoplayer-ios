@@ -62,6 +62,7 @@ public protocol PlayerPlaylistControlling: Actor {
 public protocol PlayerDisplayControlling: Actor {
     func setDisplayLocked(_ isLocked: Bool) async throws
     func setDisplayScaled(_ isScaled: Bool) async throws
+    func toggleDisplayScaling() async throws
 }
 
 public protocol PlayerOfflineControlling: Actor {
