@@ -79,16 +79,16 @@ public actor KollusPlayerAdapter:
         self.state = .idle
     }
 
-    /// Legacy zero-arg init: 게이트 0.3.0에서 제거된다.
-    @available(*, deprecated, message: "Use init(bootstrapper:environment:observer:diagnostics:playerType:). Gate 0.3.0에서 제거.")
-    public init() {
+    /// Test-only init: 외부 공개 표면에서 제거됨(T062, gate 0.3.0).
+    /// `@testable import`로만 접근. 새 wiring(인증/26 콜백) 미사용.
+    internal init() {
         self.init(
             storage: KollusStorage(),
             playerType: KollusPlayerType(rawValue: 1)!
         )
     }
 
-    /// Legacy direct-storage init: 테스트 호환용. 새 wiring(인증/26 콜백) 사용 안 함.
+    /// Test-only direct-storage init. 외부 공개 표면 아님. 새 wiring 미사용.
     init(
         storage: KollusStorage,
         playerType: KollusPlayerType = KollusPlayerType(rawValue: 1)!

@@ -3,6 +3,7 @@
 import Foundation
 import Testing
 @testable import VideoPlayerModule
+@testable import VideoPlayerEngineKollus
 
 @Suite("Kollus player module factory")
 struct KollusPlayerModuleFactoryTests {

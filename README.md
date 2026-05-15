@@ -344,15 +344,48 @@ final class LectureViewModel {
 ```swift
 import VideoPlayerEngineKollus
 
-let module = await KollusPlayerModuleFactory().makeModule()
+// 1) 환경(인증 + 운영 옵션 + DRM)을 값타입으로 1회 구성한다.
+let environment = KollusEnvironment(
+    applicationKey: "<카테노이드 발급 키>",
+    applicationBundleID: Bundle.main.bundleIdentifier ?? "",
+    applicationExpireDate: expireDate,
+    keychainGroup: "group.com.megastudy.shared",
+    storagePath: nil,                       // 기본 Documents/ 사용
+    cacheSizeMB: 512,
+    backgroundDownload: true,
+    aiPlaybackRateEnabled: true,
+    hardwareDecoderPreferred: true,
+    pauseOnForeground: false,
+    audioBackgroundPlayPolicy: true,        // → `.continuesWithoutSurface` 자동 OR-in
+    drm: KollusDRMConfiguration(
+        fpsCertificateURL: certURL,
+        fpsDRMURL: drmURL,
+        extraParameters: ["uid": userID]
+    )
+)
+
+// 2) 신규 권장 진입점 — observer / diagnostics를 함께 주입한다.
+let factory = KollusPlayerModuleFactory(
+    environment: environment,
+    observer: drmLMSReporter,               // DRM/LMS 응답을 호스트 로깅으로 forward
+    diagnostics: signalProbe                // 23 KollusEngineSignal raw 신호 진단 채널
+)
+
+let module = await factory.makeModule()
 try await module.startPlaybackUseCase.execute(
     source: .kollus(mediaContentKey: "MCK-..."),
     policy: .default
 )
+
+// 3) 다운로드 라이프사이클은 별도 facade(actor).
+let downloads = factory.downloads!          // 모든 makeModule()이 공유하는 단일 인스턴스
+try await downloads.startDownload(mediaContentKey: "MCK-...")
+for await snapshot in downloads.contents {
+    // 진행률/완료 등 KollusContentSnapshot 스트림
+}
 ```
 
-`KollusPlayerModuleFactory`는 `PlayerModuleWiring`을 감싼 1-line helper다.
-custom 엔진/캡퍼빌리티 주입이 필요하면 `engineFactory:`, `engineCapabilities:`로 갈아끼울 수 있다.
+`KollusPlayerModuleFactory(environment:observer:diagnostics:)`는 `KollusSessionBootstrapper`(인증 1회) + `KollusDownloadCenter`(다운로드 facade)를 한 번 만들어 모든 `makeModule()` 호출이 공유한다. 기존의 인자 없는 `KollusPlayerModuleFactory()` 진입점은 gate 0.3.0에서 제거되었다.
 
 ### 4) Render Surface 부착
 
@@ -370,9 +403,54 @@ final class PlayerSurfaceView: UIView, PlayerRenderSurface {
 
 | 영역 | 타입 |
 | --- | --- |
-| 입력 (Shell → Core) | `PlaybackCommand`: `.load`, `.play`, `.pause`, `.seek`, `.seekWithOrigin`, `.setPlaybackRate`, `.setSkipInterval`, `.setSubtitleVisible`, `.selectSubtitleTrack`, `.setCaptionFontSize`, `.addBookmark`, `.setDisplayLocked`, `.setDisplayScaled`, `.toggleDisplayScaling`, `.stop` |
-| 출력 (Core → Shell) | `PlaybackState` (AsyncStream) · `PlayerEvent`(`.stateDidChange` / `.timeDidChange` / `.bufferingDidChange` / `.didFinish` / `.didFail` / `.policyDowngraded`) |
+| 입력 (Shell → Core) | `PlaybackCommand`: `.load`, `.play`, `.pause`, `.seek`, `.seekWithOrigin`, `.setPlaybackRate`, `.setSkipInterval`, `.setSubtitleVisible`, `.selectSubtitleTrack`, `.setCaptionFontSize`, `.addBookmark`, `.removeBookmark`, `.selectSubtitleFile`, `.setDisplayLocked`, `.setDisplayScaled`, `.toggleDisplayScaling`, `.stop` |
+| 출력 (Core → Shell) | `PlaybackState` (AsyncStream, `isLive` / `liveDuration` 포함) · `PlayerEvent`(`.stateDidChange` / `.timeDidChange` / `.bufferingDidChange` / `.didFinish` / `.didFail` / `.policyDowngraded` / `.captionDidUpdate` / `.bookmarksDidLoad` / `.bitrateDidChange` / `.heightDidChange` / `.externalOutputDidChange` / `.naturalSizeDidResolve` / `.framerateDidResolve` / `.deviceLockPolicyChanged` / `.nextEpisodeAvailable`) |
 | 정책 | `PlayerFeaturePolicy(allowsBackgroundPlayback, maxPlaybackRate, allowsAutoplay, skipInterval)` |
+
+---
+
+## Phase 2 ~ 7 surface (Kollus 커버리지 1.0.0)
+
+`videoplayer-ios-ms`는 spec 025 (Kollus Module Coverage)에 따라 KollusSDK 1.1.x 표면 91.9 %를 모듈 안으로 들여왔다. 호스트(SmartLearning Shell)는 더 이상 `KollusSDKBinary`를 직접 import하지 않는다.
+
+### 신규 public 타입
+
+| 타입 | 역할 |
+| --- | --- |
+| `KollusEnvironment` | 인증 + 스토리지 + DRM + 네트워크 + AI 배속/하드웨어 디코더/스킨/포그라운드 정책을 한 값타입으로 묶는 진입점. `validate(now:)`로 만료/경로/캐시 사이즈를 사전 검증. |
+| `KollusDRMConfiguration` | FPS cert URL / DRM URL / 동적 DRM 파라미터. |
+| `KollusLiveChatProfile` | 라이브 채팅 룸/서버/사용자 정보. |
+| `KollusObserver` | DRM 응답·LMS 전송·미전송 LMS 일괄 결과 3종 콜백을 호스트로 forward하는 weak observer 프로토콜. |
+| `KollusDiagnosticsSink` | 23 `KollusEngineSignal` raw 신호를 진단 채널로 들여다보는 옵션 프로토콜. domain 이벤트와 분리. |
+| `KollusEngineSignal` | KollusPlayerDelegate 23 raw 콜백을 1:1 정규화한 case enum. |
+| `KollusContentSnapshot` | `currentContent` / 다운로드 항목을 도메인 값으로 노출(메타 + DRM 상태 + 다운로드 상태). |
+| `NextEpisodeInfo` | nextEpisode showTime/callbackURL/params/showsButton 묶음. `PlayerEvent.nextEpisodeAvailable`로 전달. |
+| `KollusDownloadCenter` (actor) | KollusStorage 위 다운로드/캐시/DRM/LMS/네트워크 정책 facade. `contents` AsyncStream으로 변화 관찰. |
+| `KollusPlayerModuleFactory` | `init(environment:observer:diagnostics:)` 단일 진입점. 모든 `makeModule()`이 단일 `KollusSessionBootstrapper`와 `KollusDownloadCenter`를 공유. |
+
+### 신규 capability 프로토콜 (`PlayerCapabilities`)
+
+| 프로토콜 | 노출 동작 |
+| --- | --- |
+| `PlayerZoomEngine` | `zoom(_:)` / `setZoomOutDisabled(_:)` / `zoomValue()` / `isZoomedIn` |
+| `PlayerScrollEngine` | `scroll(by:)` / `stopScroll()` |
+| `PlayerAdaptiveStreamingEngine` | `changeBandwidth(_:)` / `streamInfoList() -> [StreamInfo]` |
+| `PlayerPiPCapability` | `startPiP()` / `stopPiP()` / `isPiPActive` (KollusPlayerType.native 한정) |
+| `PlayerTitledBookmarkEngine` | `addBookmark(at:title:)` / `removeBookmark(at:)` / `currentBookmarks()` |
+| `PlayerExternalSubtitleEngine` | `selectSubtitleFile(_:)` (외부 자막 path) |
+| `PlayerDisplayScalingEngine` | `setDisplayScaled(_:)` / `toggleDisplayScaling()` |
+
+`KollusPlayerAdapter`는 위 프로토콜 7종 + `PlayerPlaybackRateEngine` + `PlayerSubtitleEngine`을 모두 채택해 SDK 표면 91.9 % 커버리지(full 84 / partial 7 / none 8 = 99 항목, 게이트 1.0.0 ≥ 90 % 충족)를 단일 어댑터로 노출한다. 자세한 매핑은 `smartlearning-ios-ms/specs/025-kollus-module-coverage/coverage-matrix.md`.
+
+### 26 raw delegate 콜백 wiring
+
+`KollusDelegateBridge` (`@MainActor`)가 `KollusPlayerDelegate` 23 + `KollusPlayerDRMDelegate` 1 + `KollusPlayerLMSDelegate` 1 + `KollusPlayerBookmarkDelegate` 1 = 26 raw 메서드를 `prepareToPlay` 직전에 일괄 부착한 뒤 다음과 같이 분배한다.
+
+- 23 `KollusPlayerDelegate` → `KollusEngineSignal` 23 case → `PlayerEvent` 13 종 + diagnostics-only 8 종
+- 2 (DRM 응답 / LMS 전송) → `KollusObserver` 콜백
+- 1 (Bookmark) → `PlayerEvent.bookmarksDidLoad([Bookmark])`
+
+각 신호는 `KollusDiagnosticsSink`로도 동시 발행되므로 호스트는 도메인 이벤트는 `PlayerStateBinder`로, 운영 진단은 sink로 분리해 받을 수 있다.
 
 ---
 

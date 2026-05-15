@@ -44,10 +44,10 @@ public struct KollusPlayerModuleFactory {
         )
     }
 
-    /// Legacy zero-arg/engine-injection init: 게이트 0.3.0에서 제거된다. downloads는 nil.
-    @available(*, deprecated, message: "Use init(environment:observer:diagnostics:). Gate 0.3.0에서 제거.")
-    public init(
-        engineFactory: @escaping () -> PlayerEngineAdapter = { KollusPlayerAdapter() },
+    /// Test-only initializer: 외부 공개 표면에서 제거됨(T062, gate 0.3.0).
+    /// `@testable import`만 접근 가능. downloads는 nil.
+    internal init(
+        engineFactory: @escaping () -> PlayerEngineAdapter,
         engineCapabilities: EngineCapabilities = KollusPlayerAdapter.capabilities
     ) {
         self.engineFactory = engineFactory

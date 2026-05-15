@@ -5,16 +5,24 @@
 //  SmartPlayer
 //
 //  Created by 모바일개발팀_정준영 on 2026/05/11.
+//  Updated by 모바일개발팀_정준영 on 2026/05/15.
 //  Copyright © 2026 megastudyedu. All rights reserved.
 //
 
 import Foundation
 import XCTest
 @testable import VideoPlayerModule
+@testable import VideoPlayerEngineKollus
 
 enum KollusContractFactory: PlayerEngineAdapterContractTestable {
     static func makeTestAdapter() -> PlayerEngineAdapter {
-        KollusPlayerAdapter()
+        let env = KollusEnvironment(
+            applicationKey: "test-key",
+            applicationBundleID: "com.example.test",
+            applicationExpireDate: Date().addingTimeInterval(60 * 60 * 24 * 30)
+        )
+        let bootstrapper = KollusSessionBootstrapper(environment: env)
+        return KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
     }
 
     static func cleanupTestAdapter(_ adapter: PlayerEngineAdapter) async {
