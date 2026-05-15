@@ -1,10 +1,13 @@
 #if canImport(UIKit)
 
-import XCTest
+import Foundation
+import Testing
 @testable import VideoPlayerModule
 
-final class KollusPlayerModuleFactoryTests: XCTestCase {
-    func testMakeModuleWiresInjectedEngineToUseCases() async throws {
+@Suite("Kollus player module factory")
+struct KollusPlayerModuleFactoryTests {
+    @Test("Factory wires injected engine to use cases")
+    func makeModuleWiresInjectedEngineToUseCases() async throws {
         let engine = FactoryTestEngineAdapter()
         let factory = KollusPlayerModuleFactory(
             engineFactory: { engine },
@@ -15,25 +18,26 @@ final class KollusPlayerModuleFactoryTests: XCTestCase {
             configuration: PlayerModuleConfiguration(autoActivateCore: false)
         )
 
-        XCTAssertEqual(module.engineCapabilities, [.continuesWithoutSurface])
+        #expect(module.engineCapabilities == [.continuesWithoutSurface])
 
         try await module.controlPlaybackUseCase.execute(command: .stop)
 
         let stopCount = await engine.stopCount
-        XCTAssertEqual(stopCount, 1)
+        #expect(stopCount == 1)
     }
 
-    func testAdapterRejectsURLSourceBeforeCreatingKollusView() async throws {
+    @Test("Adapter rejects URL source before creating Kollus view")
+    func adapterRejectsURLSourceBeforeCreatingKollusView() async throws {
         let adapter = KollusPlayerAdapter()
         let source = PlaybackSource.url(URL(string: "https://example.com/video.mp4")!)
 
         do {
             try await adapter.prepare(source: source)
-            XCTFail("KollusPlayerAdapter는 URL source를 거부해야 합니다.")
+            Issue.record("KollusPlayerAdapter는 URL source를 거부해야 합니다.")
         } catch PlayerError.engineError(let message) {
-            XCTAssertTrue(message.contains("kollus(mediaContentKey:)만 지원"))
+            #expect(message.contains("kollus(mediaContentKey:)만 지원"))
         } catch {
-            XCTFail("예상하지 못한 error type: \(error)")
+            Issue.record("예상하지 못한 error type: \(error)")
         }
     }
 }
