@@ -122,6 +122,9 @@ public enum PlaybackCommand: Sendable {
     case selectSubtitleTrack(PlayerSubtitleTrackID?)
     case setCaptionFontSize(Int)
     case addBookmark(at: TimeInterval)
+    case addBookmarkWithTitle(at: TimeInterval, title: String)
+    case removeBookmark(at: TimeInterval)
+    case selectSubtitleFile(URL?)
     case setDisplayLocked(Bool)
     case setDisplayScaled(Bool)
     case toggleDisplayScaling
@@ -145,10 +148,25 @@ public struct PlaybackState: Sendable {
     public let currentTime: TimeInterval
     public let duration: TimeInterval
     public let isBuffering: Bool
+    public let isLive: Bool
+    public let liveDuration: TimeInterval?
+}
+
+public enum PlayerEvent: Sendable {
+    case stateDidChange(PlaybackState)
+    case bufferingDidChange(isBuffering: Bool)
+    case captionDidUpdate(text: String, isSecondary: Bool)
+    case bookmarksDidLoad([Bookmark])
+    case bitrateDidChange(Int)
+    case externalOutputDidChange(enabled: Bool)
+    case nextEpisodeAvailable(NextEpisodeInfo)
+    // …
 }
 ```
 
 ViewModel은 use case를 통해 `PlaybackCommand`를 던지고, `PlayerCore`가 내보내는 `AsyncStream<PlaybackState>`를 구독한다. 그 사이에 양방향 추가 채널은 없다. 엔진이 "자기 마음대로 UI를 그리는" 경로는 의도적으로 차단했다. 이렇게 하면 디버깅 지점이 줄어든다. 화면이 이상하면 마지막 들어간 command와 마지막 나온 state를 먼저 확인하면 된다.
+
+Kollus coverage 확장 이후에는 이 단방향 흐름이 더 중요해졌다. 자막 파일 선택, 제목 있는 북마크 추가/삭제, 라이브 여부, 비트레이트 변화, 외부 출력 가능 여부 같은 SDK 이벤트도 화면이 vendor 객체를 직접 만지는 대신 `PlaybackCommand`, `PlaybackState`, `PlayerEvent`로 흘러야 한다.
 
 ```mermaid
 flowchart LR
@@ -184,7 +202,7 @@ public struct EngineCapabilities: OptionSet, Sendable {
 }
 ```
 
-엔진은 자기 capability를 선언한다. 그리고 보조 protocol(`PlayerPlaybackRateEngine`, `PlayerSubtitleEngine`, `PlayerBookmarkEngine`, `PlayerDisplayEngine`)을 채택 여부로 추가 기능 지원을 표현한다. 현재 `EngineCapabilities`는 백그라운드 재생처럼 엔진의 큰 동작 특성을 판단하는 데 쓰이고, 배속/자막/북마크/디스플레이 같은 명령은 보조 protocol 채택 여부로 검사한다. 지원하지 않으면 `PlayerError.engineError`를 던지거나, 정책을 안전한 값으로 자동 downgrade한다.
+엔진은 자기 capability를 선언한다. 그리고 보조 protocol(`PlayerPlaybackRateEngine`, `PlayerSubtitleEngine`, `PlayerTitledBookmarkEngine`, `PlayerExternalSubtitleEngine`, `PlayerDisplayEngine`, `PlayerAdaptiveStreamingEngine`, `PlayerPiPCapability`)을 채택 여부로 추가 기능 지원을 표현한다. 현재 `EngineCapabilities`는 백그라운드 재생처럼 엔진의 큰 동작 특성을 판단하는 데 쓰이고, 배속/자막/북마크/디스플레이/ABR/PiP 같은 명령은 보조 protocol 채택 여부로 검사한다. 지원하지 않으면 `PlayerError.engineError`를 던지거나, 정책을 안전한 값으로 자동 downgrade한다.
 
 예를 들어 `allowsBackgroundPlayback` 정책이 켜져 있는데 엔진이 `.continuesWithoutSurface`를 지원하지 않으면, `PlayerCore`는 자동으로 정책을 끄고 `.policyDowngraded(.missingContinuesWithoutSurface)` 이벤트를 발행한다. Shell UI는 그걸 받아 "백그라운드 재생이 비활성화됨" 토스트를 띄울 수 있다. **기능이 없다고 크래시가 나는 게 아니라, 정책이 우아하게 한 단계 내려간다.**
 
@@ -211,6 +229,8 @@ flowchart LR
 ```
 
 이 분리 덕분에 두 가지가 가능해진다. AVPlayer만 쓰는 미리보기 화면이나 광고 영상은 `VideoPlayerEngineNative`만 link해서 앱 사이즈에 무거운 vendor 바이너리를 포함시키지 않을 수 있다. 테스트도 product 구성을 어떻게 잡느냐에 따라 DRM 의존성을 우회할 수 있다. 현재 패키지의 iOS test target은 Kollus 경로도 함께 검증하도록 잡혀 있지만, 소비자 앱이나 별도 테스트 구성에서는 필요한 product만 골라 링크할 수 있다.
+
+최근 Kollus 경로는 이 원칙을 더 엄격하게 밀고 있다. SmartLearning Shell이 `KollusSDK`를 직접 import하지 않아도 되도록 `KollusEnvironment`, `KollusObserver`, `KollusDiagnosticsSink`, `KollusDownloadCenter` 같은 모듈 표면을 추가했다. Storage 인증, delegate 등록, DRM/LMS/Bookmark 콜백, 다운로드 라이프사이클은 `VideoPlayerEngineKollus` 안에 갇히고, Shell은 환경 값과 도메인 command/event만 다룬다.
 
 ### 2.5 Swift Concurrency First
 
@@ -397,11 +417,11 @@ flowchart TB
 
 마지막으로 이 모듈이 앞으로 어떻게 진화할지를 짧게 적어 두자. 시리즈의 끝맺음이자, 후배가 이 코드를 이어받았을 때 길잡이가 됐으면 한다.
 
-가까운 미래에는 두 가지가 있다. 하나는 **테스트 마이그레이션 완료**. XCTest에서 Swift Testing으로 옮기는 작업이 진행 중이고, 이게 끝나면 `confirmation`을 활용한 더 자연스러운 비동기 테스트가 가능해진다. 또 하나는 **PiP와 외부 디스플레이 capability 정리**. 현재 capability는 surface와 background 위주인데, PiP와 AirPlay 시나리오를 더 명시적으로 다루는 추가 protocol을 도입할 여지가 있다.
+가까운 미래에는 두 가지가 있다. 하나는 **테스트 마이그레이션 완료**. XCTest에서 Swift Testing으로 옮기는 작업이 진행 중이고, 이게 끝나면 `confirmation`을 활용한 더 자연스러운 비동기 테스트가 가능해진다. 또 하나는 **Kollus coverage 확장 검증**. PiP, 외부 출력, HLS ABR, 라이브 상태, 다음 회차 이벤트 같은 표면은 API로 드러나기 시작했지만, 실제 강의 플로우에서 어떤 기능을 켜고 어떤 기능을 Shell 정책으로 막을지 정착시키는 작업이 남아 있다.
 
 중기적으로는 **두 번째 vendor 어댑터 도입 가능성**. 현재로서는 가설이지만, 벤더 비교나 기술 검증 차원에서 BrightCove나 다른 사업자의 어댑터를 실험적으로 만들어 보는 게 의미가 있다. 우리 도메인 인터페이스가 정말 vendor-agnostic한지 검증되는 순간이 될 것이다.
 
-장기적으로는 **live streaming 지원**. 현재 모듈은 VOD에 최적화되어 있다. 실시간 강의(라이브 클래스, 모의고사 라이브) 시나리오가 도입되면, capability와 상태 머신 모두 확장이 필요하다. 그때도 도메인 코드는 살아남고, 새 엔진 어댑터와 capability flag만 추가되는 형태로 가는 게 이상이다.
+장기적으로는 **live streaming 지원 고도화**. 현재 모듈은 VOD에 최적화되어 있고, 라이브 여부와 타임쉬프트 길이를 표현할 수 있는 상태 필드는 들어왔다. 실시간 강의(라이브 클래스, 모의고사 라이브) 시나리오가 본격 도입되면, capability와 상태 머신을 실제 운영 정책에 맞게 더 다듬어야 한다. 그때도 도메인 코드는 살아남고, 새 엔진 어댑터와 capability 표면만 확장되는 형태로 가는 게 이상이다.
 
 이 모든 미래에서 변하지 않을 한 가지는 명료하다. **vendor가 어떻게 바뀌어도, iOS가 어떻게 바뀌어도, 사업이 어떻게 바뀌어도, "우리 도메인은 우리가 통제한다"는 약속**이다. 그 약속을 지키기 위해 다섯 원칙을 코드 깊숙이 박아 두었다.
 
@@ -409,11 +429,11 @@ flowchart TB
 flowchart LR
     Now[현재 모듈] --> Near[가까운 미래]
     Near --> SwiftTesting[Swift Testing 마이그레이션 완료]
-    Near --> Capability[PiP와 외부 디스플레이 capability 정리]
+    Near --> Capability[Kollus coverage 확장 검증]
     Now --> Mid[중기]
     Mid --> SecondVendor[두 번째 vendor adapter 실험]
     Now --> Long[장기]
-    Long --> Live[Live streaming 지원]
+    Long --> Live[Live streaming 고도화]
     SwiftTesting --> Promise[우리 도메인은 우리가 통제]
     Capability --> Promise
     SecondVendor --> Promise

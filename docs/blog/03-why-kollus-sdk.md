@@ -79,19 +79,21 @@ Kollus는 **Catenoid(카테노이드)** 가 운영하는 클라우드 VOD 플랫
 기능을 글로 풀면 이렇다. 강사가 강의를 찍어 Kollus 콘솔에 mp4 파일을 업로드한다. Kollus는 그 파일을 재생 가능한 형태로 변환하고, HLS 같은 스트리밍 포맷과 보안 설정을 적용하고, CDN과 플레이어 연동에 필요한 정보를 관리한다. Kollus 쪽 콘텐츠 하나마다 **MCK(Media Content Key)** 라는 고유 ID를 발급한다. 이 MCK가 우리 코드에서 가장 중요한 식별자다.
 
 ```swift
-// 우리 코드에서 Kollus 콘텐츠 하나를 지칭하는 유일한 방법
+// 우리 코드에서 Kollus 콘텐츠 하나를 지칭하는 대표 경로
 public enum PlaybackSource: Sendable {
     case kollus(mediaContentKey: String)   // "MCK-abc123def456..."
+    case url(URL)                          // URL로 식별되는 Kollus 콘텐츠 진입
 }
 ```
 
-이 MCK 한 문자열을 Kollus SDK에 넘기면 그 안에서 일어나는 일은 대충 이렇다. SDK는 Kollus 쪽 재생 흐름을 시작하고, 서비스 설정에 따라 재생 URL, 인증, DRM, 다운로드 같은 세부 처리를 vendor 내부 흐름으로 넘긴다. 우리 앱은 m3u8 URL이나 DRM 라이선스 요청을 직접 조립하지 않는다. 시리즈 2편에서 본 SPC/CKC 흐름이 필요하다면 그 지점도 SDK 내부에서 처리된다.
+대부분의 강의는 MCK 한 문자열로 시작한다. 일부 외부 링크나 미리보기처럼 URL로 식별되는 Kollus 콘텐츠는 `.url(URL)` 경로로 들어올 수 있다. 어느 쪽이든 SDK는 Kollus 쪽 재생 흐름을 시작하고, 서비스 설정에 따라 재생 URL, 인증, DRM, 다운로드 같은 세부 처리를 vendor 내부 흐름으로 넘긴다. 우리 앱은 m3u8 URL이나 DRM 라이선스 요청을 직접 조립하지 않는다. 시리즈 2편에서 본 SPC/CKC 흐름이 필요하다면 그 지점도 SDK 내부에서 처리된다.
 
 <details>
 <summary>용어 토글: Kollus, MCK, 재생 토큰</summary>
 
 - **클라우드 VOD 플랫폼**: 업로드된 영상을 재생 가능한 형태로 변환하고, 저장하고, 보호하고, 사용자에게 전달하는 SaaS다.
-- **MCK(Media Content Key)**: Kollus 콘텐츠를 가리키는 ID다. 앱은 영상 URL을 직접 들고 있지 않고 MCK를 넘긴다.
+- **MCK(Media Content Key)**: Kollus 콘텐츠를 가리키는 대표 ID다. 일반 강의 재생은 보통 MCK를 넘긴다.
+- **URL 진입**: MCK가 아니라 콘텐츠 URL로 식별되는 진입이다. 모듈은 이 입력도 Kollus SDK의 URL 기반 생성자로 번역한다.
 - **재생 토큰**: 특정 사용자, 콘텐츠, 기기, 시간 조건에서만 재생을 허용하기 위해 쓰는 임시 권한값이다. 실제 발급 주체와 포맷은 서비스 연동 방식에 따라 달라질 수 있다.
 - **m3u8 URL 발급**: 앱이 원본 파일 위치를 직접 알지 못하게 하고, 권한 확인 뒤 제한된 재생 URL만 쓰게 하는 방식이다.
 - **DRM 라이선스 토큰**: PallyCon 같은 라이선스 서버에 키를 요청할 때 권한 정보를 전달하는 값이다. 실제 구조는 vendor SDK와 서버 설정에 묶인다.
@@ -105,14 +107,14 @@ flowchart TB
     Transcoding --> Packaging[HLS 패키징]
     Packaging --> MultiDRM[멀티 DRM 적용]
     MultiDRM --> CDN[CDN 배포]
-    CDN --> MCK[MCK 발급]
-    App[앱에서 MCK 전달] --> SDK[Kollus SDK]
+    CDN --> MCK[MCK 또는 콘텐츠 URL 발급]
+    App[앱에서 MCK 또는 URL 전달] --> SDK[Kollus SDK]
     SDK --> Playback[m3u8 URL과 토큰으로 재생 시작]
 ```
 
 다시 정리하면 Kollus는 우리에게 이런 가치를 판다.
 
-**원본 mp4 한 개 → 재생용 변환 → 보안 설정 → CDN 배포 → MCK 한 줄로 호출 가능.**
+**원본 mp4 한 개 → 재생용 변환 → 보안 설정 → CDN 배포 → MCK 또는 콘텐츠 URL 한 줄로 호출 가능.**
 
 이 한 줄짜리 가치 제안 뒤에 트랜스코딩 클러스터, CDN 연동, 키 관리 시스템, 콘텐츠 어드민 웹, 분석 대시보드, 라이브 스트리밍 지원, 다운로드 권한 처리, 라이선스 만료 처리가 들어 있다.
 
