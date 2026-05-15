@@ -57,6 +57,7 @@ final class PlayerInterfaceTests: XCTestCase {
         let subtitleTrackID = PlayerSubtitleTrackID(rawValue: "caption-ko")
         let subtitleTrackCommand = PlaybackCommand.selectSubtitleTrack(subtitleTrackID)
         let captionFontSizeCommand = PlaybackCommand.setCaptionFontSize(20)
+        let addBookmarkCommand = PlaybackCommand.addBookmark(at: 45)
         let metadataID = PlayerTimedMetadataID(rawValue: "metadata-1")
         let seekCommand = PlaybackCommand.seekWithOrigin(
             to: 45,
@@ -68,6 +69,7 @@ final class PlayerInterfaceTests: XCTestCase {
         XCTAssertEqual(subtitleVisibleCommand, .setSubtitleVisible(true))
         XCTAssertEqual(subtitleTrackCommand, .selectSubtitleTrack(subtitleTrackID))
         XCTAssertEqual(captionFontSizeCommand, .setCaptionFontSize(20))
+        XCTAssertEqual(addBookmarkCommand, .addBookmark(at: 45))
         XCTAssertEqual(
             seekCommand,
             .seekWithOrigin(to: 45, origin: .timedMetadata(metadataID))
@@ -194,6 +196,59 @@ final class PlayerInterfaceTests: XCTestCase {
         XCTAssertEqual(recordedSubtitleVisibility, true)
         XCTAssertEqual(recordedSubtitleTrackID, trackID)
         XCTAssertEqual(recordedCaptionFontSize, 20)
+    }
+
+    func testPlayerCoreRejectsUnsupportedGenericBookmarkCommandExplicitly() async {
+        let engine = CoreOnlyEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: CoreOnlyEngine.capabilities
+        )
+
+        do {
+            try await core.execute(command: .addBookmark(at: 45))
+            XCTFail("Unsupported bookmark command should fail explicitly.")
+        } catch let error as PlayerError {
+            XCTAssertEqual(
+                error,
+                .engineError("Bookmark mutation is not supported by the current playback engine.")
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testPlayerCoreRejectsInvalidBookmarkTime() async {
+        let engine = BookmarkControllableEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: BookmarkControllableEngine.capabilities
+        )
+
+        do {
+            try await core.execute(command: .addBookmark(at: -1))
+            XCTFail("Invalid bookmark time should fail explicitly.")
+        } catch let error as PlayerError {
+            XCTAssertEqual(
+                error,
+                .engineError("Bookmark time must be greater than or equal to 0. time=-1.0")
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testPlayerCoreDelegatesGenericBookmarkCommandWhenEngineSupportsBookmarkControl() async throws {
+        let engine = BookmarkControllableEngine()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: BookmarkControllableEngine.capabilities
+        )
+
+        try await core.execute(command: .addBookmark(at: 45))
+
+        let recordedBookmarkTime = await engine.recordedBookmarkTime
+        XCTAssertEqual(recordedBookmarkTime, 45)
     }
 
     func testPlayerCoreResolvesSkipOriginFromCurrentPlaybackTime() async throws {
@@ -347,6 +402,28 @@ private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEn
 
     func setCaptionFontSize(_ fontSize: Int) async throws {
         recordedCaptionFontSize = fontSize
+    }
+}
+
+private actor BookmarkControllableEngine: PlayerPlaybackEngine, PlayerBookmarkEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+
+    var currentState: PlaybackState { .idle }
+
+    let eventStream = AsyncStream<PlayerEvent> { continuation in
+        continuation.finish()
+    }
+
+    private(set) var recordedBookmarkTime: TimeInterval?
+
+    func prepare(source: PlaybackSource) async throws {}
+    func play() {}
+    func pause() {}
+    func seek(to time: TimeInterval) async {}
+    func stop() {}
+
+    func addBookmark(at time: TimeInterval) async throws {
+        recordedBookmarkTime = time
     }
 }
 

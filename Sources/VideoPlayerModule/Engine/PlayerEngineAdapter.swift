@@ -42,3 +42,7 @@ public protocol PlayerSubtitleEngine: Actor {
     func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws
     func setCaptionFontSize(_ fontSize: Int) async throws
 }
+
+public protocol PlayerBookmarkEngine: Actor {
+    func addBookmark(at time: TimeInterval) async throws
+}

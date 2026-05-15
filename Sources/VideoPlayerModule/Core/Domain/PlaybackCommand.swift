@@ -19,5 +19,6 @@ public enum PlaybackCommand: Equatable, Sendable {
     case setSubtitleVisible(Bool)
     case selectSubtitleTrack(PlayerSubtitleTrackID?)
     case setCaptionFontSize(Int)
+    case addBookmark(at: TimeInterval)
     case stop
 }

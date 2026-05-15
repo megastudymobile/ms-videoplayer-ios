@@ -146,6 +146,8 @@ public actor PlayerCore {
             try await selectSubtitleTrack(trackID)
         case .setCaptionFontSize(let fontSize):
             try await setCaptionFontSize(fontSize)
+        case .addBookmark(let time):
+            try await addBookmark(at: time)
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
@@ -285,6 +287,18 @@ public actor PlayerCore {
         }
 
         try await subtitleEngine.setCaptionFontSize(fontSize)
+    }
+
+    private func addBookmark(at time: TimeInterval) async throws {
+        guard time >= 0 else {
+            throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
+        }
+
+        guard let bookmarkEngine = engine as? any PlayerBookmarkEngine else {
+            throw PlayerError.engineError("Bookmark mutation is not supported by the current playback engine.")
+        }
+
+        try await bookmarkEngine.addBookmark(at: time)
     }
 
     private func seekTargetTime(
