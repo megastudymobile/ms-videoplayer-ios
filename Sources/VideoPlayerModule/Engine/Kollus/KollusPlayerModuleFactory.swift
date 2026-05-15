@@ -32,7 +32,12 @@ public struct KollusPlayerModuleFactory {
                 diagnostics: diagnostics
             )
         }
-        self.engineCapabilities = KollusPlayerAdapter.capabilities
+        // T054 — environment.audioBackgroundPlayPolicy=true이면 .continuesWithoutSurface OR-in.
+        var caps = KollusPlayerAdapter.capabilities
+        if environment.audioBackgroundPlayPolicy {
+            caps.insert(.continuesWithoutSurface)
+        }
+        self.engineCapabilities = caps
         self.downloads = KollusDownloadCenter(
             bootstrapper: bootstrapper,
             environment: environment

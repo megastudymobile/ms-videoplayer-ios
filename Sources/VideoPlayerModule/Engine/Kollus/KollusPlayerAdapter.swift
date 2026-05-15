@@ -19,7 +19,11 @@ public actor KollusPlayerAdapter:
     PlayerTitledBookmarkEngine,
     PlayerSubtitleEngine,
     PlayerExternalSubtitleEngine,
-    PlayerDisplayScalingEngine {
+    PlayerDisplayScalingEngine,
+    PlayerZoomEngine,
+    PlayerScrollEngine,
+    PlayerAdaptiveStreamingEngine,
+    PlayerPiPCapability {
     public nonisolated static let capabilities: EngineCapabilities = []
 
     public var currentState: PlaybackState {
@@ -47,6 +51,9 @@ public actor KollusPlayerAdapter:
     @MainActor private var subtitlePathBuffer: NSString?
     private var lastKnownBookmarks: [Bookmark] = []
     private var isSubtitleVisible: Bool = true
+    private var currentZoom: CGFloat = 0
+    private var hasEmittedNextEpisode: Bool = false
+    private var isPiPRunning: Bool = false
 
     // MARK: - Initializers
 
@@ -259,6 +266,120 @@ public actor KollusPlayerAdapter:
         }
     }
 
+    // MARK: - PlayerZoomEngine
+
+    public func zoom(_ recognizer: UIPinchGestureRecognizer) async throws {
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+            try playerView.zoom(recognizer)
+        }
+        currentZoom = recognizer.scale
+    }
+
+    public func setZoomOutDisabled(_ disabled: Bool) async {
+        await MainActor.run {
+            playerView?.setDisableZoomOut(disabled)
+        }
+    }
+
+    public func zoomValue() async -> CGFloat {
+        currentZoom
+    }
+
+    public var isZoomedIn: Bool {
+        get async {
+            await MainActor.run {
+                playerView?.isZoomedIn ?? false
+            }
+        }
+    }
+
+    // MARK: - PlayerScrollEngine
+
+    public func scroll(by distance: CGPoint) async throws {
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+            try playerView.scroll(distance)
+        }
+    }
+
+    public func stopScroll() async throws {
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+            try playerView.scrollStop()
+        }
+    }
+
+    // MARK: - PlayerAdaptiveStreamingEngine
+
+    public func changeBandwidth(_ bps: Int) async throws {
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+            playerView.changeBandWidth(Int32(bps))
+        }
+    }
+
+    public func streamInfoList() async -> [StreamInfo] {
+        await MainActor.run {
+            guard let raw = playerView?.streamInfoList as? [Any] else { return [] }
+            return raw.compactMap { item -> StreamInfo? in
+                // SDK가 노출하는 stream info 객체의 형태가 헤더에 명시되어 있지 않아 일반화 매핑.
+                // SDK가 새 wrapper를 추가하면 본 매핑을 갱신해야 한다(현재 비어 있는 배열은 안전).
+                guard let dict = item as? [String: Any],
+                      let bitrate = dict["bitrate"] as? Int,
+                      let width = dict["width"] as? Int,
+                      let height = dict["height"] as? Int else {
+                    return nil
+                }
+                return StreamInfo(bitrate: bitrate, width: width, height: height)
+            }
+        }
+    }
+
+    // MARK: - PlayerPiPCapability (KollusPlayerType.native 한정)
+
+    public func startPiP() async throws {
+        try await MainActor.run {
+            guard playerView != nil else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+        }
+        guard playerType.rawValue == 1 else {
+            throw PlayerError.engineError("PIP는 KollusPlayerType.native 한정으로 지원됩니다.")
+        }
+        // KollusSDK는 PIP 직접 API를 노출하지 않음 — 실 구현은 host의 AVPictureInPictureController가 KollusPlayerView 내부 AVPlayer를 사용.
+        // 현재 단계에서는 환경 적격성만 검사하고 not-implemented signal을 발행.
+        isPiPRunning = true
+        publish(event: .policyDowngraded(reason: .custom("PIP 시작 — host AVPictureInPictureController 통합 필요")))
+    }
+
+    public func stopPiP() async throws {
+        try await MainActor.run {
+            guard playerView != nil else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+        }
+        guard playerType.rawValue == 1 else {
+            throw PlayerError.engineError("PIP는 KollusPlayerType.native 한정으로 지원됩니다.")
+        }
+        isPiPRunning = false
+        publish(event: .policyDowngraded(reason: .custom("PIP 중지 — host AVPictureInPictureController 통합 필요")))
+    }
+
+    public var isPiPActive: Bool {
+        get async {
+            isPiPRunning
+        }
+    }
+
     // MARK: - PlayerDisplayScalingEngine
 
     public func setDisplayScaled(_ isScaled: Bool) async throws {
@@ -366,6 +487,15 @@ public actor KollusPlayerAdapter:
                 playerView.extraDrmParam = json
             }
 
+            // 2b) T053 — 확장 환경 옵션 주입 (Phase 7).
+            playerView.aiRateEnable = environment.aiPlaybackRateEnabled
+            playerView.setDecoder(environment.hardwareDecoderPreferred)
+            if let skin = environment.customSkinJSON {
+                playerView.customSkin = skin
+            }
+            playerView.setPauseOnForeground(environment.pauseOnForeground)
+            playerView.audioBackgroundPlay = environment.audioBackgroundPlayPolicy
+
             // 3) render surface 부착 (있을 때만)
             if let boundSurface {
                 self.attach(playerView: playerView, to: boundSurface)
@@ -463,6 +593,8 @@ public actor KollusPlayerAdapter:
             let nextState = state.updating(currentTime: time)
             transition(to: nextState, emitStateEvent: false)
             publish(event: .timeDidChange(currentTime: time, duration: nextState.duration))
+            // T056 — 다음 회차 진입 시간 도달 검사 (컨텐츠당 1회).
+            await emitNextEpisodeIfNeeded(currentTime: time)
 
         case .unknownError(let error):
             let pe = PlayerError.engineError("Kollus unknown error: \(error.localizedDescription)")
@@ -512,15 +644,112 @@ public actor KollusPlayerAdapter:
         publish(event: .bookmarksDidLoad(bookmarks))
     }
 
-    private func readyStateSnapshot() async -> PlaybackState {
-        let (position, duration) = await MainActor.run { () -> (TimeInterval, TimeInterval) in
-            (playerView?.content?.position ?? 0, playerView?.content?.duration ?? 0)
+    private func emitNextEpisodeIfNeeded(currentTime: TimeInterval) async {
+        guard !hasEmittedNextEpisode else { return }
+        struct NextEpisodeSnapshot {
+            let showAt: TimeInterval
+            let callbackURLString: String?
+            let params: [String: String]
+            let showsButton: Bool
         }
+        let snapshot = await MainActor.run { () -> NextEpisodeSnapshot? in
+            guard let view = playerView else { return nil }
+            let showAt = TimeInterval(view.nextEpisodeShowTime)
+            guard showAt > 0 else { return nil }
+            let rawParams = view.nextEpisodeCallbackParams as? [String: Any] ?? [:]
+            let params: [String: String] = Dictionary(uniqueKeysWithValues: rawParams.compactMap { key, value in
+                guard let v = value as? String else { return nil }
+                return (key, v)
+            })
+            return NextEpisodeSnapshot(
+                showAt: showAt,
+                callbackURLString: view.nextEpisodeCallbackURL,
+                params: params,
+                showsButton: view.nextEpisodeShowButton
+            )
+        }
+        guard let snapshot,
+              currentTime >= snapshot.showAt,
+              let urlString = snapshot.callbackURLString,
+              let url = URL(string: urlString) else {
+            return
+        }
+        hasEmittedNextEpisode = true
+        let info = NextEpisodeInfo(
+            showAt: snapshot.showAt,
+            callbackURL: url,
+            callbackParameters: snapshot.params,
+            showsButton: snapshot.showsButton
+        )
+        publish(event: .nextEpisodeAvailable(info))
+    }
+
+    private func readyStateSnapshot() async -> PlaybackState {
+        struct ReadySnapshot {
+            let position: TimeInterval
+            let duration: TimeInterval
+            let isLive: Bool
+            let liveDuration: TimeInterval
+        }
+        let snap = await MainActor.run { () -> ReadySnapshot in
+            ReadySnapshot(
+                position: playerView?.content?.position ?? 0,
+                duration: playerView?.content?.duration ?? 0,
+                isLive: playerView?.isLive ?? false,
+                liveDuration: playerView?.liveDuration ?? 0
+            )
+        }
+        // T055 — isLive/liveDuration 캡처. liveDuration 0이면 nil 표기(타임쉬프트 길이 unknown).
+        let liveDurationValue: TimeInterval? = snap.liveDuration > 0 ? snap.liveDuration : nil
         return state.updating(
             status: .readyToPlay,
-            currentTime: position,
-            duration: duration,
-            isBuffering: false
+            currentTime: snap.position,
+            duration: snap.duration,
+            isBuffering: false,
+            isLive: snap.isLive,
+            liveDuration: .some(liveDurationValue)
+        )
+    }
+
+    /// T057 — 현재 컨텐츠 메타데이터 스냅샷.
+    public func currentContent() async -> KollusContentSnapshot? {
+        await MainActor.run {
+            guard let content = playerView?.content else { return nil }
+            return Self.snapshot(from: content)
+        }
+    }
+
+    @MainActor
+    private static func snapshot(from content: KollusContent) -> KollusContentSnapshot {
+        let drmStatus: KollusContentSnapshot.DRMStatus
+        if content.drmExpired {
+            drmStatus = .expired
+        } else if content.drmExpireDate != nil {
+            let remaining = Int(content.drmExpireCountMax - content.drmExpireCount)
+            drmStatus = .valid(
+                expiresAt: content.drmExpireDate,
+                playCountRemaining: remaining > 0 ? remaining : nil
+            )
+        } else {
+            drmStatus = .unknown
+        }
+        return KollusContentSnapshot(
+            id: content.mediaContentKey ?? "",
+            title: content.title ?? "",
+            course: content.course ?? "",
+            teacher: content.teacher ?? "",
+            synopsis: content.synopsis,
+            thumbnailPath: content.thumbnail,
+            snapshotPath: content.snapshot,
+            descriptionURL: content.descriptionURL.flatMap { URL(string: $0) },
+            naturalSize: content.naturalSize,
+            duration: content.duration,
+            position: content.position,
+            contentType: .streaming,
+            drm: drmStatus,
+            download: .notDownloaded,
+            fileSize: 0,
+            downloadedAt: nil
         )
     }
 
