@@ -96,7 +96,19 @@ let package = Package(
                 "Engine/Kollus/KollusPlayerModuleFactory.swift"
             ],
             linkerSettings: [
-                .linkedFramework("UIKit", .when(platforms: [.iOS]))
+                .linkedFramework("UIKit",               .when(platforms: [.iOS])),
+                .linkedFramework("AVFoundation",        .when(platforms: [.iOS])),
+                .linkedFramework("CoreMedia",           .when(platforms: [.iOS])),
+                .linkedFramework("QuartzCore",          .when(platforms: [.iOS])),
+                .linkedFramework("AudioToolbox",        .when(platforms: [.iOS])),
+                .linkedFramework("MediaPlayer",         .when(platforms: [.iOS])),
+                .linkedFramework("Security",            .when(platforms: [.iOS])),
+                .linkedFramework("SystemConfiguration", .when(platforms: [.iOS])),
+                .linkedFramework("CoreGraphics",        .when(platforms: [.iOS])),
+                .linkedLibrary("sqlite3",               .when(platforms: [.iOS])),
+                .linkedLibrary("iconv",                 .when(platforms: [.iOS])),
+                .linkedLibrary("z",                     .when(platforms: [.iOS])),
+                .linkedLibrary("c++",                   .when(platforms: [.iOS]))
             ]
         ),
         .target(
