@@ -81,15 +81,17 @@ public protocol PlayerPlaybackEngine: Actor {
     nonisolated static var capabilities: EngineCapabilities { get }
 
     func prepare(source: PlaybackSource) async throws
-    func play()
-    func pause()
-    func seek(to time: TimeInterval) async
-    func stop()
+    func play() async throws
+    func pause() async throws
+    func seek(to time: TimeInterval) async throws
+    func stop(reason: PlayerStopReason) async throws
 
     var currentState: PlaybackState { get }
     var eventStream: AsyncStream<PlayerEvent> { get }
 }
 ```
+
+`play`, `pause`, `seek`, `stop`이 모두 `async throws`인 이유는 엔진 명령이 단순 메모리 플래그 변경이 아니라 vendor SDK, `AVPlayer`, 렌더 surface, DRM 준비 상태와 만나는 작업이기 때문이다. 실패 가능성을 protocol 표면에 올려 두면 `PlayerCore`가 모든 엔진 명령을 같은 방식으로 직렬화하고, 실패를 `PlaybackState.failed`와 `PlayerEvent.didFail`로 정규화할 수 있다. `stop`은 사용자 종료, 재생 완료, 시스템 정리처럼 의미가 다른 종료를 구분하기 위해 `PlayerStopReason`을 받는다.
 
 이 protocol을 채택하는 구현체는 두 개가 있다. `AVPlayerAdapter`와 `KollusPlayerAdapter`. 미래에는 `BrightCovePlayerAdapter`나 `JWPlayerAdapter`가 추가될 수도 있다. 어느 쪽이든 도메인 코드(`PlayerCore`, ViewModel)는 그 차이를 모른다.
 

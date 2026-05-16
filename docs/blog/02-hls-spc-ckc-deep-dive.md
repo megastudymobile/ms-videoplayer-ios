@@ -291,7 +291,7 @@ flowchart TB
 
 이 모든 일을 디바이스 어딘가에 저장해 두고 추적해야 한다. PallyCon SDK가 자기 안에 **Core Data**로 라이선스 DB를 운영하는 이유가 정확히 이것이다. `ContentKey`, `License`, `Customer` 같은 NSManagedObject를 가진다. 우리 회사가 PallyCon SDK를 까 보면 그 안에 `PallyConFPSModel.momd`라는 데이터 모델 파일이 보인다. 우리가 직접 만들 수도 있지만, 만들 일이 없는 게 다행이다. 라이선스 한 건의 만료/갱신/폐기 흐름을 안정적으로 구현하는 데 보통 사람-월 단위가 든다.
 
-이 모든 디테일이 PallyCon 안에서 일어나고, Kollus는 PallyCon을 더 추상화하고, 우리 모듈은 Kollus를 또 한 번 가린다. 우리 앱은 그냥 `KollusPlayerModuleFactory().makeModule()` 한 줄로 받는다. 그 안에 라이선스 DB, 만료 처리, persistent content key 갱신이 다 들어 있다. 추상화 위에 추상화가 쌓이지만, 매 층마다 그럴 만한 이유가 있다.
+이 모든 디테일이 PallyCon 안에서 일어나고, Kollus는 PallyCon을 더 추상화하고, 우리 모듈은 Kollus를 또 한 번 가린다. 우리 앱은 `KollusEnvironment`를 구성한 뒤 `KollusPlayerModuleFactory(environment:observer:diagnostics:)`에서 `makeModule()`을 호출한다. 그 factory 안에서 단일 `KollusSessionBootstrapper`와 `KollusDownloadCenter`가 공유되고, 라이선스 DB, 만료 처리, persistent content key 갱신 같은 세부 흐름은 SDK 내부로 들어간다. 추상화 위에 추상화가 쌓이지만, 매 층마다 그럴 만한 이유가 있다.
 
 ---
 

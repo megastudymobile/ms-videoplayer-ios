@@ -268,7 +268,8 @@ flowchart TB
 // 단순화한 모양 (실제 코드보다 짧게 보여 줌)
 actor KollusPlayerAdapter: PlayerPlaybackEngine {
     private var playerView: KollusPlayerView?
-    private let storage: KollusStorage
+    private let bootstrapper: KollusSessionBootstrapper
+    private let environment: KollusEnvironment
     private let playerType: KollusPlayerType
 
     func prepare(source: PlaybackSource) async throws {
@@ -276,16 +277,25 @@ actor KollusPlayerAdapter: PlayerPlaybackEngine {
             throw PlayerError.engineError("Kollus 엔진은 MCK만 지원합니다.")
         }
 
+        let storage = try await bootstrapper.resolveStorage()
+        guard let storageAdapter = storage as? KollusStorageAdapter else {
+            throw PlayerError.engineError("Kollus storage가 준비되지 않았습니다.")
+        }
+
         let view = KollusPlayerView(mediaContentKey: mediaContentKey)
-        view?.storage = storage
+        view?.storage = storageAdapter.storage
+        view?.fpsCertURL = environment.drm.fpsCertificateURL?.absoluteString
+        view?.fpsDrmURL = environment.drm.fpsDRMURL?.absoluteString
         try view?.prepareToPlay(withMode: playerType)
         playerView = view
 
         // 실제 코드는 여기서 PlaybackState와 PlayerEvent로 변환한다.
     }
 
-    func play() { Task { try await playerView?.play() } }
-    func pause() { Task { try await playerView?.pause() } }
+    func play() async throws { try playerView?.play() }
+    func pause() async throws { try playerView?.pause() }
+    func seek(to time: TimeInterval) async throws { playerView?.currentPlaybackTime = max(0, time) }
+    func stop(reason: PlayerStopReason) async throws { try playerView?.stop() }
     // …
 }
 ```
