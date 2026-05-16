@@ -314,5 +314,6 @@ server-generated 정책과 client policy가 다르면 SDK callback error 또는 
 
 ## 관련 로컬 문서
 
+- [Kollus SDK Implementation Guide](./kollus-sdk-implementation-guide.md)
 - [Kollus SDK Packaging](./kollus-sdk-packaging.md)
 - [README - Kollus SDK 운영 규칙](../README.md#kollus-sdk-운영-규칙)
