@@ -212,6 +212,40 @@ try await module.startPlaybackUseCase.execute(
 try await module.controlPlaybackUseCase.execute(command: .play)
 ```
 
+#### `KollusEnvironment` 파라미터
+
+`KollusEnvironment`는 Kollus SDK bootstrap, storage/download 설정, 플레이어 뷰 옵션, DRM/채팅/진단 hook을 한 곳에 모으는 host 앱 주입 값입니다. 필수 값은 `validate()`에서 검증되며, `applicationKey`와 `applicationBundleID`는 비어 있으면 안 되고 `applicationExpireDate`는 현재 시각보다 미래여야 합니다.
+
+| 파라미터 | 기본값 | 설명 |
+| --- | --- | --- |
+| `applicationKey` | 없음 | Kollus SDK storage에 주입되는 앱 인증 키입니다. 빈 문자열이면 `validate()`가 실패합니다. |
+| `applicationBundleID` | 없음 | Kollus SDK에 전달할 host 앱 bundle identifier입니다. 빈 문자열이면 `validate()`가 실패합니다. |
+| `applicationExpireDate` | 없음 | 앱 인증 키 만료 시각입니다. 현재 시각보다 과거이거나 같으면 `validate()`가 실패합니다. |
+| `keychainGroup` | `nil` | Kollus SDK storage가 사용할 keychain access group입니다. 앱 그룹/확장 공유가 필요할 때만 지정합니다. |
+| `storagePath` | `nil` | Kollus 다운로드와 캐시가 저장될 디렉터리 URL입니다. 값이 있으면 실제 존재하는 디렉터리여야 합니다. |
+| `cacheSizeMB` | `nil` | Kollus storage 캐시 한도(MB)입니다. 값이 있으면 1 이상이어야 합니다. |
+| `backgroundDownload` | `false` | Kollus storage의 백그라운드 다운로드 사용 여부입니다. |
+| `networkTimeoutSeconds` | `nil` | Kollus storage 네트워크 timeout(초)입니다. 값이 있을 때만 SDK에 적용됩니다. |
+| `networkRetry` | `nil` | 네트워크 timeout 설정과 함께 전달되는 retry 횟수입니다. `networkTimeoutSeconds`가 있을 때만 적용되며, 생략하면 `0`으로 전달됩니다. |
+| `aiPlaybackRateEnabled` | `false` | Kollus player view의 AI 배속 기능 사용 여부입니다. |
+| `hardwareDecoderPreferred` | `true` | Kollus player view decoder 설정입니다. `true`면 hardware decoder 선호 값으로 전달합니다. |
+| `customSkinJSON` | `nil` | Kollus player view에 전달할 custom skin JSON 문자열입니다. |
+| `pauseOnForeground` | `false` | 앱이 foreground로 전환될 때 Kollus player view가 일시정지할지 결정합니다. |
+| `audioBackgroundPlayPolicy` | `false` | Kollus player view의 백그라운드 오디오 재생 정책입니다. `true`면 모듈 capability에 `.continuesWithoutSurface`도 추가됩니다. |
+| `drm` | 빈 `KollusDRMConfiguration()` | FairPlay 인증서 URL, DRM URL, SDK에 전달할 추가 DRM 파라미터를 담습니다. 평문 컨텐츠만 재생한다면 기본값을 사용할 수 있습니다. |
+| `chat` | `nil` | 라이브 채팅에 필요한 room/user/server profile입니다. 라이브 채팅을 사용하지 않으면 생략합니다. |
+| `extraDrmParameters` | `[:]` | host 앱이 별도 DRM 확장 값을 보존해야 할 때 쓰는 environment-level 슬롯입니다. 현재 SDK player view로 직접 주입되는 값은 `drm.extraParameters`입니다. |
+| `observer` | `nil` | Kollus storage/download/player 이벤트를 host 앱으로 전달할 observer입니다. |
+| `diagnostics` | `nil` | SDK bootstrap, playback, download 흐름의 진단 로그를 받을 sink입니다. |
+
+`drm`에는 FairPlay 값을 아래처럼 분리해서 넣습니다.
+
+| `KollusDRMConfiguration` 파라미터 | 설명 |
+| --- | --- |
+| `fpsCertificateURL` | Kollus player view의 `fpsCertURL`로 전달되는 FairPlay 인증서 URL입니다. |
+| `fpsDRMURL` | Kollus player view의 `fpsDrmURL`로 전달되는 FairPlay DRM URL입니다. |
+| `extraParameters` | JSON 문자열로 직렬화되어 Kollus player view의 `extraDrmParam`으로 전달되는 추가 DRM 파라미터입니다. |
+
 같은 `KollusPlayerModuleFactory`에서 만든 모듈들은 하나의 `KollusSessionBootstrapper`와 `KollusDownloadCenter`를 공유합니다. 다운로드 목록이나 오프라인 스냅샷은 `factory.downloads`에서 접근합니다.
 
 ```swift
