@@ -14,6 +14,7 @@ final class RootViewController: UIViewController {
     private let urlTextField = UITextField()
     private let playButton = UIButton(type: .system)
     private let samplesStackView = UIStackView()
+    private let kollusButton = UIButton(type: .system)
     private let statusLabel = UILabel()
 
     private static let sampleURLs: [(title: String, url: String)] = [
@@ -72,10 +73,19 @@ final class RootViewController: UIViewController {
             samplesStackView.addArrangedSubview(button)
         }
 
+        var kollusConfiguration = UIButton.Configuration.tinted()
+        kollusConfiguration.title = "Kollus 데모"
+        kollusConfiguration.subtitle = "mediaContentKey 기반 Kollus 엔진 데모"
+        kollusConfiguration.cornerStyle = .medium
+        kollusButton.configuration = kollusConfiguration
+        kollusButton.contentHorizontalAlignment = .leading
+        kollusButton.addTarget(self, action: #selector(didTapKollus), for: .touchUpInside)
+
         let rootStack = UIStackView(arrangedSubviews: [
             urlTextField,
             playButton,
             samplesStackView,
+            kollusButton,
             statusLabel
         ])
         rootStack.axis = .vertical
@@ -90,6 +100,12 @@ final class RootViewController: UIViewController {
             rootStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             rootStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
+    }
+
+    @objc
+    private func didTapKollus() {
+        let configVC = KollusConfigViewController()
+        navigationController?.pushViewController(configVC, animated: true)
     }
 
     @objc

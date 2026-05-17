@@ -46,10 +46,12 @@ let project = Project(
                 ]
             ]),
             sources: ["Example/Sources/**"],
+            resources: ["Example/Resources/**"],
             dependencies: [
                 .package(product: "VideoPlayerCore"),
                 .package(product: "VideoPlayerShellSupport"),
-                .package(product: "VideoPlayerEngineNative")
+                .package(product: "VideoPlayerEngineNative"),
+                .package(product: "VideoPlayerEngineKollus")
             ]
         )
     ]

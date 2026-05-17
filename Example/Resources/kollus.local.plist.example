@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/propertylist-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>applicationKey</key>
+	<string>YOUR_APPLICATION_KEY_HERE</string>
+	<key>applicationBundleID</key>
+	<string>com.megastudyedu.videoplayer.example</string>
+	<key>applicationExpireDate</key>
+	<date>2099-12-31T00:00:00Z</date>
+	<key>mediaContentKey</key>
+	<string>YOUR_MEDIA_CONTENT_KEY_HERE</string>
+</dict>
+</plist>

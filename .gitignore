@@ -12,3 +12,6 @@ mitm_mcp_traffic.db
 *.xcworkspace
 Derived/
 .tuist-version
+
+# Kollus 데모 로컬 자격증명 (커밋 금지)
+Example/Resources/kollus.local.plist
