@@ -50,13 +50,46 @@ enum KollusEnvironmentLoader {
             throw LoadError.malformed("applicationExpireDate 누락")
         }
         let mediaContentKey = (dictionary["mediaContentKey"] as? String) ?? ""
+        let drm = Self.makeDRMConfiguration(from: dictionary)
+        let chat = Self.makeLiveChatProfile(from: dictionary)
 
         let environment = KollusEnvironment(
             applicationKey: applicationKey,
             applicationBundleID: applicationBundleID,
-            applicationExpireDate: applicationExpireDate
+            applicationExpireDate: applicationExpireDate,
+            drm: drm,
+            chat: chat
         )
 
         return DemoConfiguration(environment: environment, mediaContentKey: mediaContentKey)
+    }
+
+    private static func makeDRMConfiguration(from dictionary: [String: Any]) -> KollusDRMConfiguration {
+        let certURL = (dictionary["fpsCertificateURL"] as? String)
+            .flatMap { $0.isEmpty ? nil : URL(string: $0) }
+        let drmURL = (dictionary["fpsDRMURL"] as? String)
+            .flatMap { $0.isEmpty ? nil : URL(string: $0) }
+        return KollusDRMConfiguration(
+            fpsCertificateURL: certURL,
+            fpsDRMURL: drmURL
+        )
+    }
+
+    private static func makeLiveChatProfile(from dictionary: [String: Any]) -> KollusLiveChatProfile? {
+        guard
+            let roomId = dictionary["liveChatRoomId"] as? String, !roomId.isEmpty,
+            let serverString = dictionary["liveChatServer"] as? String, !serverString.isEmpty,
+            let server = URL(string: serverString),
+            let userId = dictionary["liveChatUserId"] as? String, !userId.isEmpty,
+            let nickName = dictionary["liveChatNickName"] as? String, !nickName.isEmpty
+        else {
+            return nil
+        }
+        return KollusLiveChatProfile(
+            roomId: roomId,
+            chattingServer: server,
+            userId: userId,
+            nickName: nickName
+        )
     }
 }

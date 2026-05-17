@@ -13,10 +13,14 @@ final class KollusConfigViewController: UIViewController {
     private let mediaContentKeyField = UITextField()
     private let playButton = UIButton(type: .system)
     private let downloadListButton = UIButton(type: .system)
+    private let observerLogButton = UIButton(type: .system)
     private let detailsLabel = UILabel()
 
     private var loadedEnvironment: KollusEnvironment?
     private var moduleFactory: KollusPlayerModuleFactory?
+    private let observerLog = KollusObserverLog()
+    private lazy var observerRecorder = KollusObserverRecorder(log: observerLog)
+    private lazy var diagnosticsRecorder = KollusDiagnosticsRecorder(log: observerLog)
 
     private func ensureFactory() -> KollusPlayerModuleFactory? {
         guard let environment = loadedEnvironment else {
@@ -25,8 +29,18 @@ final class KollusConfigViewController: UIViewController {
         if let existing = moduleFactory {
             return existing
         }
-        let factory = KollusPlayerModuleFactory(environment: environment)
+        let factory = KollusPlayerModuleFactory(
+            environment: environment,
+            observer: observerRecorder,
+            diagnostics: diagnosticsRecorder
+        )
         moduleFactory = factory
+        observerLog.append(.init(
+            timestamp: Date(),
+            kind: .marker,
+            title: "KollusPlayerModuleFactory 생성됨",
+            detail: "bundle=\(environment.applicationBundleID), chat=\(environment.chat != nil ? "on" : "off"), fpsCert=\(environment.drm.fpsCertificateURL?.absoluteString ?? "nil"), fpsDRM=\(environment.drm.fpsDRMURL?.absoluteString ?? "nil")"
+        ))
         return factory
     }
 
@@ -59,6 +73,12 @@ final class KollusConfigViewController: UIViewController {
         downloadListButton.configuration = downloadConfiguration
         downloadListButton.addTarget(self, action: #selector(didTapDownloadList), for: .touchUpInside)
 
+        var observerConfiguration = UIButton.Configuration.tinted()
+        observerConfiguration.title = "Observer 로그"
+        observerConfiguration.cornerStyle = .medium
+        observerLogButton.configuration = observerConfiguration
+        observerLogButton.addTarget(self, action: #selector(didTapObserverLog), for: .touchUpInside)
+
         detailsLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         detailsLabel.textColor = .secondaryLabel
         detailsLabel.numberOfLines = 0
@@ -68,6 +88,7 @@ final class KollusConfigViewController: UIViewController {
             mediaContentKeyField,
             playButton,
             downloadListButton,
+            observerLogButton,
             detailsLabel
         ])
         stack.axis = .vertical
@@ -89,20 +110,34 @@ final class KollusConfigViewController: UIViewController {
             statusLabel.text = "Kollus 환경 로드 성공"
             statusLabel.textColor = .label
             mediaContentKeyField.text = configuration.mediaContentKey
+            let env = configuration.environment
             detailsLabel.text = """
-            bundle: \(configuration.environment.applicationBundleID)
-            expire: \(configuration.environment.applicationExpireDate)
+            bundle: \(env.applicationBundleID)
+            expire: \(env.applicationExpireDate)
+            fps cert: \(env.drm.fpsCertificateURL?.absoluteString ?? "nil")
+            fps drm:  \(env.drm.fpsDRMURL?.absoluteString ?? "nil")
+            chat:     \(env.chat.map { "roomId=\($0.roomId) user=\($0.userId)" } ?? "off")
             """
             playButton.isEnabled = true
             downloadListButton.isEnabled = true
+            observerLogButton.isEnabled = true
         } catch {
             loadedEnvironment = nil
             statusLabel.text = "Kollus 환경 로드 실패\n\(error.localizedDescription)"
             statusLabel.textColor = .systemRed
             playButton.isEnabled = false
             downloadListButton.isEnabled = false
+            observerLogButton.isEnabled = false
             detailsLabel.text = "Example/Resources/kollus.local.plist 가 필요합니다. .example 템플릿을 복제하고 자격증명을 채운 뒤 tuist generate를 다시 실행하세요."
         }
+    }
+
+    @objc
+    private func didTapObserverLog() {
+        // factory 생성 전에도 marker는 볼 수 있도록 일단 push
+        _ = ensureFactory()
+        let vc = KollusObserverLogViewController(log: observerLog)
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     @objc
