@@ -1,5 +1,5 @@
 //
-//  HighPlayerShellViewController.swift
+//  AVPlayerShellViewController.swift
 //  VideoPlayerExample
 //
 //  Created by 모바일팀_정준영 on 2026/05/17.
@@ -10,7 +10,7 @@ import VideoPlayerCore
 import VideoPlayerShellSupport
 
 @MainActor
-public final class HighPlayerShellViewController: UIViewController {
+public final class AVPlayerShellViewController: UIViewController {
     private let playerModule: PlayerModule
     private let playbackSource: PlaybackSource
     private let featurePolicy: PlayerFeaturePolicy
@@ -26,8 +26,8 @@ public final class HighPlayerShellViewController: UIViewController {
         }
     )
 
-    private let surfaceView = HighPlayerRenderSurfaceView()
-    private let controlsView = HighPlayerControlsView()
+    private let surfaceView = AVPlayerRenderSurfaceView()
+    private let controlsView = AVPlayerControlsView()
     private let eventLabel = UILabel()
     private var hasStartedPlayback = false
     private var latestState = PlaybackState.idle
@@ -102,7 +102,7 @@ public final class HighPlayerShellViewController: UIViewController {
 
     private func configureUI() {
         view.backgroundColor = .systemBackground
-        title = "High Player"
+        title = "AV Player"
 
         controlsView.delegate = self
 
@@ -203,8 +203,8 @@ public final class HighPlayerShellViewController: UIViewController {
     }
 }
 
-extension HighPlayerShellViewController: HighPlayerControlsViewDelegate {
-    func highPlayerControlsViewDidTapPlayPause(_ view: HighPlayerControlsView) {
+extension AVPlayerShellViewController: AVPlayerControlsViewDelegate {
+    func avPlayerControlsViewDidTapPlayPause(_ view: AVPlayerControlsView) {
         Task { @MainActor [weak self] in
             guard let self else {
                 return
@@ -215,7 +215,7 @@ extension HighPlayerShellViewController: HighPlayerControlsViewDelegate {
         }
     }
 
-    func highPlayerControlsViewDidTapStop(_ view: HighPlayerControlsView) {
+    func avPlayerControlsViewDidTapStop(_ view: AVPlayerControlsView) {
         Task { @MainActor [weak self] in
             guard let self else {
                 return

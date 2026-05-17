@@ -134,20 +134,20 @@ final class RootViewController: UIViewController {
                 return
             }
 
-            let viewController = await self.makeHighShellViewController(source: .url(url))
+            let viewController = await self.makeAVPlayerShellViewController(source: .url(url))
             self.navigationController?.pushViewController(viewController, animated: true)
             self.statusLabel.text = "재생 시작: \(url.absoluteString)"
         }
     }
 
-    private func makeHighShellViewController(source: PlaybackSource) async -> HighPlayerShellViewController {
+    private func makeAVPlayerShellViewController(source: PlaybackSource) async -> AVPlayerShellViewController {
         let engine = AVPlayerAdapter()
         let module = await PlayerModuleWiring.makeModule(
             engine: engine,
             engineCapabilities: AVPlayerAdapter.capabilities
         )
 
-        return HighPlayerShellViewController(
+        return AVPlayerShellViewController(
             playerModule: module,
             playbackSource: source
         )

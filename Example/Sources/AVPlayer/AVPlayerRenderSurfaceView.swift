@@ -1,5 +1,5 @@
 //
-//  HighPlayerRenderSurfaceView.swift
+//  AVPlayerRenderSurfaceView.swift
 //  VideoPlayerExample
 //
 //  Created by 모바일팀_정준영 on 2026/05/17.
@@ -9,7 +9,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-final class HighPlayerRenderSurfaceView: UIView, PlayerRenderSurface {
+final class AVPlayerRenderSurfaceView: UIView, PlayerRenderSurface {
     var containerView: UIView {
         self
     }

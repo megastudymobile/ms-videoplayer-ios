@@ -1,5 +1,5 @@
 //
-//  HighPlayerControlsView.swift
+//  AVPlayerControlsView.swift
 //  VideoPlayerExample
 //
 //  Created by 모바일팀_정준영 on 2026/05/17.
@@ -9,13 +9,13 @@ import UIKit
 import VideoPlayerCore
 
 @MainActor
-protocol HighPlayerControlsViewDelegate: AnyObject {
-    func highPlayerControlsViewDidTapPlayPause(_ view: HighPlayerControlsView)
-    func highPlayerControlsViewDidTapStop(_ view: HighPlayerControlsView)
+protocol AVPlayerControlsViewDelegate: AnyObject {
+    func avPlayerControlsViewDidTapPlayPause(_ view: AVPlayerControlsView)
+    func avPlayerControlsViewDidTapStop(_ view: AVPlayerControlsView)
 }
 
-final class HighPlayerControlsView: UIView {
-    weak var delegate: HighPlayerControlsViewDelegate?
+final class AVPlayerControlsView: UIView {
+    weak var delegate: AVPlayerControlsViewDelegate?
 
     private let stateLabel = UILabel()
     private let timeLabel = UILabel()
@@ -112,12 +112,12 @@ final class HighPlayerControlsView: UIView {
 
     @objc
     private func didTapPlayPause() {
-        delegate?.highPlayerControlsViewDidTapPlayPause(self)
+        delegate?.avPlayerControlsViewDidTapPlayPause(self)
     }
 
     @objc
     private func didTapStop() {
-        delegate?.highPlayerControlsViewDidTapStop(self)
+        delegate?.avPlayerControlsViewDidTapStop(self)
     }
 
     private static func formatTime(currentTime: TimeInterval, duration: TimeInterval) -> String {
