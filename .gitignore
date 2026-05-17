@@ -6,3 +6,9 @@ firebase-debug.log
 mitm_mcp_traffic.db
 !Binaries/
 !Vendor/
+
+# Tuist 생성물
+*.xcodeproj
+*.xcworkspace
+Derived/
+.tuist-version
