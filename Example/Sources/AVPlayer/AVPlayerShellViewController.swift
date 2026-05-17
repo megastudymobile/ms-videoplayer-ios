@@ -4,9 +4,14 @@
 //
 //  Created by 모바일팀_정준영 on 2026/05/17.
 //
+//  Kollus 데모와 동일한 시각/구조 패턴(State + ViewModel + Controls).
+//  AVPlayerAdapter를 직접 다운캐스트해 seek / setPlaybackRate /
+//  setDisplayScaled 같은 엔진 전용 API를 노출한다.
+//
 
 import UIKit
 import VideoPlayerCore
+import VideoPlayerEngineNative
 import VideoPlayerShellSupport
 
 @MainActor
@@ -16,6 +21,11 @@ public final class AVPlayerShellViewController: UIViewController {
     private let featurePolicy: PlayerFeaturePolicy
     private let dismissalConditionOverride: (() -> Bool)?
     private let binder = PlayerStateBinder()
+    private let viewModel = AVPlayerStateViewModel()
+
+    private var avAdapter: AVPlayerAdapter? {
+        playerModule.engine as? AVPlayerAdapter
+    }
 
     private lazy var lifecycleCoordinator = PlayerLifecycleCoordinator(
         controlUseCase: playerModule.controlPlaybackUseCase,
@@ -30,7 +40,6 @@ public final class AVPlayerShellViewController: UIViewController {
     private let controlsView = AVPlayerControlsView()
     private let eventLabel = UILabel()
     private var hasStartedPlayback = false
-    private var latestState = PlaybackState.idle
 
     public init(
         playerModule: PlayerModule,
@@ -53,6 +62,7 @@ public final class AVPlayerShellViewController: UIViewController {
     public override func viewDidLoad() {
         super.viewDidLoad()
         configureUI()
+        controlsView.render(state: viewModel.state)
         bindState()
         bindRenderSurface()
         lifecycleCoordinator.start()
@@ -67,10 +77,7 @@ public final class AVPlayerShellViewController: UIViewController {
 
         hasStartedPlayback = true
         Task { @MainActor [weak self] in
-            guard let self else {
-                return
-            }
-
+            guard let self else { return }
             do {
                 try await self.playerModule.startPlaybackUseCase.execute(
                     source: self.playbackSource,
@@ -131,8 +138,8 @@ public final class AVPlayerShellViewController: UIViewController {
         binder.bind(
             observeUseCase: playerModule.observePlaybackStateUseCase,
             onState: { [weak self] state in
-                self?.latestState = state
-                self?.controlsView.render(state: state)
+                guard let self else { return }
+                self.controlsView.render(state: self.viewModel.apply(playbackState: state))
             },
             onEvent: { [weak self] event in
                 self?.handle(event: event)
@@ -170,26 +177,19 @@ public final class AVPlayerShellViewController: UIViewController {
              .nextEpisodeAvailable:
             break
         }
+        controlsView.render(state: viewModel.apply(event: event))
     }
 
     private func describe(status: PlaybackState.Status) -> String {
         switch status {
-        case .idle:
-            return "idle"
-        case .preparing:
-            return "preparing"
-        case .readyToPlay:
-            return "readyToPlay"
-        case .playing:
-            return "playing"
-        case .paused:
-            return "paused"
-        case .buffering:
-            return "buffering"
-        case .finished:
-            return "finished"
-        case .failed:
-            return "failed"
+        case .idle: return "idle"
+        case .preparing: return "preparing"
+        case .readyToPlay: return "readyToPlay"
+        case .playing: return "playing"
+        case .paused: return "paused"
+        case .buffering: return "buffering"
+        case .finished: return "finished"
+        case .failed: return "failed"
         }
     }
 
@@ -206,22 +206,49 @@ public final class AVPlayerShellViewController: UIViewController {
 extension AVPlayerShellViewController: AVPlayerControlsViewDelegate {
     func avPlayerControlsViewDidTapPlayPause(_ view: AVPlayerControlsView) {
         Task { @MainActor [weak self] in
-            guard let self else {
-                return
-            }
-
-            let command: PlaybackCommand = self.controlsView.isPlaying ? .pause : .play
+            guard let self else { return }
+            let command: PlaybackCommand = self.viewModel.state.playPauseTitle == "Pause" ? .pause : .play
             try? await self.playerModule.controlPlaybackUseCase.execute(command: command)
         }
     }
 
     func avPlayerControlsViewDidTapStop(_ view: AVPlayerControlsView) {
         Task { @MainActor [weak self] in
-            guard let self else {
-                return
-            }
-
+            guard let self else { return }
             try? await self.playerModule.controlPlaybackUseCase.execute(command: .stop)
+        }
+    }
+
+    func avPlayerControlsView(_ view: AVPlayerControlsView, didRequestSeekProgress progress: Double) {
+        Task { [weak self] in
+            guard let self, let adapter = self.avAdapter else { return }
+            let snapshot = await adapter.currentState
+            let target = snapshot.duration * progress
+            try? await adapter.seek(to: target)
+        }
+    }
+
+    func avPlayerControlsView(_ view: AVPlayerControlsView, didSelectPlaybackRate rate: Double) {
+        Task { @MainActor [weak self] in
+            guard let self, let adapter = self.avAdapter else { return }
+            try? await adapter.setPlaybackRate(rate)
+            self.controlsView.render(state: self.viewModel.setPlaybackRate(rate))
+        }
+    }
+
+    func avPlayerControlsView(_ view: AVPlayerControlsView, didSetDisplayScaled isScaled: Bool) {
+        Task { @MainActor [weak self] in
+            guard let self, let adapter = self.avAdapter else { return }
+            try? await adapter.setDisplayScaled(isScaled)
+            self.controlsView.render(state: self.viewModel.setDisplayScaled(isScaled))
+        }
+    }
+
+    func avPlayerControlsViewDidTapClose(_ view: AVPlayerControlsView) {
+        if let nav = navigationController, nav.viewControllers.first !== self {
+            nav.popViewController(animated: true)
+        } else {
+            dismiss(animated: true)
         }
     }
 }
