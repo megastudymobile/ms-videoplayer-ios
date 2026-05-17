@@ -12,9 +12,23 @@ final class KollusConfigViewController: UIViewController {
     private let statusLabel = UILabel()
     private let mediaContentKeyField = UITextField()
     private let playButton = UIButton(type: .system)
+    private let downloadListButton = UIButton(type: .system)
     private let detailsLabel = UILabel()
 
     private var loadedEnvironment: KollusEnvironment?
+    private var moduleFactory: KollusPlayerModuleFactory?
+
+    private func ensureFactory() -> KollusPlayerModuleFactory? {
+        guard let environment = loadedEnvironment else {
+            return nil
+        }
+        if let existing = moduleFactory {
+            return existing
+        }
+        let factory = KollusPlayerModuleFactory(environment: environment)
+        moduleFactory = factory
+        return factory
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,6 +53,12 @@ final class KollusConfigViewController: UIViewController {
         playButton.configuration = playConfiguration
         playButton.addTarget(self, action: #selector(didTapPlay), for: .touchUpInside)
 
+        var downloadConfiguration = UIButton.Configuration.tinted()
+        downloadConfiguration.title = "Kollus 다운로드 목록"
+        downloadConfiguration.cornerStyle = .medium
+        downloadListButton.configuration = downloadConfiguration
+        downloadListButton.addTarget(self, action: #selector(didTapDownloadList), for: .touchUpInside)
+
         detailsLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         detailsLabel.textColor = .secondaryLabel
         detailsLabel.numberOfLines = 0
@@ -47,6 +67,7 @@ final class KollusConfigViewController: UIViewController {
             statusLabel,
             mediaContentKeyField,
             playButton,
+            downloadListButton,
             detailsLabel
         ])
         stack.axis = .vertical
@@ -73,18 +94,20 @@ final class KollusConfigViewController: UIViewController {
             expire: \(configuration.environment.applicationExpireDate)
             """
             playButton.isEnabled = true
+            downloadListButton.isEnabled = true
         } catch {
             loadedEnvironment = nil
             statusLabel.text = "Kollus 환경 로드 실패\n\(error.localizedDescription)"
             statusLabel.textColor = .systemRed
             playButton.isEnabled = false
+            downloadListButton.isEnabled = false
             detailsLabel.text = "Example/Resources/kollus.local.plist 가 필요합니다. .example 템플릿을 복제하고 자격증명을 채운 뒤 tuist generate를 다시 실행하세요."
         }
     }
 
     @objc
     private func didTapPlay() {
-        guard let environment = loadedEnvironment else {
+        guard let factory = ensureFactory() else {
             return
         }
         let mediaContentKey = (mediaContentKeyField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -95,9 +118,26 @@ final class KollusConfigViewController: UIViewController {
         }
 
         let player = KollusPlayerShellViewController(
-            environment: environment,
+            moduleFactory: factory,
             mediaContentKey: mediaContentKey
         )
         navigationController?.pushViewController(player, animated: true)
+    }
+
+    @objc
+    private func didTapDownloadList() {
+        guard let factory = ensureFactory() else {
+            return
+        }
+        guard let downloads = factory.downloads else {
+            statusLabel.text = "다운로드 센터를 사용할 수 없습니다 (storagePath 미설정)."
+            statusLabel.textColor = .systemRed
+            return
+        }
+        let vc = KollusDownloadListViewController(
+            downloads: downloads,
+            initialMediaContentKey: (mediaContentKeyField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        navigationController?.pushViewController(vc, animated: true)
     }
 }

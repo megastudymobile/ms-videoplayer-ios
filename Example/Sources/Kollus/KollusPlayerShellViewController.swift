@@ -15,7 +15,7 @@ import VideoPlayerShellSupport
 
 @MainActor
 final class KollusPlayerShellViewController: UIViewController {
-    private let environment: KollusEnvironment
+    private let moduleFactory: KollusPlayerModuleFactory
     private let mediaContentKey: String
     private let featurePolicy: PlayerFeaturePolicy = .default
 
@@ -30,8 +30,8 @@ final class KollusPlayerShellViewController: UIViewController {
     private var lifecycleCoordinator: PlayerLifecycleCoordinator?
     private var hasStartedPlayback = false
 
-    init(environment: KollusEnvironment, mediaContentKey: String) {
-        self.environment = environment
+    init(moduleFactory: KollusPlayerModuleFactory, mediaContentKey: String) {
+        self.moduleFactory = moduleFactory
         self.mediaContentKey = mediaContentKey
         super.init(nibName: nil, bundle: nil)
     }
@@ -111,8 +111,7 @@ final class KollusPlayerShellViewController: UIViewController {
     }
 
     private func setupModule() async {
-        let factory = KollusPlayerModuleFactory(environment: environment)
-        let module = await factory.makeModule()
+        let module = await moduleFactory.makeModule()
         playerModule = module
         kollusAdapter = module.engine as? KollusPlayerAdapter
 
