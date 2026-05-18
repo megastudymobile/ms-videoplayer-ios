@@ -477,6 +477,9 @@ public actor KollusPlayerAdapter:
             // 2) storage / DRM 설정 주입 (KollusStorageAdapter는 @MainActor — 본 블록 안에서 안전 접근)
             playerView.storage = storageAdapter.storage
             playerView.debug = false
+            if let proxyPort = environment.proxyPort, proxyPort > 0 {
+                playerView.proxyPort = UInt(proxyPort)
+            }
             playerView.scalingMode = Self.scalingMode(isScaled: isDisplayScaled)
             if let cert = environment.drm.fpsCertificateURL {
                 playerView.fpsCertURL = cert.absoluteString
@@ -536,6 +539,9 @@ public actor KollusPlayerAdapter:
             }
             playerView.storage = storage
             playerView.debug = false
+            if let proxyPort = environment.proxyPort, proxyPort > 0 {
+                playerView.proxyPort = UInt(proxyPort)
+            }
             playerView.scalingMode = Self.scalingMode(isScaled: isDisplayScaled)
 
             if let boundSurface {

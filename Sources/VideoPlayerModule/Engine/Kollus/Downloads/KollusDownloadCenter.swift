@@ -101,6 +101,11 @@ public actor KollusDownloadCenter {
         await storage.setNetworkTimeOut(seconds: seconds, retry: retry)
     }
 
+    public func playerID() async throws -> String? {
+        let storage = try await ensureStorage()
+        return await storage.applicationDeviceID
+    }
+
     // MARK: - Snapshot
 
     public func currentSnapshots() async throws -> [KollusContentSnapshot] {

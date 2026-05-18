@@ -43,6 +43,15 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
         set { storage.keychainGroup = newValue ?? "" }
     }
 
+    var applicationDeviceID: String? {
+        storage.applicationDeviceID
+    }
+
+    var serverPort: Int? {
+        get { storage.serverPort }
+        set { storage.serverPort = newValue ?? 0 }
+    }
+
     func setKollusPath(_ path: String) {
         _ = storage.setKollusPath(path)
     }

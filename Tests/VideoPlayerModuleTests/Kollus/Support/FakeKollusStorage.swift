@@ -17,6 +17,8 @@ final class FakeKollusStorage: KollusStorageProtocol {
     var applicationBundleID: String?
     var applicationExpireDate: Date?
     var keychainGroup: String?
+    var applicationDeviceID: String?
+    var serverPort: Int?
 
     var kollusPath: String?
     var cacheSizeMB: Int?

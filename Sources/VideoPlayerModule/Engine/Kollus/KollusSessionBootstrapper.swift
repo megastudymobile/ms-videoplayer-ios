@@ -79,6 +79,7 @@ public actor KollusSessionBootstrapper {
         storage.applicationBundleID = environment.applicationBundleID
         storage.applicationExpireDate = environment.applicationExpireDate
         storage.keychainGroup = environment.keychainGroup
+        storage.serverPort = environment.proxyPort
 
         if let size = environment.cacheSizeMB {
             storage.setCacheSize(megabytes: size)

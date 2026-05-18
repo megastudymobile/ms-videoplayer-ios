@@ -78,6 +78,19 @@ final class KollusEnvironmentValidationTests: XCTestCase {
         }
     }
 
+    func test_validate_throwsInvalidProxyPort() {
+        let env = KollusEnvironment(
+            applicationKey: "valid-key",
+            applicationBundleID: "com.example.app",
+            applicationExpireDate: future,
+            proxyPort: 0
+        )
+
+        XCTAssertThrowsError(try env.validate()) { error in
+            XCTAssertEqual(error as? KollusEnvironmentError, .invalidProxyPort(0))
+        }
+    }
+
     func test_validate_throwsInvalidStoragePath() {
         let bogus = URL(fileURLWithPath: "/nonexistent/path/\(UUID().uuidString)")
         let env = KollusEnvironment(

@@ -16,6 +16,7 @@ public struct KollusEnvironment: Sendable {
 
     public let storagePath: URL?
     public let cacheSizeMB: Int?
+    public let proxyPort: Int?
     public let backgroundDownload: Bool
     public let networkTimeoutSeconds: Int?
     public let networkRetry: Int?
@@ -40,6 +41,7 @@ public struct KollusEnvironment: Sendable {
         keychainGroup: String? = nil,
         storagePath: URL? = nil,
         cacheSizeMB: Int? = nil,
+        proxyPort: Int? = nil,
         backgroundDownload: Bool = false,
         networkTimeoutSeconds: Int? = nil,
         networkRetry: Int? = nil,
@@ -60,6 +62,7 @@ public struct KollusEnvironment: Sendable {
         self.keychainGroup = keychainGroup
         self.storagePath = storagePath
         self.cacheSizeMB = cacheSizeMB
+        self.proxyPort = proxyPort
         self.backgroundDownload = backgroundDownload
         self.networkTimeoutSeconds = networkTimeoutSeconds
         self.networkRetry = networkRetry
@@ -88,6 +91,9 @@ public struct KollusEnvironment: Sendable {
         if let cacheSizeMB, cacheSizeMB <= 0 {
             throw KollusEnvironmentError.invalidCacheSize(cacheSizeMB)
         }
+        if let proxyPort, proxyPort <= 0 {
+            throw KollusEnvironmentError.invalidProxyPort(proxyPort)
+        }
         if let storagePath {
             var isDirectory: ObjCBool = false
             let exists = FileManager.default.fileExists(atPath: storagePath.path, isDirectory: &isDirectory)
@@ -103,5 +109,6 @@ public enum KollusEnvironmentError: Error, Equatable, Sendable {
     case missingBundleID
     case expiredApplicationKey(expireDate: Date, now: Date)
     case invalidCacheSize(Int)
+    case invalidProxyPort(Int)
     case invalidStoragePath(URL)
 }

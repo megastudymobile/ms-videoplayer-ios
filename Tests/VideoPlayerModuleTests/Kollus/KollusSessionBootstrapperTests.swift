@@ -19,6 +19,7 @@ final class KollusSessionBootstrapperTests: XCTestCase {
     private func makeEnvironment(
         applicationKey: String = "valid-key",
         cacheSizeMB: Int? = 128,
+        proxyPort: Int? = 7501,
         backgroundDownload: Bool = true,
         networkTimeoutSeconds: Int? = 5
     ) -> KollusEnvironment {
@@ -27,6 +28,7 @@ final class KollusSessionBootstrapperTests: XCTestCase {
             applicationBundleID: "com.example.app",
             applicationExpireDate: validExpire,
             cacheSizeMB: cacheSizeMB,
+            proxyPort: proxyPort,
             backgroundDownload: backgroundDownload,
             networkTimeoutSeconds: networkTimeoutSeconds,
             networkRetry: 3
@@ -47,6 +49,7 @@ final class KollusSessionBootstrapperTests: XCTestCase {
         XCTAssertEqual(storage.applicationKey, "valid-key")
         XCTAssertEqual(storage.applicationBundleID, "com.example.app")
         XCTAssertEqual(storage.cacheSizeMB, 128)
+        XCTAssertEqual(storage.serverPort, 7501)
         XCTAssertTrue(storage.backgroundDownload)
         XCTAssertEqual(storage.networkTimeOut, 5)
         XCTAssertEqual(storage.networkRetry, 3)

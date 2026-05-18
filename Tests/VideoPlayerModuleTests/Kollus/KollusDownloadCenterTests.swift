@@ -131,6 +131,17 @@ final class KollusDownloadCenterTests: XCTestCase {
         XCTAssertEqual(storage.sendStoredLmsInvocationCount, 1)
     }
 
+    func test_playerID_returnsBootstrappedStorageDeviceID() async throws {
+        let storage = FakeKollusStorage()
+        storage.applicationDeviceID = "player-123"
+        let (center, _) = makeCenter(storage: storage)
+
+        let playerID = try await center.playerID()
+
+        XCTAssertEqual(playerID, "player-123")
+        XCTAssertEqual(storage.startStorageInvocationCount, 1)
+    }
+
     // MARK: - snapshot stream
 
     func test_contents_stream_yieldsOnStorageDelegateCallback() async throws {

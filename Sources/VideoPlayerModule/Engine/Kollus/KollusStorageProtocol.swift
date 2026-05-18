@@ -31,6 +31,8 @@ protocol KollusStorageProtocol: AnyObject {
     var applicationBundleID: String? { get set }
     var applicationExpireDate: Date? { get set }
     var keychainGroup: String? { get set }
+    var applicationDeviceID: String? { get }
+    var serverPort: Int? { get set }
 
     func setKollusPath(_ path: String)
     func setCacheSize(megabytes: Int)
