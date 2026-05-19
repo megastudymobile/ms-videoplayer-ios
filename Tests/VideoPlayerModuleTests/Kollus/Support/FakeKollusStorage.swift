@@ -27,6 +27,7 @@ final class FakeKollusStorage: KollusStorageProtocol {
     var networkRetry: Int?
     var startStorageInvocationCount = 0
     var startStorageError: Error?
+    var callOrder: [String] = []
 
     var loadContentURLResults: [String: Result<String, Error>] = [:]
     var checkContentURLResults: [String: String?] = [:]
@@ -49,19 +50,23 @@ final class FakeKollusStorage: KollusStorageProtocol {
     }
 
     func setCacheSize(megabytes: Int) {
+        callOrder.append("setCacheSize")
         cacheSizeMB = megabytes
     }
 
     func setBackgroundDownload(_ enabled: Bool) {
+        callOrder.append("setBackgroundDownload")
         backgroundDownload = enabled
     }
 
     func setNetworkTimeOut(seconds: Int, retry: Int) {
+        callOrder.append("setNetworkTimeOut")
         networkTimeOut = seconds
         networkRetry = retry
     }
 
     func startStorage() throws {
+        callOrder.append("startStorage")
         startStorageInvocationCount += 1
         if let startStorageError {
             throw startStorageError

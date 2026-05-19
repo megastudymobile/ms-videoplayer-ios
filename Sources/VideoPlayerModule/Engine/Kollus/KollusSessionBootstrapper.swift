@@ -78,17 +78,8 @@ public actor KollusSessionBootstrapper {
         storage.applicationKey = environment.applicationKey
         storage.applicationBundleID = environment.applicationBundleID
         storage.applicationExpireDate = environment.applicationExpireDate
-        storage.keychainGroup = environment.keychainGroup
-        storage.serverPort = environment.proxyPort
-
-        if let size = environment.cacheSizeMB {
-            storage.setCacheSize(megabytes: size)
-        }
-
-        storage.setBackgroundDownload(environment.backgroundDownload)
-
-        if let seconds = environment.networkTimeoutSeconds {
-            storage.setNetworkTimeOut(seconds: seconds, retry: environment.networkRetry ?? 0)
+        if let keychainGroup = environment.keychainGroup, keychainGroup.isEmpty == false {
+            storage.keychainGroup = keychainGroup
         }
 
         do {
@@ -96,6 +87,16 @@ public actor KollusSessionBootstrapper {
         } catch {
             throw PlayerError.engineError("KollusStorage startStorage 실패: \(error.localizedDescription)")
         }
+
+        if let seconds = environment.networkTimeoutSeconds {
+            storage.setNetworkTimeOut(seconds: seconds, retry: environment.networkRetry ?? 0)
+        }
+
+        if let size = environment.cacheSizeMB {
+            storage.setCacheSize(megabytes: size)
+        }
+
+        storage.setBackgroundDownload(environment.backgroundDownload)
 
         return storage
     }

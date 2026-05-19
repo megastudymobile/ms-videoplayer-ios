@@ -539,7 +539,7 @@ public actor KollusPlayerAdapter:
             }
             playerView.storage = storage
             playerView.debug = false
-            if let proxyPort = environment.proxyPort, proxyPort > 0 {
+            if let proxyPort = environment?.proxyPort, proxyPort > 0 {
                 playerView.proxyPort = UInt(proxyPort)
             }
             playerView.scalingMode = Self.scalingMode(isScaled: isDisplayScaled)

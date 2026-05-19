@@ -15,12 +15,21 @@ import VideoPlayerCore
 @MainActor
 final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurrency KollusStorageDelegate {
     let storage: KollusStorage
-    weak var storageDelegate: KollusStorageEventReceiving?
+    weak var storageDelegate: KollusStorageEventReceiving? {
+        didSet {
+            storage.delegate = storageDelegate == nil ? nil : self
+        }
+    }
 
     init(storage: KollusStorage) {
         self.storage = storage
         super.init()
-        self.storage.delegate = self
+    }
+
+    deinit {
+        if storage.delegate === self {
+            storage.delegate = nil
+        }
     }
 
     var applicationKey: String? {

@@ -49,10 +49,14 @@ final class KollusSessionBootstrapperTests: XCTestCase {
         XCTAssertEqual(storage.applicationKey, "valid-key")
         XCTAssertEqual(storage.applicationBundleID, "com.example.app")
         XCTAssertEqual(storage.cacheSizeMB, 128)
-        XCTAssertEqual(storage.serverPort, 7501)
+        XCTAssertNil(storage.serverPort)
         XCTAssertTrue(storage.backgroundDownload)
         XCTAssertEqual(storage.networkTimeOut, 5)
         XCTAssertEqual(storage.networkRetry, 3)
+        XCTAssertEqual(
+            storage.callOrder,
+            ["startStorage", "setNetworkTimeOut", "setCacheSize", "setBackgroundDownload"]
+        )
     }
 
     @MainActor
