@@ -54,6 +54,7 @@ public actor KollusPlayerAdapter:
     private var currentZoom: CGFloat = 0
     private var hasEmittedNextEpisode: Bool = false
     private var isPiPRunning: Bool = false
+    private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
 
     // MARK: - Initializers
 
@@ -511,15 +512,38 @@ public actor KollusPlayerAdapter:
             self.bridge = bridge
         }
 
-        // 신규 path에서는 상태 전이를 SDK delegate(prepareToPlayCompleted)에 의존.
+        // 신규 path에서는 상태 전이를 SDK delegate(prepareToPlayCompleted)에 의존한다.
+        // prepare(source:) 자체도 delegate 완료까지 반환하지 않아야 PlayerCore autoplay가
+        // 레거시와 동일하게 준비 완료 이후에 play를 호출한다.
         transition(to: state.updating(status: .preparing, isBuffering: false))
 
-        try await MainActor.run {
-            guard let playerView else {
-                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                Task { [weak self] in
+                    guard let self else {
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+
+                    await self.installPrepareContinuation(continuation)
+
+                    do {
+                        try await MainActor.run {
+                            guard let playerView else {
+                                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+                            }
+                            // 4) prepareToPlay 호출 — 이후 SDK가 prepareToPlayWithError delegate 호출
+                            try playerView.prepareToPlay(withMode: playerType)
+                        }
+                    } catch {
+                        await self.completePendingPrepare(with: .failure(error))
+                    }
+                }
             }
-            // 4) prepareToPlay 호출 — 이후 SDK가 prepareToPlayWithError delegate 호출
-            try playerView.prepareToPlay(withMode: playerType)
+        } onCancel: {
+            Task { [weak self] in
+                await self?.completePendingPrepare(with: .failure(CancellationError()))
+            }
         }
     }
 
@@ -571,10 +595,15 @@ public actor KollusPlayerAdapter:
             if let error {
                 let pe = PlayerError.engineError("Kollus prepareToPlay 실패: \(error.localizedDescription)")
                 transition(to: state.updating(status: .failed(pe), isBuffering: false))
-                publish(event: .didFail(pe))
+                if pendingPrepareContinuation != nil {
+                    completePendingPrepare(with: .failure(pe))
+                } else {
+                    publish(event: .didFail(pe))
+                }
             } else {
                 let snapshot = await readyStateSnapshot()
                 transition(to: snapshot)
+                completePendingPrepare(with: .success(()))
             }
 
         case .playStarted(_, let error):
@@ -672,6 +701,23 @@ public actor KollusPlayerAdapter:
     private func handleBookmarks(_ bookmarks: [Bookmark]) {
         lastKnownBookmarks = bookmarks
         publish(event: .bookmarksDidLoad(bookmarks))
+    }
+
+    private func installPrepareContinuation(_ continuation: CheckedContinuation<Void, Error>) {
+        pendingPrepareContinuation?.resume(throwing: CancellationError())
+        pendingPrepareContinuation = continuation
+    }
+
+    private func completePendingPrepare(with result: Result<Void, Error>) {
+        guard let continuation = pendingPrepareContinuation else { return }
+        pendingPrepareContinuation = nil
+
+        switch result {
+        case .success:
+            continuation.resume()
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
     }
 
     private func emitNextEpisodeIfNeeded(currentTime: TimeInterval) async {
