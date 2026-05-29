@@ -28,6 +28,10 @@ let package = Package(
         .library(
             name: "VideoPlayerModule",
             targets: ["VideoPlayerModule"]
+        ),
+        .library(
+            name: "VideoPlayerSkin",
+            targets: ["VideoPlayerSkin"]
         )
     ],
     targets: [
@@ -137,6 +141,21 @@ let package = Package(
                 "VideoPlayerEngineKollus"
             ],
             path: "Sources/VideoPlayerModuleExports"
+        ),
+        // spec-064 — 재사용 가능한 재생기 skin (Rx/ReactorKit/SnapKit 의존 없음).
+        // 엔진은 host 가 조립한 PlayerModule 을 주입 → EngineNative/Kollus 의존 불필요.
+        .target(
+            name: "VideoPlayerSkin",
+            dependencies: [
+                "VideoPlayerCore",
+                "VideoPlayerShellSupport"
+            ],
+            path: "Sources/VideoPlayerSkin",
+            linkerSettings: [
+                .linkedFramework("UIKit", .when(platforms: [.iOS])),
+                .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
+                .linkedFramework("MediaPlayer", .when(platforms: [.iOS]))
+            ]
         ),
         .binaryTarget(
             name: "VideoPlayerKollusBinary",
