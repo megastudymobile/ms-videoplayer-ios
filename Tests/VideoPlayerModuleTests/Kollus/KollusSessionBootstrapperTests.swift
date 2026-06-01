@@ -8,10 +8,12 @@
 
 #if canImport(UIKit)
 
-import XCTest
+import Foundation
+import Testing
 @testable import VideoPlayerEngineKollus
 
-final class KollusSessionBootstrapperTests: XCTestCase {
+@Suite("KollusSessionBootstrapper resolveStorage 동작")
+struct KollusSessionBootstrapperTests {
 
     private let validExpire = Date().addingTimeInterval(60 * 60 * 24 * 30)
 
@@ -36,7 +38,8 @@ final class KollusSessionBootstrapperTests: XCTestCase {
     }
 
     @MainActor
-    func test_resolveStorage_returnsSameInstanceOnSecondCall() async throws {
+    @Test("두 번째 호출 시 동일 인스턴스 반환 및 설정 적용")
+    func resolveStorage_returnsSameInstanceOnSecondCall() async throws {
         let storage = FakeKollusStorage()
         let env = makeEnvironment()
         let bootstrapper = KollusSessionBootstrapper(environment: env) { storage }
@@ -44,23 +47,24 @@ final class KollusSessionBootstrapperTests: XCTestCase {
         let first = try await bootstrapper.resolveStorage()
         let second = try await bootstrapper.resolveStorage()
 
-        XCTAssertTrue(first === second)
-        XCTAssertEqual(storage.startStorageInvocationCount, 1)
-        XCTAssertEqual(storage.applicationKey, "valid-key")
-        XCTAssertEqual(storage.applicationBundleID, "com.example.app")
-        XCTAssertEqual(storage.cacheSizeMB, 128)
-        XCTAssertNil(storage.serverPort)
-        XCTAssertTrue(storage.backgroundDownload)
-        XCTAssertEqual(storage.networkTimeOut, 5)
-        XCTAssertEqual(storage.networkRetry, 3)
-        XCTAssertEqual(
-            storage.callOrder,
+        #expect(first === second)
+        #expect(storage.startStorageInvocationCount == 1)
+        #expect(storage.applicationKey == "valid-key")
+        #expect(storage.applicationBundleID == "com.example.app")
+        #expect(storage.cacheSizeMB == 128)
+        #expect(storage.serverPort == nil)
+        #expect(storage.backgroundDownload)
+        #expect(storage.networkTimeOut == 5)
+        #expect(storage.networkRetry == 3)
+        #expect(
+            storage.callOrder ==
             ["startStorage", "setNetworkTimeOut", "setCacheSize", "setBackgroundDownload"]
         )
     }
 
     @MainActor
-    func test_resolveStorage_concurrentCallsInvokeStartStorageOnce() async throws {
+    @Test("동시 호출 시 startStorage는 한 번만 실행")
+    func resolveStorage_concurrentCallsInvokeStartStorageOnce() async throws {
         let storage = FakeKollusStorage()
         let env = makeEnvironment()
         let bootstrapper = KollusSessionBootstrapper(environment: env) { storage }
@@ -73,45 +77,44 @@ final class KollusSessionBootstrapperTests: XCTestCase {
 
         let results = try await [r1, r2, r3, r4, r5]
         for result in results {
-            XCTAssertTrue(result === results[0])
+            #expect(result === results[0])
         }
-        XCTAssertEqual(storage.startStorageInvocationCount, 1)
+        #expect(storage.startStorageInvocationCount == 1)
     }
 
     @MainActor
-    func test_resolveStorage_reattemptsAfterFirstFailure() async throws {
+    @Test("첫 실패 후 재시도 가능")
+    func resolveStorage_reattemptsAfterFirstFailure() async throws {
         let storage = FakeKollusStorage()
         storage.startStorageError = NSError(domain: "kollus.test", code: 1)
 
         let env = makeEnvironment()
         let bootstrapper = KollusSessionBootstrapper(environment: env) { storage }
 
-        do {
+        await #expect {
             _ = try await bootstrapper.resolveStorage()
-            XCTFail("Expected first resolveStorage to throw")
-        } catch {
+        } throws: { _ in
             // expected
+            true
         }
-        XCTAssertEqual(storage.startStorageInvocationCount, 1)
+        #expect(storage.startStorageInvocationCount == 1)
 
         storage.startStorageError = nil
         let second = try await bootstrapper.resolveStorage()
-        XCTAssertTrue(second === storage)
-        XCTAssertEqual(storage.startStorageInvocationCount, 2)
+        #expect(second === storage)
+        #expect(storage.startStorageInvocationCount == 2)
     }
 
     @MainActor
-    func test_resolveStorage_propagatesEnvironmentValidationError() async {
+    @Test("환경 검증 에러를 전파")
+    func resolveStorage_propagatesEnvironmentValidationError() async {
         let env = makeEnvironment(applicationKey: "")
         let bootstrapper = KollusSessionBootstrapper(environment: env) { FakeKollusStorage() }
 
-        do {
+        await #expect {
             _ = try await bootstrapper.resolveStorage()
-            XCTFail("Expected validation throw")
-        } catch let error as KollusEnvironmentError {
-            XCTAssertEqual(error, .missingApplicationKey)
-        } catch {
-            XCTFail("unexpected error type: \(error)")
+        } throws: { error in
+            (error as? KollusEnvironmentError) == .missingApplicationKey
         }
     }
 }

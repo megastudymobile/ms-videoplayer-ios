@@ -8,12 +8,14 @@
 
 #if canImport(UIKit) && canImport(KollusSDKBinary)
 
-import XCTest
+import Foundation
+import Testing
 @testable import VideoPlayerEngineKollus
 import VideoPlayerCore
 
 @MainActor
-final class KollusDownloadCenterTests: XCTestCase {
+@Suite("KollusDownloadCenter 다운로드/캐시/스냅샷 동작")
+struct KollusDownloadCenterTests {
 
     private let validExpire = Date().addingTimeInterval(60 * 60 * 24 * 30)
 
@@ -45,7 +47,8 @@ final class KollusDownloadCenterTests: XCTestCase {
 
     // MARK: - resolve / check
 
-    func test_resolve_returnsSameMCKOnRepeatedCall() async throws {
+    @Test("resolve는 반복 호출 시 동일 MCK 반환")
+    func resolve_returnsSameMCKOnRepeatedCall() async throws {
         let storage = FakeKollusStorage()
         storage.loadContentURLResults["https://x/sample"] = .success("mck-1")
         let (center, _) = makeCenter(storage: storage)
@@ -53,67 +56,71 @@ final class KollusDownloadCenterTests: XCTestCase {
         let first = try await center.resolve(contentURL: "https://x/sample")
         let second = try await center.resolve(contentURL: "https://x/sample")
 
-        XCTAssertEqual(first, "mck-1")
-        XCTAssertEqual(second, "mck-1")
+        #expect(first == "mck-1")
+        #expect(second == "mck-1")
     }
 
-    func test_check_returnsCachedMCK() async throws {
+    @Test("check는 캐시된 MCK 반환")
+    func check_returnsCachedMCK() async throws {
         let storage = FakeKollusStorage()
         storage.checkContentURLResults["https://x"] = "mck-cached"
         let (center, _) = makeCenter(storage: storage)
 
         let value = try await center.check(contentURL: "https://x")
 
-        XCTAssertEqual(value, "mck-cached")
+        #expect(value == "mck-cached")
     }
 
     // MARK: - download lifecycle
 
-    func test_startDownload_invokesStorageWithExactMCK() async throws {
+    @Test("startDownload는 정확한 MCK로 storage 호출")
+    func startDownload_invokesStorageWithExactMCK() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
         try await center.startDownload(mediaContentKey: "mck-2")
 
-        XCTAssertEqual(storage.startedDownloads, ["mck-2"])
+        #expect(storage.startedDownloads == ["mck-2"])
     }
 
-    func test_cancelDownload_invokesStorage() async throws {
+    @Test("cancelDownload는 storage 호출")
+    func cancelDownload_invokesStorage() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
         try await center.cancelDownload(mediaContentKey: "mck-3")
 
-        XCTAssertEqual(storage.canceledDownloads, ["mck-3"])
+        #expect(storage.canceledDownloads == ["mck-3"])
     }
 
-    func test_remove_invokesStorage() async throws {
+    @Test("remove는 storage 호출")
+    func remove_invokesStorage() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
         try await center.remove(mediaContentKey: "mck-4")
 
-        XCTAssertEqual(storage.removedContents, ["mck-4"])
+        #expect(storage.removedContents == ["mck-4"])
     }
 
     // MARK: - cache / DRM / LMS
 
-    func test_clearStreamingCache_propagatesError() async {
+    @Test("clearStreamingCache는 에러를 전파")
+    func clearStreamingCache_propagatesError() async {
         let storage = FakeKollusStorage()
         storage.removeCacheError = NSError(domain: "t", code: 1)
         let (center, _) = makeCenter(storage: storage)
 
-        do {
+        await #expect {
             try await center.clearStreamingCache()
-            XCTFail("Expected clearStreamingCache to throw")
-        } catch {
+        } throws: { error in
             let nsError = error as NSError
-            XCTAssertEqual(nsError.domain, "t")
-            XCTAssertEqual(nsError.code, 1)
+            return nsError.domain == "t" && nsError.code == 1
         }
     }
 
-    func test_updateDRM_invokesStorage() async throws {
+    @Test("updateDRM는 storage 호출")
+    func updateDRM_invokesStorage() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
@@ -122,29 +129,32 @@ final class KollusDownloadCenterTests: XCTestCase {
         // but absence of error confirms invocation reached storage layer.
     }
 
-    func test_sendStoredLMS_invokesStorage() async throws {
+    @Test("sendStoredLMS는 storage 호출")
+    func sendStoredLMS_invokesStorage() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
         try await center.sendStoredLMS()
 
-        XCTAssertEqual(storage.sendStoredLmsInvocationCount, 1)
+        #expect(storage.sendStoredLmsInvocationCount == 1)
     }
 
-    func test_playerID_returnsBootstrappedStorageDeviceID() async throws {
+    @Test("playerID는 bootstrap된 storage device ID 반환")
+    func playerID_returnsBootstrappedStorageDeviceID() async throws {
         let storage = FakeKollusStorage()
         storage.applicationDeviceID = "player-123"
         let (center, _) = makeCenter(storage: storage)
 
         let playerID = try await center.playerID()
 
-        XCTAssertEqual(playerID, "player-123")
-        XCTAssertEqual(storage.startStorageInvocationCount, 1)
+        #expect(playerID == "player-123")
+        #expect(storage.startStorageInvocationCount == 1)
     }
 
     // MARK: - snapshot stream
 
-    func test_contents_stream_yieldsOnStorageDelegateCallback() async throws {
+    @Test("contents 스트림은 storage delegate 콜백 시 방출")
+    func contents_stream_yieldsOnStorageDelegateCallback() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
@@ -166,24 +176,23 @@ final class KollusDownloadCenterTests: XCTestCase {
         var iterator = stream.makeAsyncIterator()
         let received = await iterator.next()
 
-        XCTAssertEqual(received?.map(\.id), ["a", "b"])
+        #expect(received?.map(\.id) == ["a", "b"])
     }
 
     // MARK: - bootstrap failure
 
-    func test_bootstrapFailure_propagatesError() async {
+    @Test("bootstrap 실패 시 에러를 engineError로 전파")
+    func bootstrapFailure_propagatesError() async {
         let storage = FakeKollusStorage()
         storage.startStorageError = NSError(domain: "t", code: 99)
         let (center, _) = makeCenter(storage: storage)
 
-        do {
+        await #expect {
             _ = try await center.resolve(contentURL: "u")
-            XCTFail("Expected resolve to throw bootstrap error")
-        } catch let PlayerError.engineError(message) {
+        } throws: { error in
             // KollusSessionBootstrapper가 startStorage NSError를 PlayerError.engineError로 wrap.
-            XCTAssertTrue(message.contains("startStorage"), "got: \(message)")
-        } catch {
-            XCTFail("unexpected error type: \(error)")
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("startStorage")
         }
     }
 }

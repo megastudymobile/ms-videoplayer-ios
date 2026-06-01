@@ -10,9 +10,10 @@
 //
 
 import Foundation
-import XCTest
-@testable import VideoPlayerModule
+import Testing
+@testable import VideoPlayerCore
 @testable import VideoPlayerEngineKollus
+@testable import VideoPlayerShellSupport
 
 enum KollusContractFactory: PlayerEngineAdapterContractTestable {
     static func makeTestAdapter() -> PlayerEngineAdapter {
@@ -44,7 +45,46 @@ enum KollusContractFactory: PlayerEngineAdapterContractTestable {
     }
 }
 
-final class KollusPlayerEngineContractTests: PlayerEngineContractTestShared<KollusContractFactory> {
+/// `PlayerEngineContract` generic 계약을 KollusPlayerAdapter에 대해 실행한다.
+/// simulator에서는 Kollus가 미지원이므로 suite trait로 전체를 건너뛴다.
+@Suite("KollusPlayerAdapter 엔진 계약", .enabled(if: KollusContractFactory.isSupportedInCurrentEnvironment))
+struct KollusPlayerEngineContractTests {
+    private typealias Contract = PlayerEngineContract<KollusContractFactory>
+
+    @Test("현재 환경 지원 여부를 throw 없이 판별한다")
+    func isSupportedInCurrentEnvironmentIsDecidableWithoutThrow() {
+        Contract.isSupportedInCurrentEnvironmentIsDecidableWithoutThrow()
+    }
+
+    @Test("초기 상태는 idle이다")
+    func initialStateIsIdle() async throws {
+        try await Contract.initialStateIsIdle()
+    }
+
+    @Test("capabilities가 기대값과 일치한다")
+    func capabilitiesMatchExpectation() {
+        Contract.capabilitiesMatchExpectation()
+    }
+
+    @Test("idle에서 stop 반복 호출이 crash하지 않는다")
+    func stopFromIdleDoesNotCrash() async throws {
+        try await Contract.stopFromIdleDoesNotCrash()
+    }
+
+    @Test("finished 사유 stop은 finished 상태로 전이한다")
+    func stopWithFinishedReasonTransitionsToFinished() async throws {
+        try await Contract.stopWithFinishedReasonTransitionsToFinished()
+    }
+
+    @Test("bind 없이 unbindRenderSurface 호출이 crash하지 않는다")
+    func unbindRenderSurfaceWithoutBindDoesNotCrash() async throws {
+        try await Contract.unbindRenderSurfaceWithoutBindDoesNotCrash()
+    }
+
+    @Test("eventStream을 isolation 문제 없이 획득한다")
+    func eventStreamIsAvailable() async throws {
+        try await Contract.eventStreamIsAvailable()
+    }
 }
 
 #endif

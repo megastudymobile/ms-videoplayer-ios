@@ -11,12 +11,14 @@
 import CoreGraphics
 import Foundation
 import KollusSDKBinary
-import XCTest
+import Testing
 @testable import VideoPlayerEngineKollus
 
-final class KollusContentSnapshotMappingTests: XCTestCase {
+@Suite("KollusContentSnapshot SDK 콘텐츠 매핑")
+struct KollusContentSnapshotMappingTests {
 
-    func test_snapshotFromKollusContent_mapsOfficialDownloadFields() {
+    @Test("공식 다운로드 필드를 snapshot으로 매핑")
+    func snapshotFromKollusContent_mapsOfficialDownloadFields() {
         let downloadedAt = Date(timeIntervalSince1970: 1_700_000_000)
         let drmExpiresAt = Date(timeIntervalSince1970: 1_800_000_000)
         let content = KollusContent()
@@ -40,18 +42,19 @@ final class KollusContentSnapshotMappingTests: XCTestCase {
 
         let snapshot = KollusContentSnapshot.fromSDKContent(content)
 
-        XCTAssertEqual(snapshot.id, "mck-1")
-        XCTAssertEqual(snapshot.naturalSize, CGSize(width: 1920, height: 1080))
-        XCTAssertEqual(snapshot.duration, 120)
-        XCTAssertEqual(snapshot.position, 12)
-        XCTAssertEqual(snapshot.contentType, .hlsDownload)
-        XCTAssertEqual(snapshot.fileSize, 1_000)
-        XCTAssertEqual(snapshot.downloadedAt, downloadedAt)
-        XCTAssertEqual(snapshot.download, .inProgress(percent: 42, downloadedBytes: 420))
-        XCTAssertEqual(snapshot.drm, .valid(expiresAt: drmExpiresAt, playCountRemaining: 7))
+        #expect(snapshot.id == "mck-1")
+        #expect(snapshot.naturalSize == CGSize(width: 1920, height: 1080))
+        #expect(snapshot.duration == 120)
+        #expect(snapshot.position == 12)
+        #expect(snapshot.contentType == .hlsDownload)
+        #expect(snapshot.fileSize == 1_000)
+        #expect(snapshot.downloadedAt == downloadedAt)
+        #expect(snapshot.download == .inProgress(percent: 42, downloadedBytes: 420))
+        #expect(snapshot.drm == .valid(expiresAt: drmExpiresAt, playCountRemaining: 7))
     }
 
-    func test_snapshotFromKollusContent_mapsCompletedDownload() {
+    @Test("완료된 다운로드를 snapshot으로 매핑")
+    func snapshotFromKollusContent_mapsCompletedDownload() {
         let content = KollusContent()
         content.setValue("mck-2", forKey: "mediaContentKey")
         content.setValue(NSNumber(value: 1), forKey: "contentType")
@@ -62,9 +65,9 @@ final class KollusContentSnapshotMappingTests: XCTestCase {
 
         let snapshot = KollusContentSnapshot.fromSDKContent(content)
 
-        XCTAssertEqual(snapshot.contentType, .downloading)
-        XCTAssertEqual(snapshot.fileSize, 1_000)
-        XCTAssertEqual(snapshot.download, .completed)
+        #expect(snapshot.contentType == .downloading)
+        #expect(snapshot.fileSize == 1_000)
+        #expect(snapshot.download == .completed)
     }
 }
 

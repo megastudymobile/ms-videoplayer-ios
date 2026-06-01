@@ -1,13 +1,17 @@
 #if canImport(UIKit)
 
 import AVFoundation
+import Foundation
 import UIKit
-import XCTest
-@testable import VideoPlayerModule
+import Testing
+@testable import VideoPlayerCore
+@testable import VideoPlayerShellSupport
 
 @MainActor
-final class PlayerLifecycleCoordinatorTests: XCTestCase {
-    func testDidEnterBackgroundPausesWhenBackgroundPlaybackIsDisabled() async throws {
+@Suite("PlayerLifecycleCoordinator 생명주기/오디오 인터럽션 처리")
+struct PlayerLifecycleCoordinatorTests {
+    @Test("백그라운드 재생 비활성 시 백그라운드 진입에서 일시정지한다")
+    func didEnterBackgroundPausesWhenBackgroundPlaybackIsDisabled() async throws {
         let controlUseCase = RecordingControlPlaybackUseCase()
         let notificationCenter = NotificationCenter()
         let coordinator = PlayerLifecycleCoordinator(
@@ -25,7 +29,8 @@ final class PlayerLifecycleCoordinatorTests: XCTestCase {
         }
     }
 
-    func testDidEnterBackgroundDowngradesPolicyWhenSurfacelessPlaybackIsUnsupported() async throws {
+    @Test("surfaceless 재생 미지원 시 백그라운드 진입에서 정책을 다운그레이드한다")
+    func didEnterBackgroundDowngradesPolicyWhenSurfacelessPlaybackIsUnsupported() async throws {
         let controlUseCase = RecordingControlPlaybackUseCase()
         let notificationCenter = NotificationCenter()
         let eventRecorder = EventRecorder()
@@ -50,13 +55,13 @@ final class PlayerLifecycleCoordinatorTests: XCTestCase {
             controlUseCase.commands == [.pause]
         }
 
-        XCTAssertEqual(
-            eventRecorder.events,
-            [.policyDowngraded(reason: .missingContinuesWithoutSurface)]
+        #expect(
+            eventRecorder.events == [.policyDowngraded(reason: .missingContinuesWithoutSurface)]
         )
     }
 
-    func testDidEnterBackgroundKeepsPlaybackWhenCapabilityAllowsBackgroundPlayback() async throws {
+    @Test("capability가 백그라운드 재생을 허용하면 재생을 유지한다")
+    func didEnterBackgroundKeepsPlaybackWhenCapabilityAllowsBackgroundPlayback() async throws {
         let controlUseCase = RecordingControlPlaybackUseCase()
         let notificationCenter = NotificationCenter()
         let eventRecorder = EventRecorder()
@@ -79,11 +84,12 @@ final class PlayerLifecycleCoordinatorTests: XCTestCase {
 
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        XCTAssertTrue(controlUseCase.commands.isEmpty)
-        XCTAssertTrue(eventRecorder.events.isEmpty)
+        #expect(controlUseCase.commands.isEmpty)
+        #expect(eventRecorder.events.isEmpty)
     }
 
-    func testAudioInterruptionBeganPausesPlayback() async throws {
+    @Test("오디오 인터럽션 시작 시 재생을 일시정지한다")
+    func audioInterruptionBeganPausesPlayback() async throws {
         let controlUseCase = RecordingControlPlaybackUseCase()
         let notificationCenter = NotificationCenter()
         let coordinator = PlayerLifecycleCoordinator(
@@ -107,7 +113,8 @@ final class PlayerLifecycleCoordinatorTests: XCTestCase {
         }
     }
 
-    func testStartIsIdempotentAndStopRemovesObservers() async throws {
+    @Test("start는 멱등이며 stop은 옵저버를 제거한다")
+    func startIsIdempotentAndStopRemovesObservers() async throws {
         let controlUseCase = RecordingControlPlaybackUseCase()
         let notificationCenter = NotificationCenter()
         let coordinator = PlayerLifecycleCoordinator(
@@ -129,14 +136,13 @@ final class PlayerLifecycleCoordinatorTests: XCTestCase {
         notificationCenter.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        XCTAssertEqual(controlUseCase.commands, [.pause])
+        #expect(controlUseCase.commands == [.pause])
     }
 
     private func waitUntil(
         timeout: TimeInterval = 1.0,
         pollInterval: UInt64 = 10_000_000,
-        file: StaticString = #filePath,
-        line: UInt = #line,
+        sourceLocation: SourceLocation = #_sourceLocation,
         condition: @escaping @MainActor () -> Bool
     ) async throws {
         let deadline = Date().addingTimeInterval(timeout)
@@ -149,7 +155,7 @@ final class PlayerLifecycleCoordinatorTests: XCTestCase {
             try await Task.sleep(nanoseconds: pollInterval)
         }
 
-        XCTFail("조건을 만족하지 못했습니다.", file: file, line: line)
+        Issue.record("조건을 만족하지 못했습니다.", sourceLocation: sourceLocation)
     }
 }
 

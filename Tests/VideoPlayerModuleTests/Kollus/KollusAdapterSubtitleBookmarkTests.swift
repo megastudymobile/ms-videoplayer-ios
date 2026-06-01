@@ -9,7 +9,7 @@
 #if canImport(UIKit) && canImport(KollusSDKBinary)
 
 import Foundation
-import XCTest
+import Testing
 import VideoPlayerCore
 @testable import VideoPlayerEngineKollus
 
@@ -23,7 +23,8 @@ import VideoPlayerCore
 /// - `currentBookmarks()`는 playerView 미준비 시 빈 배열.
 ///
 /// 실제 SDK 호출이 일어나는 경로(`prepare(source:)` 이후)는 Phase 8 시뮬레이터 통합 테스트로 이월.
-final class KollusAdapterSubtitleBookmarkTests: XCTestCase {
+@Suite("KollusPlayerAdapter 자막/북마크 명령 surfacing")
+struct KollusAdapterSubtitleBookmarkTests {
 
     private let validExpire = Date().addingTimeInterval(60 * 60 * 24 * 30)
 
@@ -71,31 +72,29 @@ final class KollusAdapterSubtitleBookmarkTests: XCTestCase {
 
     // MARK: - setCaptionFontSize validation
 
-    func test_setCaptionFontSize_zeroOrNegative_throws() async {
+    @Test("setCaptionFontSize 0/음수는 engineError throw")
+    func setCaptionFontSize_zeroOrNegative_throws() async {
         let adapter = await MainActor.run { self.makeAdapter() }
 
-        do {
+        await #expect {
             try await adapter.setCaptionFontSize(0)
-            XCTFail("Expected engineError for fontSize=0")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("size=0"), "got: \(message)")
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("size=0")
         }
 
-        do {
+        await #expect {
             try await adapter.setCaptionFontSize(-5)
-            XCTFail("Expected engineError for negative fontSize")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("size=-5"), "got: \(message)")
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("size=-5")
         }
     }
 
     // MARK: - policyDowngraded surfacing
 
-    func test_setSubtitleVisible_emitsPolicyDowngraded() async throws {
+    @Test("setSubtitleVisible는 policyDowngraded 이벤트 방출")
+    func setSubtitleVisible_emitsPolicyDowngraded() async throws {
         let adapter = await MainActor.run { self.makeAdapter() }
 
         let event = try await awaitFirstEvent(from: adapter) {
@@ -103,19 +102,20 @@ final class KollusAdapterSubtitleBookmarkTests: XCTestCase {
         }
 
         guard let event else {
-            XCTFail("policyDowngraded 이벤트가 timeout 내 수신되지 않음")
+            Issue.record("policyDowngraded 이벤트가 timeout 내 수신되지 않음")
             return
         }
         guard case .policyDowngraded(let reason) = event,
               case .custom(let message) = reason else {
-            XCTFail("expected .policyDowngraded(.custom), got: \(event)")
+            Issue.record("expected .policyDowngraded(.custom), got: \(event)")
             return
         }
-        XCTAssertTrue(message.contains("자막 가시성"), "got: \(message)")
-        XCTAssertTrue(message.contains("isVisible=false"), "got: \(message)")
+        #expect(message.contains("자막 가시성"), "got: \(message)")
+        #expect(message.contains("isVisible=false"), "got: \(message)")
     }
 
-    func test_setCaptionFontSize_positive_emitsPolicyDowngraded() async throws {
+    @Test("setCaptionFontSize 양수는 policyDowngraded 이벤트 방출")
+    func setCaptionFontSize_positive_emitsPolicyDowngraded() async throws {
         let adapter = await MainActor.run { self.makeAdapter() }
 
         let event = try await awaitFirstEvent(from: adapter) {
@@ -123,64 +123,62 @@ final class KollusAdapterSubtitleBookmarkTests: XCTestCase {
         }
 
         guard let event else {
-            XCTFail("policyDowngraded 이벤트가 timeout 내 수신되지 않음")
+            Issue.record("policyDowngraded 이벤트가 timeout 내 수신되지 않음")
             return
         }
         guard case .policyDowngraded(let reason) = event,
               case .custom(let message) = reason else {
-            XCTFail("expected .policyDowngraded(.custom), got: \(event)")
+            Issue.record("expected .policyDowngraded(.custom), got: \(event)")
             return
         }
-        XCTAssertTrue(message.contains("폰트 크기"), "got: \(message)")
-        XCTAssertTrue(message.contains("20pt"), "got: \(message)")
+        #expect(message.contains("폰트 크기"), "got: \(message)")
+        #expect(message.contains("20pt"), "got: \(message)")
     }
 
     // MARK: - playerView nil guards
 
-    func test_addBookmarkWithTitle_throwsWhenPlayerViewMissing() async {
+    @Test("addBookmark는 playerView 미준비 시 engineError throw")
+    func addBookmarkWithTitle_throwsWhenPlayerViewMissing() async {
         let adapter = await MainActor.run { self.makeAdapter() }
 
-        do {
+        await #expect {
             try await adapter.addBookmark(at: 10, title: "chapter")
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("playerView가 준비되지 않았습니다"), "got: \(message)")
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
-    func test_removeBookmark_throwsWhenPlayerViewMissing() async {
+    @Test("removeBookmark는 playerView 미준비 시 engineError throw")
+    func removeBookmark_throwsWhenPlayerViewMissing() async {
         let adapter = await MainActor.run { self.makeAdapter() }
 
-        do {
+        await #expect {
             try await adapter.removeBookmark(at: 10)
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("playerView가 준비되지 않았습니다"), "got: \(message)")
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
-    func test_selectSubtitleFile_throwsWhenPlayerViewMissing() async {
+    @Test("selectSubtitleFile은 playerView 미준비 시 engineError throw")
+    func selectSubtitleFile_throwsWhenPlayerViewMissing() async {
         let adapter = await MainActor.run { self.makeAdapter() }
 
-        do {
+        await #expect {
             try await adapter.selectSubtitleFile(URL(string: "file:///tmp/a.srt"))
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("playerView가 준비되지 않았습니다"), "got: \(message)")
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
-    func test_currentBookmarks_emptyWhenPlayerViewMissing() async {
+    @Test("currentBookmarks는 playerView 미준비 시 빈 배열")
+    func currentBookmarks_emptyWhenPlayerViewMissing() async {
         let adapter = await MainActor.run { self.makeAdapter() }
 
         let bookmarks = await adapter.currentBookmarks()
-        XCTAssertTrue(bookmarks.isEmpty, "playerView 미준비 시 currentBookmarks()는 [] 여야 한다")
+        #expect(bookmarks.isEmpty, "playerView 미준비 시 currentBookmarks()는 [] 여야 한다")
     }
 }
 

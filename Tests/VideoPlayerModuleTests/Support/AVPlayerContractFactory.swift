@@ -10,8 +10,10 @@
 
 import AVFoundation
 import Foundation
-import XCTest
-@testable import VideoPlayerModule
+import Testing
+@testable import VideoPlayerCore
+@testable import VideoPlayerEngineNative
+@testable import VideoPlayerShellSupport
 
 enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
     static func makeTestAdapter() -> PlayerEngineAdapter {
@@ -29,10 +31,46 @@ enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
     }
 }
 
-/// XCTest는 상속된 test 메서드를 concrete subclass에서 자동으로 수집한다.
-/// 이 class 파일 하나만 추가하면 PlayerEngineContractTestShared의 모든 assertion이 AVPlayerAdapter에 대해 실행된다.
-final class AVPlayerEngineContractTests: PlayerEngineContractTestShared<AVPlayerContractFactory> {
-    // 추가 AVPlayer 전용 assertion이 필요하면 이 subclass에서만 선언한다.
+/// `PlayerEngineContract` generic 계약을 AVPlayerAdapter에 대해 실행한다.
+/// 추가 AVPlayer 전용 assertion이 필요하면 이 suite에 `@Test`를 더 선언한다.
+@Suite("AVPlayerAdapter 엔진 계약", .enabled(if: AVPlayerContractFactory.isSupportedInCurrentEnvironment))
+struct AVPlayerEngineContractTests {
+    private typealias Contract = PlayerEngineContract<AVPlayerContractFactory>
+
+    @Test("현재 환경 지원 여부를 throw 없이 판별한다")
+    func isSupportedInCurrentEnvironmentIsDecidableWithoutThrow() {
+        Contract.isSupportedInCurrentEnvironmentIsDecidableWithoutThrow()
+    }
+
+    @Test("초기 상태는 idle이다")
+    func initialStateIsIdle() async throws {
+        try await Contract.initialStateIsIdle()
+    }
+
+    @Test("capabilities가 기대값과 일치한다")
+    func capabilitiesMatchExpectation() {
+        Contract.capabilitiesMatchExpectation()
+    }
+
+    @Test("idle에서 stop 반복 호출이 crash하지 않는다")
+    func stopFromIdleDoesNotCrash() async throws {
+        try await Contract.stopFromIdleDoesNotCrash()
+    }
+
+    @Test("finished 사유 stop은 finished 상태로 전이한다")
+    func stopWithFinishedReasonTransitionsToFinished() async throws {
+        try await Contract.stopWithFinishedReasonTransitionsToFinished()
+    }
+
+    @Test("bind 없이 unbindRenderSurface 호출이 crash하지 않는다")
+    func unbindRenderSurfaceWithoutBindDoesNotCrash() async throws {
+        try await Contract.unbindRenderSurfaceWithoutBindDoesNotCrash()
+    }
+
+    @Test("eventStream을 isolation 문제 없이 획득한다")
+    func eventStreamIsAvailable() async throws {
+        try await Contract.eventStreamIsAvailable()
+    }
 }
 
 #endif

@@ -2,12 +2,13 @@
 
 import Foundation
 import Testing
-@testable import VideoPlayerModule
+@testable import VideoPlayerCore
 @testable import VideoPlayerEngineKollus
+@testable import VideoPlayerShellSupport
 
-@Suite("Kollus player module factory")
+@Suite("Kollus player module factory 검증")
 struct KollusPlayerModuleFactoryTests {
-    @Test("Factory wires injected engine to use cases")
+    @Test("Factory가 주입된 engine을 use case에 연결")
     func makeModuleWiresInjectedEngineToUseCases() async throws {
         let engine = FactoryTestEngineAdapter()
         let factory = KollusPlayerModuleFactory(
@@ -27,7 +28,7 @@ struct KollusPlayerModuleFactoryTests {
         #expect(stopCount == 1)
     }
 
-    @Test("Adapter rejects URL source before creating Kollus view")
+    @Test("Adapter가 legacy URL 차단 메시지를 surfacing하지 않음")
     /// spec 025 Phase 4 (T027) 이후 `.url` 진입은 허용된다.
     /// SDK가 시뮬레이터에서 stub일 수 있어 정확한 error는 환경 의존이지만,
     /// 적어도 "kollus(mediaContentKey:)만 지원" legacy 차단 메시지는 더 이상 surfacing되지 않아야 한다.

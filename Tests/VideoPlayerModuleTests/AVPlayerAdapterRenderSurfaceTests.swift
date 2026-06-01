@@ -12,11 +12,13 @@ import AVFoundation
 import Foundation
 import Testing
 import UIKit
-@testable import VideoPlayerModule
+@testable import VideoPlayerCore
+@testable import VideoPlayerEngineNative
+@testable import VideoPlayerShellSupport
 
-@Suite("AVPlayer adapter render surface")
+@Suite("AVPlayerAdapter 렌더 표면")
 struct AVPlayerAdapterRenderSurfaceTests {
-    @Test("Bind attaches player layer to surface")
+    @Test("bind 시 player layer를 surface에 attach")
     @MainActor
     func bindAttachesPlayerLayerToSurface() async throws {
         let adapter = AVPlayerAdapter(player: AVPlayer())
@@ -33,7 +35,7 @@ struct AVPlayerAdapterRenderSurfaceTests {
         }
     }
 
-    @Test("Rebind detaches previous surface and moves player layer")
+    @Test("rebind 시 이전 surface를 detach하고 player layer를 이동")
     @MainActor
     func rebindDetachesPreviousSurfaceAndMovesPlayerLayer() async throws {
         let adapter = AVPlayerAdapter(player: AVPlayer())
@@ -59,7 +61,7 @@ struct AVPlayerAdapterRenderSurfaceTests {
         }
     }
 
-    @Test("Unbind detaches current surface and removes player layer")
+    @Test("unbind 시 현재 surface를 detach하고 player layer를 제거")
     @MainActor
     func unbindDetachesCurrentSurfaceAndRemovesPlayerLayer() async throws {
         let adapter = AVPlayerAdapter(player: AVPlayer())

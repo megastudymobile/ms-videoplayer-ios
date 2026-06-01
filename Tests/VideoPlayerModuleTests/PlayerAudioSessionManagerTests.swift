@@ -1,28 +1,30 @@
 #if canImport(UIKit)
 
 import AVFoundation
-import XCTest
-@testable import VideoPlayerModule
+import Testing
+@testable import VideoPlayerShellSupport
 
 @MainActor
-final class PlayerAudioSessionManagerTests: XCTestCase {
-    func testAcquireActivatesSessionOnlyForFirstRetain() throws {
+@Suite("PlayerAudioSessionManager 세션 retain/release 동작")
+struct PlayerAudioSessionManagerTests {
+    @Test("첫 acquire에서만 세션을 활성화한다")
+    func acquireActivatesSessionOnlyForFirstRetain() throws {
         let session = FakeAudioSession()
         let manager = PlayerAudioSessionManager(session: session)
 
         try manager.acquire(category: .playback, mode: .spokenAudio, options: [.mixWithOthers])
         try manager.acquire(category: .playback, mode: .moviePlayback, options: [])
 
-        XCTAssertEqual(
-            session.categoryCalls,
-            [
+        #expect(
+            session.categoryCalls == [
                 .init(category: .playback, mode: .spokenAudio, options: [.mixWithOthers])
             ]
         )
-        XCTAssertEqual(session.activeCalls, [.init(active: true, options: [])])
+        #expect(session.activeCalls == [.init(active: true, options: [])])
     }
 
-    func testReleaseDeactivatesSessionOnlyAfterFinalRetain() throws {
+    @Test("마지막 retain 해제 후에만 세션을 비활성화한다")
+    func releaseDeactivatesSessionOnlyAfterFinalRetain() throws {
         let session = FakeAudioSession()
         let manager = PlayerAudioSessionManager(session: session)
 
@@ -30,64 +32,63 @@ final class PlayerAudioSessionManagerTests: XCTestCase {
         try manager.acquire()
 
         try manager.release()
-        XCTAssertEqual(
-            session.activeCalls,
-            [.init(active: true, options: [])]
+        #expect(
+            session.activeCalls == [.init(active: true, options: [])]
         )
 
         try manager.release(options: [.notifyOthersOnDeactivation])
-        XCTAssertEqual(
-            session.activeCalls,
-            [
+        #expect(
+            session.activeCalls == [
                 .init(active: true, options: []),
                 .init(active: false, options: [.notifyOthersOnDeactivation])
             ]
         )
     }
 
-    func testFailedActivationDoesNotRetainSession() throws {
+    @Test("활성화 실패 시 세션을 retain하지 않는다")
+    func failedActivationDoesNotRetainSession() throws {
         let session = FakeAudioSession()
         session.activationError = FakeAudioSessionError.activationFailed
         let manager = PlayerAudioSessionManager(session: session)
 
-        XCTAssertThrowsError(try manager.acquire())
+        #expect(throws: (any Error).self) { try manager.acquire() }
 
         session.activationError = nil
         try manager.acquire()
 
-        XCTAssertEqual(
-            session.activeCalls,
-            [
+        #expect(
+            session.activeCalls == [
                 .init(active: true, options: []),
                 .init(active: true, options: [])
             ]
         )
     }
 
-    func testReleaseWithoutAcquireIsNoOp() throws {
+    @Test("acquire 없이 release 호출은 무동작이다")
+    func releaseWithoutAcquireIsNoOp() throws {
         let session = FakeAudioSession()
         let manager = PlayerAudioSessionManager(session: session)
 
         try manager.release()
 
-        XCTAssertTrue(session.categoryCalls.isEmpty)
-        XCTAssertTrue(session.activeCalls.isEmpty)
+        #expect(session.categoryCalls.isEmpty)
+        #expect(session.activeCalls.isEmpty)
     }
 
-    func testFailedFirstAcquireDoesNotRetainSession() throws {
+    @Test("첫 acquire의 카테고리 설정 실패 시 세션을 retain하지 않는다")
+    func failedFirstAcquireDoesNotRetainSession() throws {
         let session = FakeAudioSession()
         session.categoryError = FakeAudioSessionError.categoryFailed
         let manager = PlayerAudioSessionManager(session: session)
 
-        XCTAssertThrowsError(try manager.acquire())
+        #expect(throws: (any Error).self) { try manager.acquire() }
 
         session.categoryError = nil
         try manager.acquire(category: .playback, mode: .moviePlayback, options: [.duckOthers])
 
-        XCTAssertEqual(session.categoryCalls.count, 2)
-        XCTAssertEqual(
-            session.activeCalls,
-            [.init(active: true, options: [])]
+        #expect(session.categoryCalls.count == 2)
+        #expect(
+            session.activeCalls == [.init(active: true, options: [])]
         )
     }
 }

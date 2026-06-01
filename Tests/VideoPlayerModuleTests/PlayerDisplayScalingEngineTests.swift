@@ -2,9 +2,9 @@ import Foundation
 import Testing
 @testable import VideoPlayerCore
 
-@Suite("Player display scaling engine")
+@Suite("Player display scaling engine 검증")
 struct PlayerDisplayScalingEngineTests {
-    @Test("Display scaling commands are delegated when the engine only supports scaling")
+    @Test("engine가 scaling만 지원할 때 display scaling 명령을 위임")
     func delegatesDisplayScalingWhenEngineSupportsOnlyScalingControl() async throws {
         let engine = DisplayScalingOnlyEngine()
         let core = PlayerCore(
@@ -19,7 +19,7 @@ struct PlayerDisplayScalingEngineTests {
         #expect(await engine.toggleDisplayScalingCallCount == 1)
     }
 
-    @Test("Display lock is rejected when the engine only supports scaling")
+    @Test("engine가 scaling만 지원할 때 display lock을 거부")
     func rejectsDisplayLockWhenEngineSupportsOnlyScalingControl() async throws {
         let engine = DisplayScalingOnlyEngine()
         let core = PlayerCore(

@@ -9,7 +9,8 @@
 //
 
 import Foundation
-@testable import VideoPlayerModule
+@testable import VideoPlayerCore
+@testable import VideoPlayerShellSupport
 
 protocol PlayerEngineAdapterContractTestable {
     static func makeTestAdapter() -> PlayerEngineAdapter

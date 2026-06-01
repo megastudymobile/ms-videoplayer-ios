@@ -1,23 +1,27 @@
-import XCTest
+import Foundation
+import Testing
 @testable import VideoPlayerCore
 
-final class PlayerInterfaceTests: XCTestCase {
-    func testDefaultFeatureSetRepresentsGenericPlayerControls() {
+@Suite("Player 인터페이스 FeatureSet/Command/Core 위임 검증")
+struct PlayerInterfaceTests {
+    @Test("기본 FeatureSet은 일반 플레이어 컨트롤을 나타낸다")
+    func defaultFeatureSetRepresentsGenericPlayerControls() {
         let featureSet = PlayerFeatureSet.default
 
-        XCTAssertTrue(featureSet.playback.allowsSeeking)
-        XCTAssertEqual(featureSet.playback.allowedPlaybackRates, [0.5, 0.75, 1.0, 1.25, 1.5, 2.0])
-        XCTAssertEqual(featureSet.playback.initialSkipInterval, 10)
-        XCTAssertTrue(featureSet.subtitle.supportsSubtitles)
-        XCTAssertTrue(featureSet.subtitle.supportsTrackSelection)
-        XCTAssertTrue(featureSet.bookmark.supportsBookmarks)
-        XCTAssertTrue(featureSet.playlist.supportsItemSelection)
-        XCTAssertTrue(featureSet.display.supportsLock)
-        XCTAssertTrue(featureSet.display.supportsScaling)
-        XCTAssertFalse(featureSet.offline.supportsOfflinePlayback)
+        #expect(featureSet.playback.allowsSeeking)
+        #expect(featureSet.playback.allowedPlaybackRates == [0.5, 0.75, 1.0, 1.25, 1.5, 2.0])
+        #expect(featureSet.playback.initialSkipInterval == 10)
+        #expect(featureSet.subtitle.supportsSubtitles)
+        #expect(featureSet.subtitle.supportsTrackSelection)
+        #expect(featureSet.bookmark.supportsBookmarks)
+        #expect(featureSet.playlist.supportsItemSelection)
+        #expect(featureSet.display.supportsLock)
+        #expect(featureSet.display.supportsScaling)
+        #expect(!(featureSet.offline.supportsOfflinePlayback))
     }
 
-    func testFeatureSetCanRepresentGenericOptionalCapabilities() {
+    @Test("FeatureSet은 일반 선택적 capability를 표현할 수 있다")
+    func featureSetCanRepresentGenericOptionalCapabilities() {
         let featureSet = PlayerFeatureSet(
             subtitle: PlayerSubtitleFeatures(
                 availableTracks: [
@@ -44,13 +48,14 @@ final class PlayerInterfaceTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(featureSet.subtitle.availableTracks.first?.id.rawValue, "caption-ko")
-        XCTAssertTrue(featureSet.playlist.supportsAutoplayNextItem)
-        XCTAssertTrue(featureSet.display.supportsExternalPlayback)
-        XCTAssertTrue(featureSet.offline.supportsOfflineSourceValidation)
+        #expect(featureSet.subtitle.availableTracks.first?.id.rawValue == "caption-ko")
+        #expect(featureSet.playlist.supportsAutoplayNextItem)
+        #expect(featureSet.display.supportsExternalPlayback)
+        #expect(featureSet.offline.supportsOfflineSourceValidation)
     }
 
-    func testPlaybackCommandCarriesGenericRateAndSeekOrigin() {
+    @Test("PlaybackCommand는 일반 rate와 seek origin을 담는다")
+    func playbackCommandCarriesGenericRateAndSeekOrigin() {
         let rateCommand = PlaybackCommand.setPlaybackRate(1.5)
         let skipIntervalCommand = PlaybackCommand.setSkipInterval(30)
         let subtitleVisibleCommand = PlaybackCommand.setSubtitleVisible(true)
@@ -67,22 +72,22 @@ final class PlayerInterfaceTests: XCTestCase {
             origin: .timedMetadata(metadataID)
         )
 
-        XCTAssertEqual(rateCommand, .setPlaybackRate(1.5))
-        XCTAssertEqual(skipIntervalCommand, .setSkipInterval(30))
-        XCTAssertEqual(subtitleVisibleCommand, .setSubtitleVisible(true))
-        XCTAssertEqual(subtitleTrackCommand, .selectSubtitleTrack(subtitleTrackID))
-        XCTAssertEqual(captionFontSizeCommand, .setCaptionFontSize(20))
-        XCTAssertEqual(addBookmarkCommand, .addBookmark(at: 45))
-        XCTAssertEqual(displayLockedCommand, .setDisplayLocked(true))
-        XCTAssertEqual(displayScaledCommand, .setDisplayScaled(true))
-        XCTAssertEqual(toggleDisplayScalingCommand, .toggleDisplayScaling)
-        XCTAssertEqual(
-            seekCommand,
-            .seekWithOrigin(to: 45, origin: .timedMetadata(metadataID))
+        #expect(rateCommand == .setPlaybackRate(1.5))
+        #expect(skipIntervalCommand == .setSkipInterval(30))
+        #expect(subtitleVisibleCommand == .setSubtitleVisible(true))
+        #expect(subtitleTrackCommand == .selectSubtitleTrack(subtitleTrackID))
+        #expect(captionFontSizeCommand == .setCaptionFontSize(20))
+        #expect(addBookmarkCommand == .addBookmark(at: 45))
+        #expect(displayLockedCommand == .setDisplayLocked(true))
+        #expect(displayScaledCommand == .setDisplayScaled(true))
+        #expect(toggleDisplayScalingCommand == .toggleDisplayScaling)
+        #expect(
+            seekCommand == .seekWithOrigin(to: 45, origin: .timedMetadata(metadataID))
         )
     }
 
-    func testPlayerCoreRejectsUnsupportedGenericRateCommandExplicitly() async {
+    @Test("엔진이 rate를 미지원하면 PlayerCore가 명시적으로 거부한다")
+    func playerCoreRejectsUnsupportedGenericRateCommandExplicitly() async {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
@@ -91,18 +96,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .setPlaybackRate(1.5))
-            XCTFail("Unsupported rate command should fail explicitly.")
+            Issue.record("Unsupported rate command should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Playback rate 1.5x is not supported by the current playback engine.")
+            #expect(
+                error == .engineError("Playback rate 1.5x is not supported by the current playback engine.")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreDelegatesGenericRateCommandWhenEngineSupportsRateControl() async throws {
+    @Test("엔진이 rate 제어를 지원하면 PlayerCore가 rate 명령을 위임한다")
+    func playerCoreDelegatesGenericRateCommandWhenEngineSupportsRateControl() async throws {
         let engine = RateControllableEngine()
         let core = PlayerCore(
             engine: engine,
@@ -112,10 +117,11 @@ final class PlayerInterfaceTests: XCTestCase {
         try await core.execute(command: .setPlaybackRate(1.5))
 
         let recordedRate = await engine.recordedRate
-        XCTAssertEqual(recordedRate, 1.5)
+        #expect(recordedRate == 1.5)
     }
 
-    func testPlayerCoreRejectsRateAboveCurrentPolicy() async throws {
+    @Test("현재 정책 최대치를 초과하는 rate를 거부한다")
+    func playerCoreRejectsRateAboveCurrentPolicy() async throws {
         let engine = RateControllableEngine()
         let core = PlayerCore(
             engine: engine,
@@ -133,18 +139,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .setPlaybackRate(1.5))
-            XCTFail("Rate above policy should fail explicitly.")
+            Issue.record("Rate above policy should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Playback rate 1.5x exceeds max policy rate 1.25x.")
+            #expect(
+                error == .engineError("Playback rate 1.5x exceeds max policy rate 1.25x.")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreRejectsUnsupportedGenericSubtitleCommandExplicitly() async {
+    @Test("엔진이 subtitle을 미지원하면 자막 가시성 명령을 명시적으로 거부한다")
+    func playerCoreRejectsUnsupportedGenericSubtitleCommandExplicitly() async {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
@@ -153,18 +159,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .setSubtitleVisible(true))
-            XCTFail("Unsupported subtitle visibility command should fail explicitly.")
+            Issue.record("Unsupported subtitle visibility command should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Subtitle visibility is not supported by the current playback engine.")
+            #expect(
+                error == .engineError("Subtitle visibility is not supported by the current playback engine.")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreRejectsInvalidCaptionFontSize() async {
+    @Test("잘못된 캡션 폰트 크기를 거부한다")
+    func playerCoreRejectsInvalidCaptionFontSize() async {
         let engine = SubtitleControllableEngine()
         let core = PlayerCore(
             engine: engine,
@@ -173,18 +179,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .setCaptionFontSize(0))
-            XCTFail("Invalid caption font size should fail explicitly.")
+            Issue.record("Invalid caption font size should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Caption font size must be greater than 0. fontSize=0")
+            #expect(
+                error == .engineError("Caption font size must be greater than 0. fontSize=0")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreDelegatesGenericSubtitleCommandsWhenEngineSupportsSubtitleControl() async throws {
+    @Test("엔진이 subtitle 제어를 지원하면 자막 명령을 위임한다")
+    func playerCoreDelegatesGenericSubtitleCommandsWhenEngineSupportsSubtitleControl() async throws {
         let engine = SubtitleControllableEngine()
         let core = PlayerCore(
             engine: engine,
@@ -199,12 +205,13 @@ final class PlayerInterfaceTests: XCTestCase {
         let recordedSubtitleVisibility = await engine.recordedSubtitleVisibility
         let recordedSubtitleTrackID = await engine.recordedSubtitleTrackID
         let recordedCaptionFontSize = await engine.recordedCaptionFontSize
-        XCTAssertEqual(recordedSubtitleVisibility, true)
-        XCTAssertEqual(recordedSubtitleTrackID, trackID)
-        XCTAssertEqual(recordedCaptionFontSize, 20)
+        #expect(recordedSubtitleVisibility == true)
+        #expect(recordedSubtitleTrackID == trackID)
+        #expect(recordedCaptionFontSize == 20)
     }
 
-    func testPlayerCoreRejectsUnsupportedGenericBookmarkCommandExplicitly() async {
+    @Test("엔진이 bookmark를 미지원하면 북마크 명령을 명시적으로 거부한다")
+    func playerCoreRejectsUnsupportedGenericBookmarkCommandExplicitly() async {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
@@ -213,18 +220,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .addBookmark(at: 45))
-            XCTFail("Unsupported bookmark command should fail explicitly.")
+            Issue.record("Unsupported bookmark command should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Bookmark mutation is not supported by the current playback engine.")
+            #expect(
+                error == .engineError("Bookmark mutation is not supported by the current playback engine.")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreRejectsInvalidBookmarkTime() async {
+    @Test("잘못된 북마크 시간을 거부한다")
+    func playerCoreRejectsInvalidBookmarkTime() async {
         let engine = BookmarkControllableEngine()
         let core = PlayerCore(
             engine: engine,
@@ -233,18 +240,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .addBookmark(at: -1))
-            XCTFail("Invalid bookmark time should fail explicitly.")
+            Issue.record("Invalid bookmark time should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Bookmark time must be greater than or equal to 0. time=-1.0")
+            #expect(
+                error == .engineError("Bookmark time must be greater than or equal to 0. time=-1.0")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreDelegatesGenericBookmarkCommandWhenEngineSupportsBookmarkControl() async throws {
+    @Test("엔진이 bookmark 제어를 지원하면 북마크 명령을 위임한다")
+    func playerCoreDelegatesGenericBookmarkCommandWhenEngineSupportsBookmarkControl() async throws {
         let engine = BookmarkControllableEngine()
         let core = PlayerCore(
             engine: engine,
@@ -254,10 +261,11 @@ final class PlayerInterfaceTests: XCTestCase {
         try await core.execute(command: .addBookmark(at: 45))
 
         let recordedBookmarkTime = await engine.recordedBookmarkTime
-        XCTAssertEqual(recordedBookmarkTime, 45)
+        #expect(recordedBookmarkTime == 45)
     }
 
-    func testPlayerCoreRejectsUnsupportedGenericDisplayCommandExplicitly() async {
+    @Test("엔진이 display를 미지원하면 디스플레이 명령을 명시적으로 거부한다")
+    func playerCoreRejectsUnsupportedGenericDisplayCommandExplicitly() async {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
@@ -266,18 +274,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .setDisplayLocked(true))
-            XCTFail("Unsupported display command should fail explicitly.")
+            Issue.record("Unsupported display command should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Display lock is not supported by the current playback engine.")
+            #expect(
+                error == .engineError("Display lock is not supported by the current playback engine.")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreDelegatesGenericDisplayCommandsWhenEngineSupportsDisplayControl() async throws {
+    @Test("엔진이 display 제어를 지원하면 디스플레이 명령을 위임한다")
+    func playerCoreDelegatesGenericDisplayCommandsWhenEngineSupportsDisplayControl() async throws {
         let engine = DisplayControllableEngine()
         let core = PlayerCore(
             engine: engine,
@@ -291,12 +299,13 @@ final class PlayerInterfaceTests: XCTestCase {
         let recordedDisplayLock = await engine.recordedDisplayLock
         let recordedDisplayScale = await engine.recordedDisplayScale
         let toggleDisplayScalingCallCount = await engine.toggleDisplayScalingCallCount
-        XCTAssertEqual(recordedDisplayLock, true)
-        XCTAssertEqual(recordedDisplayScale, true)
-        XCTAssertEqual(toggleDisplayScalingCallCount, 1)
+        #expect(recordedDisplayLock == true)
+        #expect(recordedDisplayScale == true)
+        #expect(toggleDisplayScalingCallCount == 1)
     }
 
-    func testPlayerCoreResolvesSkipOriginFromCurrentPlaybackTime() async throws {
+    @Test("skip origin을 현재 재생 시간으로부터 해석한다")
+    func playerCoreResolvesSkipOriginFromCurrentPlaybackTime() async throws {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
@@ -309,10 +318,11 @@ final class PlayerInterfaceTests: XCTestCase {
         try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipBackward))
 
         let recordedSeekTimes = await engine.recordedSeekTimes
-        XCTAssertEqual(recordedSeekTimes, [50, 40])
+        #expect(recordedSeekTimes == [50, 40])
     }
 
-    func testPlayerCoreUsesUpdatedSkipIntervalForSkipOrigin() async throws {
+    @Test("skip origin에 갱신된 skip interval을 사용한다")
+    func playerCoreUsesUpdatedSkipIntervalForSkipOrigin() async throws {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
@@ -325,10 +335,11 @@ final class PlayerInterfaceTests: XCTestCase {
         try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipForward))
 
         let recordedSeekTimes = await engine.recordedSeekTimes
-        XCTAssertEqual(recordedSeekTimes, [70])
+        #expect(recordedSeekTimes == [70])
     }
 
-    func testPlayerCoreRejectsInvalidSkipInterval() async throws {
+    @Test("잘못된 skip interval을 거부한다")
+    func playerCoreRejectsInvalidSkipInterval() async throws {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
@@ -337,18 +348,18 @@ final class PlayerInterfaceTests: XCTestCase {
 
         do {
             try await core.execute(command: .setSkipInterval(0))
-            XCTFail("Invalid skip interval should fail explicitly.")
+            Issue.record("Invalid skip interval should fail explicitly.")
         } catch let error as PlayerError {
-            XCTAssertEqual(
-                error,
-                .engineError("Skip interval must be greater than 0. interval=0.0")
+            #expect(
+                error == .engineError("Skip interval must be greater than 0. interval=0.0")
             )
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 
-    func testPlayerCoreClampsSkipOriginToPlaybackBounds() async throws {
+    @Test("skip origin을 재생 경계로 clamp한다")
+    func playerCoreClampsSkipOriginToPlaybackBounds() async throws {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
@@ -366,7 +377,7 @@ final class PlayerInterfaceTests: XCTestCase {
         try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipBackward))
 
         let recordedSeekTimes = await engine.recordedSeekTimes
-        XCTAssertEqual(recordedSeekTimes, [0])
+        #expect(recordedSeekTimes == [0])
     }
 }
 

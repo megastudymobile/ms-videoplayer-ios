@@ -1,16 +1,18 @@
-import XCTest
+import Foundation
+import Testing
 @testable import VideoPlayerCore
 
-final class PlayerCoreRound4Tests: XCTestCase {
+@Suite("PlayerCore Round4 재진입/스트림/실패 처리")
+final class PlayerCoreRound4Tests {
     private var streamTasks: [Task<Void, Never>] = []
 
-    override func tearDown() {
+    deinit {
         streamTasks.forEach { $0.cancel() }
         streamTasks.removeAll()
-        super.tearDown()
     }
 
-    func testLoadReentryCancelsPreviousPrepareAndConvergesToLatestPlayback() async throws {
+    @Test("load 재진입 시 이전 prepare를 취소하고 최신 소스 재생으로 수렴한다")
+    func loadReentryCancelsPreviousPrepareAndConvergesToLatestPlayback() async throws {
         let engine = TestPlayerEngineAdapter()
         let firstSource = PlaybackSource.url(URL(string: "https://example.com/slow.mp4")!)
         let secondSource = PlaybackSource.url(URL(string: "https://example.com/latest.mp4")!)
@@ -52,17 +54,18 @@ final class PlayerCoreRound4Tests: XCTestCase {
         let preparedSourceKeys = await engine.preparedSourceKeys
         let containsDidFail = await eventRecorder.containsDidFail
 
-        XCTAssertEqual(prepareCount, 2)
-        XCTAssertEqual(playCount, 1)
-        XCTAssertEqual(stopCount, 0)
-        XCTAssertEqual(preparedSourceKeys, [
+        #expect(prepareCount == 2)
+        #expect(playCount == 1)
+        #expect(stopCount == 0)
+        #expect(preparedSourceKeys == [
             firstSource.testKey,
             secondSource.testKey
         ])
-        XCTAssertFalse(containsDidFail)
+        #expect(!(containsDidFail))
     }
 
-    func testStopDuringPreparingCancelsPrepareAndTransitionsToIdle() async throws {
+    @Test("preparing 중 stop은 prepare를 취소하고 idle로 전이한다")
+    func stopDuringPreparingCancelsPrepareAndTransitionsToIdle() async throws {
         let engine = TestPlayerEngineAdapter()
         let source = PlaybackSource.url(URL(string: "https://example.com/preparing.mp4")!)
 
@@ -95,11 +98,16 @@ final class PlayerCoreRound4Tests: XCTestCase {
         let stopCount = await engine.stopCount
         let containsDidFail = await eventRecorder.containsDidFail
 
-        XCTAssertEqual(stopCount, 1)
-        XCTAssertFalse(containsDidFail)
+        #expect(stopCount == 1)
+        #expect(!(containsDidFail))
     }
 
-    func testEventStreamKeepsLatestTimeEventForSlowConsumerAndFinishesOnDispose() async throws {
+    // 슬로우 소비자 + bufferingNewest(1) coalescing 검증.
+    // 백그라운드 Task + 실시간 sleep + waitUntil 폴링은 Swift Testing 병렬 실행 시
+    // cooperative pool 고갈로 starve되어 결정적이지 않다. 테스트 자신의 task에서
+    // iterator를 직접 소비해 wall-clock 의존 없이 동일 속성을 검증한다.
+    @Test("느린 소비자에게도 최신 time 이벤트를 유지하고 dispose 시 종료한다")
+    func eventStreamKeepsLatestTimeEventForSlowConsumerAndFinishesOnDispose() async throws {
         let engine = TestPlayerEngineAdapter()
         let core = PlayerCore(
             engine: engine,
@@ -107,38 +115,53 @@ final class PlayerCoreRound4Tests: XCTestCase {
         )
         await core.activate()
 
-        let eventRecorder = startRecording(
-            core.eventStream,
-            consumeDelay: 50_000_000
-        )
+        var iterator = core.eventStream.makeAsyncIterator()
 
-        for second in 0..<20 {
+        // 첫 이벤트는 소비자(테스트 task)가 즉시 1건 읽는다.
+        await engine.emit(.timeDidChange(currentTime: 0, duration: 300))
+        let first = try #require(await Self.nextTimeDidChange(&iterator))
+        #expect(first.duration == 300)
+
+        // 나머지를 빠르게 burst → bufferingNewest(1) 이 최신값만 유지한다.
+        for second in 1..<20 {
             await engine.emit(.timeDidChange(currentTime: TimeInterval(second), duration: 300))
         }
 
-        try await waitUntil {
-            await eventRecorder.timeDidChangeCount >= 2
+        // 느린 소비자는 burst 의 모든 이벤트를 받지 못하고 최신(19)으로 coalesce 된다.
+        var timeReadCount = 1
+        var latest = first
+        while latest.currentTime != 19 {
+            guard let next = await Self.nextTimeDidChange(&iterator) else {
+                break
+            }
+            latest = next
+            timeReadCount += 1
         }
 
-        let latestTimeEvent = await eventRecorder.latestTimeDidChange
-        switch latestTimeEvent {
-        case .some((let currentTime, let duration)):
-            XCTAssertEqual(currentTime, 19)
-            XCTAssertEqual(duration, 300)
-        case .none:
-            XCTFail("최신 timeDidChange 이벤트가 전달되어야 합니다.")
-        }
+        #expect(latest.currentTime == 19)
+        #expect(latest.duration == 300)
+        // coalescing 증명: 20건 전부가 아니라 더 적은 수로 최신에 도달.
+        #expect(timeReadCount < 20)
 
-        let timeDidChangeCount = await eventRecorder.timeDidChangeCount
-        XCTAssertLessThan(timeDidChangeCount, 20)
-
+        // dispose 시 eventStream 이 종료되어 이후 read 가 nil 로 끝난다.
         await core.dispose()
-        try await waitUntil {
-            await eventRecorder.didFinish
-        }
+        while await Self.nextTimeDidChange(&iterator) != nil {}
     }
 
-    func testActivateRepublishesEngineEventsToStateAndEventStreams() async throws {
+    private static func nextTimeDidChange(
+        _ iterator: inout AsyncStream<PlayerEvent>.Iterator
+    ) async -> (currentTime: TimeInterval, duration: TimeInterval)? {
+        while let event = await iterator.next() {
+            if case .timeDidChange(let currentTime, let duration) = event {
+                return (currentTime, duration)
+            }
+        }
+
+        return nil
+    }
+
+    @Test("activate는 엔진 이벤트를 state/event 스트림으로 다시 발행한다")
+    func activateRepublishesEngineEventsToStateAndEventStreams() async throws {
         let engine = TestPlayerEngineAdapter()
         let core = PlayerCore(
             engine: engine,
@@ -177,7 +200,8 @@ final class PlayerCoreRound4Tests: XCTestCase {
         }
     }
 
-    func testExecutePlayFailureTransitionsToFailedAndRethrows() async throws {
+    @Test("play 명령 실패 시 failed로 전이하고 에러를 재전파한다")
+    func executePlayFailureTransitionsToFailedAndRethrows() async throws {
         let engine = TestPlayerEngineAdapter()
         await engine.setPlayError(.engineError("play blocked"))
         let core = PlayerCore(
@@ -190,11 +214,11 @@ final class PlayerCoreRound4Tests: XCTestCase {
 
         do {
             try await core.execute(command: .play)
-            XCTFail("Expected play command to throw")
+            Issue.record("Expected play command to throw")
         } catch let error as PlayerError {
-            XCTAssertEqual(error, .engineError("play blocked"))
+            #expect(error == .engineError("play blocked"))
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
 
         try await waitUntil {
@@ -202,7 +226,8 @@ final class PlayerCoreRound4Tests: XCTestCase {
         }
     }
 
-    func testExecuteSeekFailureTransitionsToFailedAndRethrows() async throws {
+    @Test("seek 명령 실패 시 failed로 전이하고 에러를 재전파한다")
+    func executeSeekFailureTransitionsToFailedAndRethrows() async throws {
         let engine = TestPlayerEngineAdapter()
         await engine.setSeekError(.engineError("seek denied"))
         let core = PlayerCore(
@@ -215,11 +240,11 @@ final class PlayerCoreRound4Tests: XCTestCase {
 
         do {
             try await core.execute(command: .seek(to: 10))
-            XCTFail("Expected seek command to throw")
+            Issue.record("Expected seek command to throw")
         } catch let error as PlayerError {
-            XCTAssertEqual(error, .engineError("seek denied"))
+            #expect(error == .engineError("seek denied"))
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
 
         try await waitUntil {
@@ -249,10 +274,10 @@ final class PlayerCoreRound4Tests: XCTestCase {
     }
 
     private func waitUntil(
-        timeout: TimeInterval = 1.0,
+        // 병렬 실행 시 CPU 경합을 흡수할 여유를 둔다. 조건 충족 즉시 반환한다.
+        timeout: TimeInterval = 2.0,
         pollInterval: UInt64 = 10_000_000,
-        file: StaticString = #filePath,
-        line: UInt = #line,
+        sourceLocation: SourceLocation = #_sourceLocation,
         condition: @escaping @Sendable () async -> Bool
     ) async throws {
         let deadline = Date().addingTimeInterval(timeout)
@@ -265,7 +290,7 @@ final class PlayerCoreRound4Tests: XCTestCase {
             try await Task.sleep(nanoseconds: pollInterval)
         }
 
-        XCTFail("조건을 만족하지 못했습니다.", file: file, line: line)
+        Issue.record("조건을 만족하지 못했습니다.", sourceLocation: sourceLocation)
     }
 
 }

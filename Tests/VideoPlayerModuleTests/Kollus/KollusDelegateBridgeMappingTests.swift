@@ -11,12 +11,13 @@
 import CoreGraphics
 import Foundation
 import VideoPlayerCore
-import XCTest
+import Testing
 @testable import VideoPlayerEngineKollus
 
 /// 26 raw SDK 콜백 → KollusEngineSignal(23) + observer(DRM/LMS 2) + Bookmark(1) 매핑 검증.
 @MainActor
-final class KollusDelegateBridgeMappingTests: XCTestCase {
+@Suite("KollusDelegateBridge raw SDK 콜백 → signal 매핑")
+struct KollusDelegateBridgeMappingTests {
 
     // MARK: - Fixtures
 
@@ -58,182 +59,207 @@ final class KollusDelegateBridgeMappingTests: XCTestCase {
 
     // MARK: - KollusPlayerDelegate 23 mappings
 
-    func test_prepareToPlayCompleted_nilError() {
+    @Test("prepareToPlayCompleted nil error 매핑")
+    func prepareToPlayCompleted_nilError() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handlePrepareToPlayCompleted(error: nil)
-        guard case .prepareToPlayCompleted(let error) = capture.signals[0] else { return XCTFail() }
-        XCTAssertNil(error)
+        guard case .prepareToPlayCompleted(let error) = capture.signals[0] else { Issue.record(); return }
+        #expect(error == nil)
     }
 
-    func test_prepareToPlayCompleted_withError() {
+    @Test("prepareToPlayCompleted error 매핑")
+    func prepareToPlayCompleted_withError() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handlePrepareToPlayCompleted(error: NSError(domain: "t", code: 42))
-        guard case .prepareToPlayCompleted(let error) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual((error as NSError?)?.code, 42)
+        guard case .prepareToPlayCompleted(let error) = capture.signals[0] else { Issue.record(); return }
+        #expect((error as NSError?)?.code == 42)
     }
 
-    func test_playStarted() {
+    @Test("playStarted 매핑")
+    func playStarted() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handlePlayStarted(userInteraction: true, error: nil)
-        guard case .playStarted(let ui, _) = capture.signals[0] else { return XCTFail() }
-        XCTAssertTrue(ui)
+        guard case .playStarted(let ui, _) = capture.signals[0] else { Issue.record(); return }
+        #expect(ui)
     }
 
-    func test_pauseStarted() {
+    @Test("pauseStarted 매핑")
+    func pauseStarted() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handlePauseStarted(userInteraction: false, error: nil)
-        guard case .pauseStarted(let ui, _) = capture.signals[0] else { return XCTFail() }
-        XCTAssertFalse(ui)
+        guard case .pauseStarted(let ui, _) = capture.signals[0] else { Issue.record(); return }
+        #expect(!(ui))
     }
 
-    func test_bufferingChanged() {
+    @Test("bufferingChanged 매핑")
+    func bufferingChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleBufferingChanged(buffering: true, prepared: true, error: nil)
-        guard case .bufferingChanged(let buffering, let prepared, _) = capture.signals[0] else { return XCTFail() }
-        XCTAssertTrue(buffering)
-        XCTAssertTrue(prepared)
+        guard case .bufferingChanged(let buffering, let prepared, _) = capture.signals[0] else { Issue.record(); return }
+        #expect(buffering)
+        #expect(prepared)
     }
 
-    func test_stopStarted() {
+    @Test("stopStarted 매핑")
+    func stopStarted() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleStopStarted(userInteraction: true, error: nil)
-        guard case .stopStarted(let ui, _) = capture.signals[0] else { return XCTFail() }
-        XCTAssertTrue(ui)
+        guard case .stopStarted(let ui, _) = capture.signals[0] else { Issue.record(); return }
+        #expect(ui)
     }
 
-    func test_positionChanged() {
+    @Test("positionChanged 매핑")
+    func positionChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handlePositionChanged(time: 12.5, isSeeking: false)
-        guard case .positionChanged(let time, let isSeeking) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(time, 12.5)
-        XCTAssertFalse(isSeeking)
+        guard case .positionChanged(let time, let isSeeking) = capture.signals[0] else { Issue.record(); return }
+        #expect(time == 12.5)
+        #expect(!(isSeeking))
     }
 
-    func test_scrollChanged() {
+    @Test("scrollChanged 매핑")
+    func scrollChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleScrollChanged(distance: CGPoint(x: 10, y: 20))
-        guard case .scrollChanged(let distance) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(distance, CGPoint(x: 10, y: 20))
+        guard case .scrollChanged(let distance) = capture.signals[0] else { Issue.record(); return }
+        #expect(distance == CGPoint(x: 10, y: 20))
     }
 
-    func test_zoomChanged() {
+    @Test("zoomChanged 매핑")
+    func zoomChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleZoomChanged(scale: 1.5)
-        guard case .zoomChanged(let value) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(value, 1.5)
+        guard case .zoomChanged(let value) = capture.signals[0] else { Issue.record(); return }
+        #expect(value == 1.5)
     }
 
-    func test_naturalSizeResolved() {
+    @Test("naturalSizeResolved 매핑")
+    func naturalSizeResolved() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleNaturalSizeResolved(size: CGSize(width: 1920, height: 1080))
-        guard case .naturalSizeResolved(let size) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(size, CGSize(width: 1920, height: 1080))
+        guard case .naturalSizeResolved(let size) = capture.signals[0] else { Issue.record(); return }
+        #expect(size == CGSize(width: 1920, height: 1080))
     }
 
-    func test_contentModeChanged() {
+    @Test("contentModeChanged 매핑")
+    func contentModeChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleContentModeChanged(mode: 2)
-        guard case .contentModeChanged(let mode) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(mode, 2)
+        guard case .contentModeChanged(let mode) = capture.signals[0] else { Issue.record(); return }
+        #expect(mode == 2)
     }
 
-    func test_contentFrameChanged() {
+    @Test("contentFrameChanged 매핑")
+    func contentFrameChanged() {
         let capture = CapturedSignals()
         let frame = CGRect(x: 0, y: 0, width: 100, height: 100)
         makeBridge(capture: capture).handleContentFrameChanged(frame: frame)
-        guard case .contentFrameChanged(let f) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(f, frame)
+        guard case .contentFrameChanged(let f) = capture.signals[0] else { Issue.record(); return }
+        #expect(f == frame)
     }
 
-    func test_playbackRateChanged() {
+    @Test("playbackRateChanged 매핑")
+    func playbackRateChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handlePlaybackRateChanged(rate: 1.5)
-        guard case .playbackRateChanged(let rate) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(rate, 1.5)
+        guard case .playbackRateChanged(let rate) = capture.signals[0] else { Issue.record(); return }
+        #expect(rate == 1.5)
     }
 
-    func test_repeatChanged() {
+    @Test("repeatChanged 매핑")
+    func repeatChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleRepeatChanged(enabled: true)
-        guard case .repeatChanged(let enabled) = capture.signals[0] else { return XCTFail() }
-        XCTAssertTrue(enabled)
+        guard case .repeatChanged(let enabled) = capture.signals[0] else { Issue.record(); return }
+        #expect(enabled)
     }
 
-    func test_externalOutputChanged() {
+    @Test("externalOutputChanged 매핑")
+    func externalOutputChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleExternalOutputChanged(enabled: true)
-        guard case .externalOutputEnabledChanged(let enabled) = capture.signals[0] else { return XCTFail() }
-        XCTAssertTrue(enabled)
+        guard case .externalOutputEnabledChanged(let enabled) = capture.signals[0] else { Issue.record(); return }
+        #expect(enabled)
     }
 
-    func test_unknownError() {
+    @Test("unknownError 매핑")
+    func unknownError() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleUnknownError(NSError(domain: "t", code: 99))
-        guard case .unknownError(let error) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual((error as NSError).code, 99)
+        guard case .unknownError(let error) = capture.signals[0] else { Issue.record(); return }
+        #expect((error as NSError).code == 99)
     }
 
-    func test_framerateResolved() {
+    @Test("framerateResolved 매핑")
+    func framerateResolved() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleFramerateResolved(framerate: 60)
-        guard case .framerateResolved(let framerate) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(framerate, 60)
+        guard case .framerateResolved(let framerate) = capture.signals[0] else { Issue.record(); return }
+        #expect(framerate == 60)
     }
 
-    func test_devicePolicyLocked() {
+    @Test("devicePolicyLocked 매핑")
+    func devicePolicyLocked() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleDevicePolicyLocked(playerType: 1)
-        guard case .devicePolicyLocked(let playerType) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(playerType, 1)
+        guard case .devicePolicyLocked(let playerType) = capture.signals[0] else { Issue.record(); return }
+        #expect(playerType == 1)
     }
 
-    func test_captionUpdated() {
+    @Test("captionUpdated 매핑")
+    func captionUpdated() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleCaptionUpdated(charset: "UTF-8", caption: "hello")
-        guard case .captionUpdated(let charset, let caption) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(charset, "UTF-8")
-        XCTAssertEqual(caption, "hello")
+        guard case .captionUpdated(let charset, let caption) = capture.signals[0] else { Issue.record(); return }
+        #expect(charset == "UTF-8")
+        #expect(caption == "hello")
     }
 
-    func test_subCaptionUpdated() {
+    @Test("subCaptionUpdated 매핑")
+    func subCaptionUpdated() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleSubCaptionUpdated(charset: "UTF-8", caption: "sub")
-        guard case .subCaptionUpdated(let charset, let caption) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(charset, "UTF-8")
-        XCTAssertEqual(caption, "sub")
+        guard case .subCaptionUpdated(let charset, let caption) = capture.signals[0] else { Issue.record(); return }
+        #expect(charset == "UTF-8")
+        #expect(caption == "sub")
     }
 
-    func test_thumbnailReady() {
+    @Test("thumbnailReady 매핑")
+    func thumbnailReady() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleThumbnailReady(hasThumbnail: true, error: nil)
-        guard case .thumbnailReady(let hasThumbnail, _) = capture.signals[0] else { return XCTFail() }
-        XCTAssertTrue(hasThumbnail)
+        guard case .thumbnailReady(let hasThumbnail, _) = capture.signals[0] else { Issue.record(); return }
+        #expect(hasThumbnail)
     }
 
-    func test_mediaContentKeyResolved() {
+    @Test("mediaContentKeyResolved 매핑")
+    func mediaContentKeyResolved() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleMediaContentKeyResolved(mck: "mck-123")
-        guard case .mediaContentKeyResolved(let mck) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(mck, "mck-123")
+        guard case .mediaContentKeyResolved(let mck) = capture.signals[0] else { Issue.record(); return }
+        #expect(mck == "mck-123")
     }
 
-    func test_hlsHeightChanged() {
+    @Test("hlsHeightChanged 매핑")
+    func hlsHeightChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleHLSHeightChanged(height: 720)
-        guard case .hlsHeightChanged(let height) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(height, 720)
+        guard case .hlsHeightChanged(let height) = capture.signals[0] else { Issue.record(); return }
+        #expect(height == 720)
     }
 
-    func test_hlsBitrateChanged() {
+    @Test("hlsBitrateChanged 매핑")
+    func hlsBitrateChanged() {
         let capture = CapturedSignals()
         makeBridge(capture: capture).handleHLSBitrateChanged(bitrate: 4_500_000)
-        guard case .hlsBitrateChanged(let bitrate) = capture.signals[0] else { return XCTFail() }
-        XCTAssertEqual(bitrate, 4_500_000)
+        guard case .hlsBitrateChanged(let bitrate) = capture.signals[0] else { Issue.record(); return }
+        #expect(bitrate == 4_500_000)
     }
 
     // MARK: - DRM / LMS / Bookmark 3
 
-    func test_drmResponse_forwardsToObserver() {
+    @Test("DRM 응답을 observer로 전달")
+    func drmResponse_forwardsToObserver() {
         let capture = CapturedSignals()
         let observer = FakeObserver()
         let bridge = makeBridge(capture: capture, observer: observer)
@@ -244,25 +270,27 @@ final class KollusDelegateBridgeMappingTests: XCTestCase {
             error: nil
         )
 
-        XCTAssertEqual(observer.drmCalls.count, 1)
-        XCTAssertEqual(observer.drmCalls[0].request["url"] as? String, "https://example.com/drm")
-        XCTAssertEqual(observer.drmCalls[0].response["status"] as? Int, 200)
-        XCTAssertTrue(capture.signals.isEmpty)
+        #expect(observer.drmCalls.count == 1)
+        #expect(observer.drmCalls[0].request["url"] as? String == "https://example.com/drm")
+        #expect(observer.drmCalls[0].response["status"] as? Int == 200)
+        #expect(capture.signals.isEmpty)
     }
 
-    func test_lmsPost_forwardsToObserver() {
+    @Test("LMS post를 observer로 전달")
+    func lmsPost_forwardsToObserver() {
         let capture = CapturedSignals()
         let observer = FakeObserver()
         let bridge = makeBridge(capture: capture, observer: observer)
 
         bridge.handleLMSPost(data: "progress=50", result: ["ok": true])
 
-        XCTAssertEqual(observer.lmsCalls.count, 1)
-        XCTAssertEqual(observer.lmsCalls[0].data, "progress=50")
-        XCTAssertEqual(observer.lmsCalls[0].result["ok"] as? Bool, true)
+        #expect(observer.lmsCalls.count == 1)
+        #expect(observer.lmsCalls[0].data == "progress=50")
+        #expect(observer.lmsCalls[0].result["ok"] as? Bool == true)
     }
 
-    func test_bookmarks_forwardsToBookmarkCallback() {
+    @Test("bookmarks를 bookmark 콜백으로 전달")
+    func bookmarks_forwardsToBookmarkCallback() {
         let capture = CapturedSignals()
         let bridge = makeBridge(capture: capture)
         let bookmarks = [
@@ -272,32 +300,35 @@ final class KollusDelegateBridgeMappingTests: XCTestCase {
 
         bridge.handleBookmarks(bookmarks)
 
-        XCTAssertEqual(capture.bookmarks.count, 1)
-        XCTAssertEqual(capture.bookmarks[0], bookmarks)
+        #expect(capture.bookmarks.count == 1)
+        #expect(capture.bookmarks[0] == bookmarks)
     }
 
     // MARK: - nil observer / nil diagnostics
 
-    func test_nilObserver_drmCallIsNoOp() {
+    @Test("nil observer일 때 DRM 호출은 no-op")
+    func nilObserver_drmCallIsNoOp() {
         let capture = CapturedSignals()
         let bridge = makeBridge(capture: capture, observer: nil)
 
         bridge.handleDRMResponse(request: [:], response: [:], error: nil)
         bridge.handleLMSPost(data: "x", result: [:])
 
-        XCTAssertTrue(capture.signals.isEmpty)
+        #expect(capture.signals.isEmpty)
     }
 
-    func test_nilDiagnostics_signalsStillForwardedToOnSignal() {
+    @Test("nil diagnostics여도 signal은 onSignal로 전달")
+    func nilDiagnostics_signalsStillForwardedToOnSignal() {
         let capture = CapturedSignals()
         let bridge = makeBridge(capture: capture, diagnostics: nil)
 
         bridge.handlePlayStarted(userInteraction: true, error: nil)
 
-        XCTAssertEqual(capture.signals.count, 1)
+        #expect(capture.signals.count == 1)
     }
 
-    func test_withDiagnostics_signalsForwardedToBothChannels() {
+    @Test("diagnostics 존재 시 signal은 두 채널 모두로 전달")
+    func withDiagnostics_signalsForwardedToBothChannels() {
         let capture = CapturedSignals()
         let diagnostics = FakeDiagnostics()
         let bridge = makeBridge(capture: capture, diagnostics: diagnostics)
@@ -305,8 +336,8 @@ final class KollusDelegateBridgeMappingTests: XCTestCase {
         bridge.handlePlayStarted(userInteraction: false, error: nil)
         bridge.handleHLSHeightChanged(height: 1080)
 
-        XCTAssertEqual(capture.signals.count, 2)
-        XCTAssertEqual(diagnostics.signals.count, 2)
+        #expect(capture.signals.count == 2)
+        #expect(diagnostics.signals.count == 2)
     }
 }
 

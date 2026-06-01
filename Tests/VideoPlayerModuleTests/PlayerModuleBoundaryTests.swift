@@ -1,12 +1,13 @@
 import Foundation
 import Testing
 
-@Suite("Player module boundary")
+@Suite("Player module 경계 검증")
 struct PlayerModuleBoundaryTests {
-    @Test("Package source does not contain service app vocabulary")
+    @Test("Package source에 서비스 앱 용어가 포함되지 않음")
     func packageSourceDoesNotContainServiceAppVocabulary() throws {
         let packageRoot = try Self.findPackageRoot()
-        let sourceRoot = packageRoot.appendingPathComponent("Sources/VideoPlayerModule")
+        // 재사용 패키지의 모든 타겟(Core/ShellSupport/Engine*/Skin)을 스캔한다.
+        let sourceRoot = packageRoot.appendingPathComponent("Sources")
         let bannedTerms = [
             "SmartLearning",
             "MegaStudy",

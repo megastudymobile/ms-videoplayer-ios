@@ -1,9 +1,9 @@
 import Testing
 @testable import VideoPlayerCore
 
-@Suite("Player feature policy")
+@Suite("Player feature policy 검증")
 struct PlayerFeaturePolicyTests {
-    @Test("Default policy disables background playback")
+    @Test("default policy가 background playback을 비활성화")
     func defaultPolicyDisablesBackgroundPlayback() {
         #expect(!PlayerFeaturePolicy.default.allowsBackgroundPlayback)
         #expect(PlayerFeaturePolicy.default.maxPlaybackRate == 2.0)

@@ -6,89 +6,92 @@
 //  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
 //
 
-import XCTest
+import Testing
+import Foundation
 @testable import VideoPlayerCore
 
-final class PlayerCoreCommandCoverageTests: XCTestCase {
+@Suite("PlayerCore 명령 라우팅 커버리지")
+struct PlayerCoreCommandCoverageTests {
 
-    func test_addBookmarkWithTitle_throwsWhenEngineDoesNotConform() async throws {
+    @Test("미지원 엔진에서 addBookmarkWithTitle은 engineError를 던진다")
+    func addBookmarkWithTitle_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
-        do {
+        await #expect {
             try await core.execute(command: .addBookmarkWithTitle(at: 10, title: "test"))
-            XCTFail("Expected engineError")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("Bookmark"))
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("Bookmark")
         }
     }
 
-    func test_addBookmarkWithTitle_invokesTitledEngine() async throws {
+    @Test("addBookmarkWithTitle은 Titled 엔진을 호출한다")
+    func addBookmarkWithTitle_invokesTitledEngine() async throws {
         let engine = TitledBookmarkEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
         try await core.execute(command: .addBookmarkWithTitle(at: 30, title: "chapter1"))
 
         let recorded = await engine.recorded
-        XCTAssertEqual(recorded.count, 1)
-        XCTAssertEqual(recorded.first?.time, 30)
-        XCTAssertEqual(recorded.first?.title, "chapter1")
+        #expect(recorded.count == 1)
+        #expect(recorded.first?.time == 30)
+        #expect(recorded.first?.title == "chapter1")
     }
 
-    func test_removeBookmark_throwsWhenEngineDoesNotConform() async throws {
+    @Test("미지원 엔진에서 removeBookmark는 engineError를 던진다")
+    func removeBookmark_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
-        do {
+        await #expect {
             try await core.execute(command: .removeBookmark(at: 10))
-            XCTFail("Expected engineError")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("Bookmark removal"))
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("Bookmark removal")
         }
     }
 
-    func test_removeBookmark_invokesTitledEngine() async throws {
+    @Test("removeBookmark는 Titled 엔진을 호출한다")
+    func removeBookmark_invokesTitledEngine() async throws {
         let engine = TitledBookmarkEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
         try await core.execute(command: .removeBookmark(at: 45))
 
         let removed = await engine.removedTimes
-        XCTAssertEqual(removed, [45])
+        #expect(removed == [45])
     }
 
-    func test_selectSubtitleFile_throwsWhenEngineDoesNotConform() async throws {
+    @Test("미지원 엔진에서 selectSubtitleFile은 engineError를 던진다")
+    func selectSubtitleFile_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
-        do {
+        await #expect {
             try await core.execute(command: .selectSubtitleFile(URL(string: "https://example.com/a.srt")))
-            XCTFail("Expected engineError")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("subtitle"))
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("subtitle")
         }
     }
 
-    func test_selectSubtitleFile_invokesExternalSubtitleEngine() async throws {
+    @Test("selectSubtitleFile은 외부 자막 엔진을 호출한다")
+    func selectSubtitleFile_invokesExternalSubtitleEngine() async throws {
         let engine = ExternalSubtitleEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
-        let url = URL(string: "https://example.com/sub.srt")!
+        let url = try #require(URL(string: "https://example.com/sub.srt"))
         try await core.execute(command: .selectSubtitleFile(url))
 
         let selected = await engine.selectedURLs
-        XCTAssertEqual(selected, [url])
+        #expect(selected == [url])
     }
 
     // MARK: - Phase 5 (T029) — title/edge-case coverage for bookmark·subtitle commands
 
-    func test_addBookmarkWithTitle_passesTitleToTitledEngine() async throws {
+    @Test("addBookmarkWithTitle은 title을 Titled 엔진에 그대로 전달한다")
+    func addBookmarkWithTitle_passesTitleToTitledEngine() async throws {
         let engine = TitledBookmarkEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
@@ -100,31 +103,31 @@ final class PlayerCoreCommandCoverageTests: XCTestCase {
         try await core.execute(command: .addBookmarkWithTitle(at: 120, title: longTitle))
 
         let recorded = await engine.recorded
-        XCTAssertEqual(recorded.count, 2)
-        XCTAssertEqual(recorded[0].time, 5)
-        XCTAssertEqual(recorded[0].title, "", "빈 title은 무제목 북마크로 기록되어야 한다")
-        XCTAssertEqual(recorded[1].time, 120)
-        XCTAssertEqual(recorded[1].title, longTitle, "긴 title은 손실 없이 전달되어야 한다")
+        #expect(recorded.count == 2)
+        #expect(recorded[0].time == 5)
+        #expect(recorded[0].title == "", "빈 title은 무제목 북마크로 기록되어야 한다")
+        #expect(recorded[1].time == 120)
+        #expect(recorded[1].title == longTitle, "긴 title은 손실 없이 전달되어야 한다")
     }
 
-    func test_removeBookmark_validatesNonNegativeTime() async throws {
+    @Test("removeBookmark는 음수 time을 검증한다")
+    func removeBookmark_validatesNonNegativeTime() async throws {
         let engine = TitledBookmarkEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
-        do {
+        await #expect {
             try await core.execute(command: .removeBookmark(at: -1))
-            XCTFail("Expected engineError for negative time")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(message.contains("greater than or equal to 0"), "got: \(message)")
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("greater than or equal to 0")
         }
 
         let removed = await engine.removedTimes
-        XCTAssertTrue(removed.isEmpty, "음수 time은 엔진에 도달해서는 안 된다")
+        #expect(removed.isEmpty, "음수 time은 엔진에 도달해서는 안 된다")
     }
 
-    func test_selectSubtitleFile_acceptsNilForDisable() async throws {
+    @Test("selectSubtitleFile은 비활성화를 위한 nil을 허용한다")
+    func selectSubtitleFile_acceptsNilForDisable() async throws {
         let engine = ExternalSubtitleEngine()
         let core = PlayerCore(engine: engine, engineCapabilities: [])
 
@@ -132,11 +135,11 @@ final class PlayerCoreCommandCoverageTests: XCTestCase {
         try await core.execute(command: .selectSubtitleFile(nil))
 
         let selected = await engine.selectedURLs
-        XCTAssertEqual(selected.count, 1)
+        #expect(selected.count == 1)
         if let first = selected.first {
-            XCTAssertNil(first, "nil URL이 엔진까지 그대로 전달되어야 한다")
+            #expect(first == nil, "nil URL이 엔진까지 그대로 전달되어야 한다")
         } else {
-            XCTFail("selectedURLs에 1건이 기록되어야 함")
+            Issue.record("selectedURLs에 1건이 기록되어야 함")
         }
     }
 }

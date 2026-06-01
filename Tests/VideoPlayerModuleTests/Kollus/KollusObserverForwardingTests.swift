@@ -9,7 +9,7 @@
 #if canImport(UIKit) && canImport(KollusSDKBinary)
 
 import Foundation
-import XCTest
+import Testing
 import VideoPlayerCore
 @testable import VideoPlayerEngineKollus
 
@@ -20,7 +20,8 @@ import VideoPlayerCore
 /// 그리고 `KollusStorageEventReceiving.storageDidCompleteStoredLMS`가
 /// fake storage의 `emitStoredLMSComplete` 호출에서 그대로 전달되는지를 검증한다.
 @MainActor
-final class KollusObserverForwardingTests: XCTestCase {
+@Suite("Kollus DRM/LMS observer forwarding")
+struct KollusObserverForwardingTests {
 
     // MARK: - Fixtures
 
@@ -71,7 +72,8 @@ final class KollusObserverForwardingTests: XCTestCase {
 
     // MARK: - DRM/LMS forwarding
 
-    func test_observer_receivesDRMResponse_withExactPayload() {
+    @Test("observer가 정확한 payload로 DRM 응답 수신")
+    func observer_receivesDRMResponse_withExactPayload() {
         let observer = FakeObserver()
         let bridge = makeBridge(observer: observer)
 
@@ -81,16 +83,17 @@ final class KollusObserverForwardingTests: XCTestCase {
 
         bridge.handleDRMResponse(request: request, response: response, error: error)
 
-        XCTAssertEqual(observer.drmCalls.count, 1)
+        #expect(observer.drmCalls.count == 1)
         let call = observer.drmCalls[0]
-        XCTAssertEqual(call.request["cid"] as? String, "abc123")
-        XCTAssertEqual(call.request["deviceKey"] as? String, "dk-7")
-        XCTAssertEqual(call.response["status"] as? Int, 200)
-        XCTAssertEqual(call.response["license"] as? String, "xyz")
-        XCTAssertEqual(call.errorCode, 11)
+        #expect(call.request["cid"] as? String == "abc123")
+        #expect(call.request["deviceKey"] as? String == "dk-7")
+        #expect(call.response["status"] as? Int == 200)
+        #expect(call.response["license"] as? String == "xyz")
+        #expect(call.errorCode == 11)
     }
 
-    func test_observer_receivesLMSPost_withExactPayload() {
+    @Test("observer가 정확한 payload로 LMS post 수신")
+    func observer_receivesLMSPost_withExactPayload() {
         let observer = FakeObserver()
         let bridge = makeBridge(observer: observer)
 
@@ -99,14 +102,15 @@ final class KollusObserverForwardingTests: XCTestCase {
 
         bridge.handleLMSPost(data: lmsData, result: result)
 
-        XCTAssertEqual(observer.lmsCalls.count, 1)
+        #expect(observer.lmsCalls.count == 1)
         let call = observer.lmsCalls[0]
-        XCTAssertEqual(call.data, lmsData)
-        XCTAssertEqual(call.result["ok"] as? Bool, true)
-        XCTAssertEqual(call.result["saved"] as? Int, 1)
+        #expect(call.data == lmsData)
+        #expect(call.result["ok"] as? Bool == true)
+        #expect(call.result["saved"] as? Int == 1)
     }
 
-    func test_nilObserver_drmAndLMSAreNoOp() {
+    @Test("nil observer일 때 DRM/LMS는 no-op")
+    func nilObserver_drmAndLMSAreNoOp() {
         let bridge = makeBridge(observer: nil)
 
         // Observer가 nil이어도 crash 없이 통과해야 한다.
@@ -118,24 +122,26 @@ final class KollusObserverForwardingTests: XCTestCase {
         bridge.handleLMSPost(data: "x=1", result: ["ok": true])
 
         // 별도 부수효과 없음 — bridge가 살아있고 추가 호출 가능해야 한다.
-        XCTAssertNotNil(bridge)
+        #expect(bridge != nil)
     }
 
     // MARK: - Storage event forwarding (KollusStorageEventReceiving)
 
-    func test_observer_storageStoredLMS_complete() {
+    @Test("storage stored LMS 완료 이벤트 전달")
+    func observer_storageStoredLMS_complete() {
         let storage = FakeKollusStorage()
         let storageEvents = FakeStorageEvents()
         storage.storageDelegate = storageEvents
 
         storage.emitStoredLMSComplete(success: 3, failure: 1)
 
-        XCTAssertEqual(storageEvents.storedLMSComplete.count, 1)
-        XCTAssertEqual(storageEvents.storedLMSComplete[0].successCount, 3)
-        XCTAssertEqual(storageEvents.storedLMSComplete[0].failureCount, 1)
+        #expect(storageEvents.storedLMSComplete.count == 1)
+        #expect(storageEvents.storedLMSComplete[0].successCount == 3)
+        #expect(storageEvents.storedLMSComplete[0].failureCount == 1)
     }
 
-    func test_storageBridge_forwardsStorageDRMResponseToObserver() {
+    @Test("storage bridge가 DRM 응답을 observer로 전달")
+    func storageBridge_forwardsStorageDRMResponseToObserver() {
         let observer = FakeObserver()
         let storage = FakeKollusStorage()
         var continuation: AsyncStream<[KollusContentSnapshot]>.Continuation?
@@ -154,10 +160,10 @@ final class KollusObserverForwardingTests: XCTestCase {
             error: error
         ))
 
-        XCTAssertEqual(observer.drmCalls.count, 1)
-        XCTAssertEqual(observer.drmCalls[0].request["kind"] as? String, "download")
-        XCTAssertEqual(observer.drmCalls[0].response["status"] as? Int, 200)
-        XCTAssertEqual(observer.drmCalls[0].errorCode, 12)
+        #expect(observer.drmCalls.count == 1)
+        #expect(observer.drmCalls[0].request["kind"] as? String == "download")
+        #expect(observer.drmCalls[0].response["status"] as? Int == 200)
+        #expect(observer.drmCalls[0].errorCode == 12)
     }
 }
 

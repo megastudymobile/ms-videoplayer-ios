@@ -10,7 +10,7 @@
 
 import Foundation
 import UIKit
-import XCTest
+import Testing
 import VideoPlayerCore
 @testable import VideoPlayerEngineKollus
 
@@ -31,7 +31,8 @@ import VideoPlayerCore
 /// 주의: 본 파일은 `KollusPlayerAdapter`가 위 4개 protocol을 채택하기 *전*에 작성된다.
 /// 채택 전에는 빌드가 fail이 정상이며, 메인 작업이 protocol 채택을 완료하는 시점에 GREEN으로 전환된다.
 @MainActor
-final class KollusAdapterExtendedCapabilityTests: XCTestCase {
+@Suite("KollusPlayerAdapter 확장 capability protocol 기본 동작")
+struct KollusAdapterExtendedCapabilityTests {
 
     private let validExpire = Date().addingTimeInterval(60 * 60 * 24 * 30)
 
@@ -50,148 +51,129 @@ final class KollusAdapterExtendedCapabilityTests: XCTestCase {
 
     /// `setZoomOutDisabled(_:)`는 playerView 미준비 상태에서도 throw 없이 통과해야 한다.
     /// (정책: noop + log. 실제 SDK 동기화는 playerView attach 후 lazy 적용)
-    func test_setZoomOutDisabled_doesNotCrashWithoutPlayerView() async {
+    @Test("setZoomOutDisabled는 playerView 미준비 시 throw 없이 통과")
+    func setZoomOutDisabled_doesNotCrashWithoutPlayerView() async {
         let adapter = makeAdapter()
         await adapter.setZoomOutDisabled(true)
         // throw 없이 통과하면 성공.
     }
 
     /// `zoomValue()`는 playerView 미준비 시 `0`을 반환한다.
-    func test_zoomValue_returnsZeroWithoutPlayerView() async {
+    @Test("zoomValue는 playerView 미준비 시 0 반환")
+    func zoomValue_returnsZeroWithoutPlayerView() async {
         let adapter = makeAdapter()
         let value = await adapter.zoomValue()
-        XCTAssertEqual(value, 0, "playerView 미준비 시 zoomValue는 0 이어야 한다")
+        #expect(value == 0, "playerView 미준비 시 zoomValue는 0 이어야 한다")
     }
 
     /// `isZoomedIn`은 playerView 미준비 시 `false`이다.
-    func test_isZoomedIn_isFalseWithoutPlayerView() async {
+    @Test("isZoomedIn은 playerView 미준비 시 false")
+    func isZoomedIn_isFalseWithoutPlayerView() async {
         let adapter = makeAdapter()
         let zoomed = await adapter.isZoomedIn
-        XCTAssertFalse(zoomed, "playerView 미준비 시 isZoomedIn은 false 이어야 한다")
+        #expect(!(zoomed), "playerView 미준비 시 isZoomedIn은 false 이어야 한다")
     }
 
     /// `zoom(_:)`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
     /// 더미 `UIPinchGestureRecognizer`로 호출하더라도 동일.
-    func test_zoom_pinchRecognizer_throwsWithoutPlayerView() async {
+    @Test("zoom은 playerView 미준비 시 engineError throw")
+    func zoom_pinchRecognizer_throwsWithoutPlayerView() async {
         let adapter = makeAdapter()
         let recognizer = UIPinchGestureRecognizer()
 
-        do {
+        await #expect {
             try await adapter.zoom(recognizer)
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(
-                message.contains("playerView가 준비되지 않았습니다"),
-                "got: \(message)"
-            )
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
     // MARK: - PlayerScrollEngine
 
     /// `scroll(by:)`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
-    func test_scroll_throwsWithoutPlayerView() async {
+    @Test("scroll은 playerView 미준비 시 engineError throw")
+    func scroll_throwsWithoutPlayerView() async {
         let adapter = makeAdapter()
 
-        do {
+        await #expect {
             try await adapter.scroll(by: CGPoint(x: 10, y: 0))
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(
-                message.contains("playerView가 준비되지 않았습니다"),
-                "got: \(message)"
-            )
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
     /// `stopScroll()`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
-    func test_stopScroll_throwsWithoutPlayerView() async {
+    @Test("stopScroll은 playerView 미준비 시 engineError throw")
+    func stopScroll_throwsWithoutPlayerView() async {
         let adapter = makeAdapter()
 
-        do {
+        await #expect {
             try await adapter.stopScroll()
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(
-                message.contains("playerView가 준비되지 않았습니다"),
-                "got: \(message)"
-            )
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
     // MARK: - PlayerAdaptiveStreamingEngine
 
     /// `streamInfoList()`는 playerView 미준비 시 빈 배열을 반환한다.
-    func test_streamInfoList_returnsEmptyWithoutPlayerView() async {
+    @Test("streamInfoList는 playerView 미준비 시 빈 배열 반환")
+    func streamInfoList_returnsEmptyWithoutPlayerView() async {
         let adapter = makeAdapter()
         let list = await adapter.streamInfoList()
-        XCTAssertTrue(list.isEmpty, "playerView 미준비 시 streamInfoList는 [] 이어야 한다")
+        #expect(list.isEmpty, "playerView 미준비 시 streamInfoList는 [] 이어야 한다")
     }
 
     /// `changeBandwidth(_:)`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
-    func test_changeBandwidth_throwsWithoutPlayerView() async {
+    @Test("changeBandwidth는 playerView 미준비 시 engineError throw")
+    func changeBandwidth_throwsWithoutPlayerView() async {
         let adapter = makeAdapter()
 
-        do {
+        await #expect {
             try await adapter.changeBandwidth(1_000_000)
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(
-                message.contains("playerView가 준비되지 않았습니다"),
-                "got: \(message)"
-            )
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
     // MARK: - PlayerPiPCapability
 
     /// `startPiP()`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
-    func test_pip_startWithoutPlayerView_throws() async {
+    @Test("startPiP는 playerView 미준비 시 engineError throw")
+    func pip_startWithoutPlayerView_throws() async {
         let adapter = makeAdapter()
 
-        do {
+        await #expect {
             try await adapter.startPiP()
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(
-                message.contains("playerView가 준비되지 않았습니다"),
-                "got: \(message)"
-            )
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
     /// `stopPiP()`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
-    func test_pip_stopWithoutPlayerView_throws() async {
+    @Test("stopPiP는 playerView 미준비 시 engineError throw")
+    func pip_stopWithoutPlayerView_throws() async {
         let adapter = makeAdapter()
 
-        do {
+        await #expect {
             try await adapter.stopPiP()
-            XCTFail("Expected engineError when playerView is missing")
-        } catch let PlayerError.engineError(message) {
-            XCTAssertTrue(
-                message.contains("playerView가 준비되지 않았습니다"),
-                "got: \(message)"
-            )
-        } catch {
-            XCTFail("unexpected error: \(error)")
+        } throws: { error in
+            guard case let PlayerError.engineError(message) = error else { return false }
+            return message.contains("playerView가 준비되지 않았습니다")
         }
     }
 
     /// `isPiPActive`는 playerView 미준비 시 `false`이다.
-    func test_isPiPActive_isFalseWithoutPlayerView() async {
+    @Test("isPiPActive는 playerView 미준비 시 false")
+    func isPiPActive_isFalseWithoutPlayerView() async {
         let adapter = makeAdapter()
         let active = await adapter.isPiPActive
-        XCTAssertFalse(active, "playerView 미준비 시 isPiPActive는 false 이어야 한다")
+        #expect(!(active), "playerView 미준비 시 isPiPActive는 false 이어야 한다")
     }
 }
 

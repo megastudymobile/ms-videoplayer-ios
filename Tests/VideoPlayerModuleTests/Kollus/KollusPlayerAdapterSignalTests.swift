@@ -9,12 +9,13 @@
 #if canImport(UIKit) && canImport(KollusSDKBinary)
 
 import Foundation
-import XCTest
+import Testing
 import VideoPlayerCore
 @testable import VideoPlayerEngineKollus
 
 @MainActor
-final class KollusPlayerAdapterSignalTests: XCTestCase {
+@Suite("KollusPlayerAdapter signal 처리 및 상태 전이")
+struct KollusPlayerAdapterSignalTests {
 
     private let validExpire = Date().addingTimeInterval(60 * 60 * 24 * 30)
 
@@ -29,7 +30,8 @@ final class KollusPlayerAdapterSignalTests: XCTestCase {
         return KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
     }
 
-    func test_playStarted_withError_transitionsToFailedAndPublishesDidFail() async {
+    @Test("playStarted 에러는 failed 전이 및 didFail 방출")
+    func playStarted_withError_transitionsToFailedAndPublishesDidFail() async {
         let adapter = makeAdapter()
         let stream = await adapter.eventStream
         let error = NSError(domain: "kollus.play", code: 10, userInfo: [
@@ -40,22 +42,26 @@ final class KollusPlayerAdapterSignalTests: XCTestCase {
 
         let state = await adapter.currentState
         guard case .failed(let playerError) = state.status else {
-            return XCTFail("Expected failed state, got \(state.status)")
+            Issue.record("Expected failed state, got \(state.status)")
+            return
         }
-        XCTAssertEqual(playerError, .engineError("Kollus play 실패: play denied"))
+        #expect(playerError == .engineError("Kollus play 실패: play denied"))
 
         var iterator = stream.makeAsyncIterator()
         guard case .stateDidChange(let emittedState)? = await iterator.next() else {
-            return XCTFail("Expected stateDidChange")
+            Issue.record("Expected stateDidChange")
+            return
         }
-        XCTAssertEqual(emittedState.status, state.status)
+        #expect(emittedState.status == state.status)
         guard case .didFail(let emittedError)? = await iterator.next() else {
-            return XCTFail("Expected didFail")
+            Issue.record("Expected didFail")
+            return
         }
-        XCTAssertEqual(emittedError, playerError)
+        #expect(emittedError == playerError)
     }
 
-    func test_bufferingChanged_withError_doesNotEmitBufferingSuccess() async {
+    @Test("bufferingChanged 에러는 buffering 성공을 방출하지 않음")
+    func bufferingChanged_withError_doesNotEmitBufferingSuccess() async {
         let adapter = makeAdapter()
         let stream = await adapter.eventStream
         let error = NSError(domain: "kollus.buffer", code: 11, userInfo: [
@@ -66,37 +72,43 @@ final class KollusPlayerAdapterSignalTests: XCTestCase {
 
         let state = await adapter.currentState
         guard case .failed(let playerError) = state.status else {
-            return XCTFail("Expected failed state, got \(state.status)")
+            Issue.record("Expected failed state, got \(state.status)")
+            return
         }
-        XCTAssertFalse(state.isBuffering)
-        XCTAssertEqual(playerError, .engineError("Kollus buffering 실패: buffer failed"))
+        #expect(!(state.isBuffering))
+        #expect(playerError == .engineError("Kollus buffering 실패: buffer failed"))
 
         var iterator = stream.makeAsyncIterator()
         guard case .stateDidChange? = await iterator.next() else {
-            return XCTFail("Expected stateDidChange")
+            Issue.record("Expected stateDidChange")
+            return
         }
         guard case .didFail(let emittedError)? = await iterator.next() else {
-            return XCTFail("Expected didFail")
+            Issue.record("Expected didFail")
+            return
         }
-        XCTAssertEqual(emittedError, playerError)
+        #expect(emittedError == playerError)
     }
 
-    func test_stopWithFinishedReason_transitionsToFinishedAndPublishesDidFinish() async throws {
+    @Test("finished 사유 stop은 finished 전이 및 didFinish 방출")
+    func stopWithFinishedReason_transitionsToFinishedAndPublishesDidFinish() async throws {
         let adapter = makeAdapter()
         let stream = await adapter.eventStream
 
         try await adapter.stop(reason: .finished)
 
         let state = await adapter.currentState
-        XCTAssertEqual(state.status, .finished)
+        #expect(state.status == .finished)
 
         var iterator = stream.makeAsyncIterator()
         guard case .stateDidChange(let emittedState)? = await iterator.next() else {
-            return XCTFail("Expected stateDidChange")
+            Issue.record("Expected stateDidChange")
+            return
         }
-        XCTAssertEqual(emittedState.status, .finished)
+        #expect(emittedState.status == .finished)
         guard case .didFinish? = await iterator.next() else {
-            return XCTFail("Expected didFinish")
+            Issue.record("Expected didFinish")
+            return
         }
     }
 }

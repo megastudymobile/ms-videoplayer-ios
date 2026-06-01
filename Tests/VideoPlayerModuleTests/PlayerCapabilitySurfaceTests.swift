@@ -1,9 +1,9 @@
 import Testing
 @testable import VideoPlayerCore
 
-@Suite("Player capability surface")
+@Suite("Player capability surface 검증")
 struct PlayerCapabilitySurfaceTests {
-    @Test("Playback features normalize rates and skip intervals")
+    @Test("Playback features가 배속과 skip interval을 정규화")
     func playbackFeaturesNormalizeRatesAndSkipIntervals() {
         let features = PlayerPlaybackFeatures(
             allowedPlaybackRates: [1.5, 1.0, 1.5],
@@ -18,7 +18,7 @@ struct PlayerCapabilitySurfaceTests {
         #expect(features.initialSkipInterval == 10)
     }
 
-    @Test("Generic surface names cover expected player concepts")
+    @Test("범용 surface 이름이 기대하는 player 개념을 포괄")
     func genericSurfaceNamesCoverExpectedPlayerConcepts() {
         let featureSet = PlayerFeatureSet(
             playback: PlayerPlaybackFeatures(allowsBackgroundPlayback: true),

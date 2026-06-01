@@ -8,64 +8,76 @@
 
 #if canImport(UIKit)
 
-import XCTest
+import Foundation
+import Testing
 @testable import VideoPlayerEngineKollus
 
-final class KollusEnvironmentValidationTests: XCTestCase {
+@Suite("KollusEnvironment validate() 검증")
+struct KollusEnvironmentValidationTests {
 
     private let future = Date().addingTimeInterval(60 * 60 * 24 * 30)
     private let past = Date().addingTimeInterval(-60 * 60 * 24)
 
-    func test_validate_succeedsForValidEnvironment() throws {
+    @Test("유효한 환경은 validate 성공")
+    func validate_succeedsForValidEnvironment() throws {
         let env = KollusEnvironment(
             applicationKey: "valid-key",
             applicationBundleID: "com.example.app",
             applicationExpireDate: future
         )
-        XCTAssertNoThrow(try env.validate())
+        try env.validate()
     }
 
-    func test_validate_throwsMissingApplicationKey() {
+    @Test("applicationKey 누락 시 throw")
+    func validate_throwsMissingApplicationKey() {
         let env = KollusEnvironment(
             applicationKey: "",
             applicationBundleID: "com.example.app",
             applicationExpireDate: future
         )
 
-        XCTAssertThrowsError(try env.validate()) { error in
-            XCTAssertEqual(error as? KollusEnvironmentError, .missingApplicationKey)
+        #expect {
+            try env.validate()
+        } throws: { error in
+            (error as? KollusEnvironmentError) == .missingApplicationKey
         }
     }
 
-    func test_validate_throwsMissingBundleID() {
+    @Test("bundleID 누락 시 throw")
+    func validate_throwsMissingBundleID() {
         let env = KollusEnvironment(
             applicationKey: "valid-key",
             applicationBundleID: "",
             applicationExpireDate: future
         )
 
-        XCTAssertThrowsError(try env.validate()) { error in
-            XCTAssertEqual(error as? KollusEnvironmentError, .missingBundleID)
+        #expect {
+            try env.validate()
+        } throws: { error in
+            (error as? KollusEnvironmentError) == .missingBundleID
         }
     }
 
-    func test_validate_throwsExpiredApplicationKey() {
+    @Test("만료된 applicationKey 시 throw")
+    func validate_throwsExpiredApplicationKey() {
         let env = KollusEnvironment(
             applicationKey: "valid-key",
             applicationBundleID: "com.example.app",
             applicationExpireDate: past
         )
 
-        XCTAssertThrowsError(try env.validate(now: Date())) { error in
+        #expect {
+            try env.validate(now: Date())
+        } throws: { error in
             guard case .expiredApplicationKey(let expire, _) = error as? KollusEnvironmentError else {
-                XCTFail("Expected .expiredApplicationKey, got \(error)")
-                return
+                return false
             }
-            XCTAssertEqual(expire, past)
+            return expire == past
         }
     }
 
-    func test_validate_throwsInvalidCacheSize() {
+    @Test("잘못된 cacheSize 시 throw")
+    func validate_throwsInvalidCacheSize() {
         let env = KollusEnvironment(
             applicationKey: "valid-key",
             applicationBundleID: "com.example.app",
@@ -73,12 +85,15 @@ final class KollusEnvironmentValidationTests: XCTestCase {
             cacheSizeMB: 0
         )
 
-        XCTAssertThrowsError(try env.validate()) { error in
-            XCTAssertEqual(error as? KollusEnvironmentError, .invalidCacheSize(0))
+        #expect {
+            try env.validate()
+        } throws: { error in
+            (error as? KollusEnvironmentError) == .invalidCacheSize(0)
         }
     }
 
-    func test_validate_throwsInvalidProxyPort() {
+    @Test("잘못된 proxyPort 시 throw")
+    func validate_throwsInvalidProxyPort() {
         let env = KollusEnvironment(
             applicationKey: "valid-key",
             applicationBundleID: "com.example.app",
@@ -86,12 +101,15 @@ final class KollusEnvironmentValidationTests: XCTestCase {
             proxyPort: 0
         )
 
-        XCTAssertThrowsError(try env.validate()) { error in
-            XCTAssertEqual(error as? KollusEnvironmentError, .invalidProxyPort(0))
+        #expect {
+            try env.validate()
+        } throws: { error in
+            (error as? KollusEnvironmentError) == .invalidProxyPort(0)
         }
     }
 
-    func test_validate_throwsInvalidStoragePath() {
+    @Test("잘못된 storagePath 시 throw")
+    func validate_throwsInvalidStoragePath() {
         let bogus = URL(fileURLWithPath: "/nonexistent/path/\(UUID().uuidString)")
         let env = KollusEnvironment(
             applicationKey: "valid-key",
@@ -100,8 +118,10 @@ final class KollusEnvironmentValidationTests: XCTestCase {
             storagePath: bogus
         )
 
-        XCTAssertThrowsError(try env.validate()) { error in
-            XCTAssertEqual(error as? KollusEnvironmentError, .invalidStoragePath(bogus))
+        #expect {
+            try env.validate()
+        } throws: { error in
+            (error as? KollusEnvironmentError) == .invalidStoragePath(bogus)
         }
     }
 }
