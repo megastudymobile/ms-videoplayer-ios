@@ -3,7 +3,7 @@
 **작성일**: 2026-06-01
 **작성자**: 모바일팀_정준영
 **대상 패키지**: `videoplayer-ios-ms` / `VideoPlayerSkin` 타깃
-**상태**: Design — Proposal
+**상태**: Implemented (2026-06-01) — Theme/Blueprint/Block/PlayerSkin/DefaultPlayerSkin 구현 완료, 빌드 통과
 **관련**: smartlearning-ios-ms `specs/064-player-shell-extraction/spec.md`
 
 ---
@@ -679,3 +679,21 @@ block 분해 후에도 UI 테스트와 VoiceOver 품질을 깨지 않도록, 기
 - 패키지가 레이아웃·반응형·lock 을 한 곳에서 책임 → host 는 안전하게 블럭만 조립.
 - 모든 기본값 = 현 구현 1:1 → parity 보장, 점진 채택.
 - POP 원칙: 작은 프로토콜(Block/Theme) + 기본 extension(ISP) + 주입(DIP) + 기본 제공 conformance.
+
+---
+
+## 11. 구현 완료 (2026-06-01)
+
+| 설계 | 구현 파일 | 상태 |
+|---|---|---|
+| Tier3 PlayerSkin | `Contract/PlayerSkin.swift` | ✅ |
+| Tier1 Theme | `Theme/PlayerSkinTheme·ColorRole·FontRole·Metrics·DefaultPlayerSkinTheme.swift` | ✅ |
+| Tier2 조립 | `Assembly/PlayerSkinSlot·Block·SlotLayout·Blueprint·AssembledPlayerSkin.swift` | ✅ |
+| 기본 블럭 15종 | `Blocks/*.swift` | ✅ |
+| 기본 진입점 | `Default/DefaultPlayerSkin.swift` | ✅ |
+| 기본 에셋 번들 | `Resources/PlayerSkin.xcassets` (아이콘19 + 색2, module→main fallback) | ✅ |
+| 자막 하단정렬 + 토글 | `PlayerCaptionView` (UIStackView + setVisible) | ✅ |
+
+- 빌드: SmartPlayer (Debug) BUILD SUCCEEDED. 패키지 Rx/앱심볼 의존 0.
+- 앱 결선: `LecturePlayerShellViewController.skin = DefaultPlayerSkin()`.
+- 남은 것: 실 강의 재생 시각 QA(자막 하단 표시·AI자막 토글 즉시 반영).
