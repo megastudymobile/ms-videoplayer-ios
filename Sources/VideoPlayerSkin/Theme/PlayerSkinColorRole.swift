@@ -18,8 +18,8 @@ public enum PlayerSkinColorRole: Hashable, Sendable {
     public var defaultColor: UIColor {
         switch self {
         case .controlTint:   return .white
-        case .progressFill:  return UIColor(named: "primarySkyBlue") ?? .systemBlue
-        case .progressTrack: return UIColor(named: "Line/grey-03") ?? UIColor.white.withAlphaComponent(0.35)
+        case .progressFill:  return UIColor(named: "primarySkyBlue", in: .module, compatibleWith: nil) ?? UIColor(named: "primarySkyBlue") ?? .systemBlue
+        case .progressTrack: return UIColor(named: "Line/grey-03", in: .module, compatibleWith: nil) ?? UIColor(named: "Line/grey-03") ?? UIColor.white.withAlphaComponent(0.35)
         case .barBackground: return UIColor.black.withAlphaComponent(0.52)
         case .timeText:      return UIColor.white.withAlphaComponent(0.9)
         }

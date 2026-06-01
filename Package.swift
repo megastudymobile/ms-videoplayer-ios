@@ -151,6 +151,9 @@ let package = Package(
                 "VideoPlayerShellSupport"
             ],
             path: "Sources/VideoPlayerSkin",
+            resources: [
+                .process("Resources")
+            ],
             linkerSettings: [
                 .linkedFramework("UIKit", .when(platforms: [.iOS])),
                 .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
