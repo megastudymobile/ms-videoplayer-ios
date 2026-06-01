@@ -5,7 +5,6 @@ public final class SkipButtonBlock: UIView, PlayerSkinBlock {
     public enum Direction { case backward, forward }
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
-    public var theme: PlayerSkinTheme = .default
 
     private let direction: Direction
     private let button = PlayerSkinIconButtonFactory.make()
@@ -32,18 +31,26 @@ public final class SkipButtonBlock: UIView, PlayerSkinBlock {
 
     public func setInterval(seconds: Int) { intervalLabel.text = "\(seconds)" }
 
-    public func didInjectTheme() {
+    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         intervalLabel.font = theme.font(.skipInterval)
         intervalLabel.textColor = theme.color(.controlTint).withAlphaComponent(0.9)
-    }
-
-    public func render(_ state: PlayerSkinState) {
         let icon: PlayerSkinIcon = direction == .backward ? .skipBackward : .skipForward
-        PlayerSkinIconButtonFactory.apply(button, icon: icon, fallbackTitle: direction == .backward ? "-10" : "+10", theme: theme)
+        PlayerSkinIconButtonFactory.apply(
+            button,
+            icon: icon,
+            fallbackTitle: direction == .backward ? "-10" : "+10",
+            theme: theme
+        )
         button.isEnabled = !state.isLocked
     }
     @objc private func tap() { onAction?(direction == .backward ? .skipBackward : .skipForward) }
-    private func pin(_ subview: UIView) { addSubview(subview); NSLayoutConstraint.activate([
-        subview.topAnchor.constraint(equalTo: topAnchor), subview.bottomAnchor.constraint(equalTo: bottomAnchor),
-        subview.leadingAnchor.constraint(equalTo: leadingAnchor), subview.trailingAnchor.constraint(equalTo: trailingAnchor)]) }
+    private func pin(_ subview: UIView) {
+        addSubview(subview)
+        NSLayoutConstraint.activate([
+            subview.topAnchor.constraint(equalTo: topAnchor),
+            subview.bottomAnchor.constraint(equalTo: bottomAnchor),
+            subview.leadingAnchor.constraint(equalTo: leadingAnchor),
+            subview.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+    }
 }

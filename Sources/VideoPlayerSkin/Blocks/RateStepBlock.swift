@@ -2,10 +2,10 @@ import UIKit
 
 /// 가로 fullscreen 우측 메뉴 ^/v (배속 step).
 public final class RateStepBlock: UIView, PlayerSkinBlock {
+    // swiftlint:disable:next identifier_name
     public enum Step { case up, down }
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
-    public var theme: PlayerSkinTheme = .default
     private let step: Step
     private let button = PlayerSkinIconButtonFactory.make()
     public init(_ step: Step) {
@@ -14,13 +14,24 @@ public final class RateStepBlock: UIView, PlayerSkinBlock {
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
-    public func render(_ state: PlayerSkinState) {
+    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         let icon: PlayerSkinIcon = step == .up ? .rateUp : .rateDown
-        PlayerSkinIconButtonFactory.apply(button, icon: icon, fallbackTitle: step == .up ? "^" : "v", theme: theme)
+        PlayerSkinIconButtonFactory.apply(
+            button,
+            icon: icon,
+            fallbackTitle: step == .up ? "^" : "v",
+            theme: theme
+        )
         button.isEnabled = !state.isLocked
     }
     @objc private func tap() { onAction?(step == .up ? .rateStepUp : .rateStepDown) }
-    private func pin(_ subview: UIView) { addSubview(subview); NSLayoutConstraint.activate([
-        subview.topAnchor.constraint(equalTo: topAnchor), subview.bottomAnchor.constraint(equalTo: bottomAnchor),
-        subview.leadingAnchor.constraint(equalTo: leadingAnchor), subview.trailingAnchor.constraint(equalTo: trailingAnchor)]) }
+    private func pin(_ subview: UIView) {
+        addSubview(subview)
+        NSLayoutConstraint.activate([
+            subview.topAnchor.constraint(equalTo: topAnchor),
+            subview.bottomAnchor.constraint(equalTo: bottomAnchor),
+            subview.leadingAnchor.constraint(equalTo: leadingAnchor),
+            subview.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+    }
 }

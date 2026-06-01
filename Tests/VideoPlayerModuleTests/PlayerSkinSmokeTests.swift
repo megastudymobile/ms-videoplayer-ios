@@ -9,15 +9,9 @@ struct PlayerSkinSmokeTests {
     private final class ThemeProbeBlock: UIView, PlayerSkinBlock {
         var view: UIView { self }
         var onAction: ((PlayerSkinAction) -> Void)?
-        var theme: PlayerSkinTheme = .default
-        private(set) var injectedColor: UIColor?
         private(set) var renderColor: UIColor?
 
-        func didInjectTheme() {
-            injectedColor = theme.color(.controlTint)
-        }
-
-        func render(_ state: PlayerSkinState) {
+        func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
             renderColor = theme.color(.controlTint)
         }
     }
@@ -68,8 +62,8 @@ struct PlayerSkinSmokeTests {
         #expect(theme.font(.time).isEqual(PlayerSkinTheme.default.font(.time)))
     }
 
-    @Test("AssembledPlayerSkin injects theme before render")
-    func assembledPlayerSkinInjectsThemeBeforeRender() {
+    @Test("AssembledPlayerSkin passes theme during render")
+    func assembledPlayerSkinPassesThemeDuringRender() {
         let block = ThemeProbeBlock()
         let theme = PlayerSkinTheme(colors: [.controlTint: .systemGreen])
         let blueprint = PlayerSkinBlueprint(
@@ -84,7 +78,6 @@ struct PlayerSkinSmokeTests {
         let skin = AssembledPlayerSkin(blueprint: blueprint, theme: theme)
         skin.render(.initial)
 
-        #expect(block.injectedColor?.isEqual(UIColor.systemGreen) == true)
         #expect(block.renderColor?.isEqual(UIColor.systemGreen) == true)
     }
 }

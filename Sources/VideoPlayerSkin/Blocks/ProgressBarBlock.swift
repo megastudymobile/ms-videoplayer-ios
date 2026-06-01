@@ -9,7 +9,6 @@ import UIKit
 public final class ProgressBarBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
-    public var theme: PlayerSkinTheme = .default
 
     private let slider = PlayerPlaybackSlider()
     private let currentTimeLabel = UILabel()
@@ -24,7 +23,7 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
 
-    public func didInjectTheme() {
+    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         slider.minimumTrackTintColor = theme.color(.progressFill)
         slider.maximumTrackTintColor = theme.color(.progressTrack)
         if let thumb = theme.icon(.sliderThumb) {
@@ -32,9 +31,6 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
         }
         currentTimeLabel.textColor = theme.color(.timeText); currentTimeLabel.font = theme.font(.time)
         durationLabel.textColor = theme.color(.timeText); durationLabel.font = theme.font(.time)
-    }
-
-    public func render(_ state: PlayerSkinState) {
         latestDuration = state.duration
 
         if !isSeeking {

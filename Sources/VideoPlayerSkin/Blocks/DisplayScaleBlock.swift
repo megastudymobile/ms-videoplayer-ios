@@ -3,7 +3,6 @@ import UIKit
 public final class DisplayScaleBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
-    public var theme: PlayerSkinTheme = .default
     private let button = PlayerSkinIconButtonFactory.make()
     public override init(frame: CGRect) {
         super.init(frame: frame); pin(button)
@@ -11,7 +10,7 @@ public final class DisplayScaleBlock: UIView, PlayerSkinBlock {
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
-    public func render(_ state: PlayerSkinState) {
+    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         PlayerSkinIconButtonFactory.apply(button,
             icon: state.isDisplayScaled ? .displayScaleFill : .displayScaleFit,
             fallbackTitle: state.isDisplayScaled ? "Fit" : "Fill", theme: theme)
@@ -21,7 +20,13 @@ public final class DisplayScaleBlock: UIView, PlayerSkinBlock {
         isHidden = (state.layoutMode == .fullScreen) || (state.layoutMode == .verticalSplit)
     }
     @objc private func tap() { onAction?(.toggleDisplayScaling) }
-    private func pin(_ subview: UIView) { addSubview(subview); NSLayoutConstraint.activate([
-        subview.topAnchor.constraint(equalTo: topAnchor), subview.bottomAnchor.constraint(equalTo: bottomAnchor),
-        subview.leadingAnchor.constraint(equalTo: leadingAnchor), subview.trailingAnchor.constraint(equalTo: trailingAnchor)]) }
+    private func pin(_ subview: UIView) {
+        addSubview(subview)
+        NSLayoutConstraint.activate([
+            subview.topAnchor.constraint(equalTo: topAnchor),
+            subview.bottomAnchor.constraint(equalTo: bottomAnchor),
+            subview.leadingAnchor.constraint(equalTo: leadingAnchor),
+            subview.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+    }
 }

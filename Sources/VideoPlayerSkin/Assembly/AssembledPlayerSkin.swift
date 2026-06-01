@@ -46,7 +46,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     public func render(_ state: PlayerSkinState) {
         latestState = state
         applyVisibility(state)
-        blocks.forEach { $0.render(state) }
+        blocks.forEach { $0.render(state, theme: theme) }
     }
 
     // MARK: 스켈레톤
@@ -129,8 +129,6 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             guard let container = slotContainers[slot], let makers = blueprint.blocks[slot] else { continue }
             for make in makers {
                 let block = make()
-                block.theme = theme
-                block.didInjectTheme()
                 block.onAction = { [weak self] action in self?.onAction?(action) }
                 container.addArrangedSubview(block.view)
                 blocks.append(block)
