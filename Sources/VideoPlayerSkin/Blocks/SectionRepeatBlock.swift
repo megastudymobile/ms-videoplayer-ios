@@ -13,7 +13,7 @@ public final class SectionRepeatBlock: UIView, PlayerSkinBlock {
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         let looping: Bool = { if case .looping = state.sectionRepeat { return true }; return false }()
         PlayerSkinIconButtonFactory.apply(button,
-            assetName: looping ? "PlayerRepeatSelected" : "PlayerRepeatNormal",
+            icon: looping ? .sectionRepeatActive : .sectionRepeatIdle,
             fallbackTitle: looping ? "AB●" : "AB", theme: theme)
         button.isEnabled = !state.isLocked
     }

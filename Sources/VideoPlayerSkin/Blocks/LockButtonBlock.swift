@@ -12,7 +12,7 @@ public final class LockButtonBlock: UIView, PlayerSkinBlock {
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         PlayerSkinIconButtonFactory.apply(button,
-            assetName: state.isLocked ? "PlayerLockNormal" : "PlayerUnlockNormal",
+            icon: state.isLocked ? .lock : .unlock,
             fallbackTitle: state.isLocked ? "Lock" : "Unlock", theme: theme)
         button.accessibilityLabel = state.isLocked ? "화면 잠금 해제" : "화면 잠금"
         // lock 버튼은 lock 중에도 활성 (현 동작).

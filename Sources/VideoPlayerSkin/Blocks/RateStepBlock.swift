@@ -14,8 +14,8 @@ public final class RateStepBlock: UIView, PlayerSkinBlock {
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
-        let asset = step == .up ? "PlayerRatePlusButton" : "PlayerRateMinusButton"
-        PlayerSkinIconButtonFactory.apply(button, assetName: asset, fallbackTitle: step == .up ? "^" : "v", theme: theme)
+        let icon: PlayerSkinIcon = step == .up ? .rateUp : .rateDown
+        PlayerSkinIconButtonFactory.apply(button, icon: icon, fallbackTitle: step == .up ? "^" : "v", theme: theme)
         button.isEnabled = !state.isLocked
     }
     @objc private func tap() { onAction?(step == .up ? .rateStepUp : .rateStepDown) }

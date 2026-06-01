@@ -12,7 +12,7 @@ public final class DisplayScaleBlock: UIView, PlayerSkinBlock {
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         PlayerSkinIconButtonFactory.apply(button,
-            assetName: state.isDisplayScaled ? "PlayerScreenScalingAspectFillNormal" : "PlayerScreenScalingAspectFitNormal",
+            icon: state.isDisplayScaled ? .displayScaleFill : .displayScaleFit,
             fallbackTitle: state.isDisplayScaled ? "Fit" : "Fill", theme: theme)
         button.accessibilityLabel = state.isDisplayScaled ? "화면 맞춤" : "화면 채움"
         button.isEnabled = !state.isLocked

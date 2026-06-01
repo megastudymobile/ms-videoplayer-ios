@@ -12,7 +12,7 @@ public final class PlayButtonBlock: UIView, PlayerSkinBlock {
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         PlayerSkinIconButtonFactory.apply(button,
-            assetName: state.isPlaying ? "PlayerPauseNormal" : "PlayerPlayNormal",
+            icon: state.isPlaying ? .pause : .play,
             fallbackTitle: state.isPlaying ? "II" : "Play", theme: theme)
         button.isEnabled = !state.isLocked
         button.accessibilityLabel = state.isPlaying ? "일시정지" : "재생"

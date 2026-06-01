@@ -32,8 +32,8 @@ public final class SkipButtonBlock: UIView, PlayerSkinBlock {
     public func setInterval(seconds: Int) { intervalLabel.text = "\(seconds)" }
 
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
-        let asset = direction == .backward ? "PlayerBackwardNormal" : "PlayerForwardNormal"
-        PlayerSkinIconButtonFactory.apply(button, assetName: asset, fallbackTitle: direction == .backward ? "-10" : "+10", theme: theme)
+        let icon: PlayerSkinIcon = direction == .backward ? .skipBackward : .skipForward
+        PlayerSkinIconButtonFactory.apply(button, icon: icon, fallbackTitle: direction == .backward ? "-10" : "+10", theme: theme)
         intervalLabel.textColor = theme.color(.controlTint).withAlphaComponent(0.9)
         button.isEnabled = !state.isLocked
     }

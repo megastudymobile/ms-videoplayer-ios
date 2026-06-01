@@ -17,14 +17,21 @@ enum PlayerSkinIconButtonFactory {
         return button
     }
 
-    /// asset → 없으면 SF Symbol → 없으면 텍스트 fallback (현 동작 동일).
+    /// 의미 아이콘 적용 (built-in skin 아이콘). theme.icon 으로 해석 → 없으면 텍스트 fallback.
+    static func apply(_ button: UIButton, icon: PlayerSkinIcon, fallbackTitle: String, theme: PlayerSkinTheme) {
+        set(button, image: theme.icon(icon), fallbackTitle: fallbackTitle, theme: theme)
+    }
+
+    /// 동적 asset 이름 적용 (host 주입 ExtraControl). asset → SF Symbol → 텍스트 fallback.
     static func apply(_ button: UIButton, assetName: String, fallbackTitle: String, theme: PlayerSkinTheme) {
+        set(button, image: theme.image(assetName: assetName) ?? UIImage(systemName: assetName),
+            fallbackTitle: fallbackTitle, theme: theme)
+    }
+
+    private static func set(_ button: UIButton, image: UIImage?, fallbackTitle: String, theme: PlayerSkinTheme) {
         button.tintColor = theme.color(.controlTint)
-        if let asset = theme.image(assetName: assetName) {
-            button.setImage(asset.withRenderingMode(.alwaysTemplate), for: .normal)
-            button.setTitle(nil, for: .normal)
-        } else if let symbol = UIImage(systemName: assetName) {
-            button.setImage(symbol, for: .normal)
+        if let image {
+            button.setImage(image.withRenderingMode(.alwaysTemplate), for: .normal)
             button.setTitle(nil, for: .normal)
         } else {
             button.setImage(nil, for: .normal)

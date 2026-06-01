@@ -87,7 +87,7 @@ graph TD
 | 이름 | 무엇 |
 |---|---|
 | **스켈레톤(skeleton)** | 슬롯의 고정 위치 + 반응형 chrome 규칙(verticalSplit/horizontalSplit/fullScreen) + lock/가시성 게이트. **패키지 소유**. |
-| **슬롯(slot)** | 이름붙은 영역. `topLeading / topCenter / topTrailing / centerControls / leftRail / rightRail / bottomBar / floatingTrailing`. |
+| **슬롯(slot)** | 이름붙은 영역. `topLeading / topCenter / topTrailing / centerControls / leftRail / rightRail / bottomBar / floatingCenterTrailing / floatingBottomTrailing`. |
 | **블럭(block)** | 슬롯에 끼우는 컨트롤 단위. `render(state, theme)` + `onAction` 보유. play / skip / progress / rate 등 기본 블럭 제공. |
 | **블루프린트(blueprint)** | 슬롯 → [블럭] 매핑 + 슬롯별 inset/정렬 + 모드별 가시성. **기본 = 현 배치**. |
 | **테마(theme)** | 색/폰트/아이콘/메트릭 토큰. **기본 = 현 하드코딩 값**. |
@@ -98,41 +98,48 @@ graph TD
 
 ## 4. 목표 폴더 구조
 
+> 아래는 **실제 구현된** 구조다(설계 초안과 달라진 부분은 각주로 표시).
+
 ```
 Sources/VideoPlayerSkin/
 ├── Contract/                          # 공개 계약 (host 의존)
-│   ├── PlayerSkin.swift               # 최상위 렌더 프로토콜 (Tier3 교체점)
-│   ├── PlayerSkinState.swift          # 입력 데이터 (이동)
-│   ├── PlayerSkinAction.swift         # 출력 액션 (이동)
-│   └── ExtraControl.swift             # host 주입 버튼 (이동)
+│   └── PlayerSkin.swift               # 최상위 렌더 프로토콜 (Tier3 교체점)
+│                                      # ※ State/Action/ExtraControl 은 이전하지 않고 패키지 루트에 잔류(아래)
 ├── Theme/                             # Tier1 — 룩 토큰
-│   ├── PlayerSkinTheme.swift          # 프로토콜 + 기본 extension (ISP)
-│   ├── PlayerSkinColorRole.swift
+│   ├── PlayerSkinTheme.swift          # 프로토콜 + 기본 extension (ISP). icon(_:) + image(assetName:)
+│   ├── PlayerSkinColorRole.swift      # controlTint/progressFill/progressTrack/barBackground/timeText
 │   ├── PlayerSkinFontRole.swift
-│   ├── PlayerSkinIcon.swift
-│   ├── PlayerSkinMetrics.swift
-│   └── DefaultPlayerSkinTheme.swift
+│   ├── PlayerSkinIcon.swift           # 의미 아이콘 enum + defaultAssetName (asset 문자열 단일 소스)
+│   └── DefaultPlayerSkinTheme.swift   # ※ PlayerSkinMetrics 는 미구현(치수 토큰 보류 — §6 참고)
 ├── Assembly/                          # Tier2 — 조립
-│   ├── PlayerSkinSlot.swift
-│   ├── PlayerSkinBlock.swift          # 블럭 프로토콜
+│   ├── PlayerSkinSlot.swift           # 9개 슬롯 (floating 은 Center/Bottom 2개로 분리)
+│   ├── PlayerSkinBlock.swift          # 블럭 프로토콜 (id 없음 — §7 참고)
 │   ├── PlayerSkinSlotLayout.swift     # 슬롯 미세배치 값타입
-│   ├── PlayerSkinBlueprint.swift      # 배치 명세 + .default
+│   ├── PlayerSkinBlueprint.swift      # 배치 명세 + .default (hiddenBlocks 없음 — §7 참고)
 │   └── AssembledPlayerSkin.swift      # 블루프린트 소비 엔진 (PlayerSkin 채택)
-├── Blocks/                            # 기본 제공 블럭
-│   ├── CloseButtonBlock.swift  TitleBlock.swift  MoreButtonBlock.swift  LockButtonBlock.swift
-│   ├── PlayButtonBlock.swift   SkipButtonBlock.swift
-│   ├── ProgressBarBlock.swift  TimeLabelBlock.swift  ScreenModeBlock.swift
-│   ├── RateButtonBlock.swift   RateStepBlock.swift   DisplayScaleBlock.swift
-│   ├── SectionRepeatBlock.swift  SettingButtonBlock.swift
-│   └── ExtraControlsRailBlock.swift   ExtraFloatingBlock.swift   # host 주입 ExtraControl 렌더
+├── Blocks/                            # 기본 제공 블럭 (15개)
+│   ├── PlayerSkinIconButton.swift     # 공유 아이콘 버튼 빌더 (theme.icon 해석)
+│   ├── CloseButtonBlock  TitleBlock  MoreButtonBlock  LockButtonBlock  DisplayScaleBlock
+│   ├── PlayButtonBlock   SkipButtonBlock
+│   ├── ProgressBarBlock               # ※ 슬라이더+시간2+화면모드 복합 블럭 (TimeLabel/ScreenMode 미분리 — §6·§7)
+│   ├── RateButtonBlock   RateStepBlock
+│   ├── SectionRepeatBlock  SettingButtonBlock
+│   └── ExtraControlsRailBlock  ExtraFloatingBlock   # host 주입 ExtraControl 렌더 (image(assetName:) 사용)
 ├── Default/
 │   └── DefaultPlayerSkin.swift        # = AssembledPlayerSkin(.default, DefaultPlayerSkinTheme())
-├── Surface/PlayerRenderSurfaceView.swift   # 영상 layer host (skin 과 별개)
-├── KeyCommand/PlayerKeyCommandRegistry.swift
-├── NowPlaying/PlayerNowPlayingCenter.swift  PlayerAudioSessionConfigurator.swift
-└── Resources/                         # 기본 아이콘 (DefaultPlayerSkinTheme 가 .module 에서 로드)
-    └── *.imageset
+├── Resources/PlayerSkin.xcassets      # 기본 아이콘 19 + 색 2 (DefaultPlayerSkinTheme 가 .module→.main 로드)
+└── (패키지 루트, skin 과 별개 관심사 — Contract 미이전)
+    PlayerSkinState.swift  PlayerSkinAction.swift  ExtraControl.swift   # 계약 vocabulary
+    PlayerRenderSurfaceView.swift  PlayerCaptionView.swift  PlayerGestureHUDView.swift
+    PlayerPlaybackSlider.swift  PlayerPlaybackRatePanelViewController.swift
+    PlayerKeyCommandRegistry.swift  PlayerNowPlayingCenter.swift  PlayerAudioSessionConfigurator.swift
 ```
+
+> **설계 초안과 달라진 점(구현 시 결정):** ① `PlayerSkinState/Action/ExtraControl` 은 `Contract/` 로
+> 이전하지 않고 루트 잔류(순수 조직화 차이, 기능 영향 없음). ② `PlayerSkinMetrics`(치수 토큰) 미구현 —
+> 치수 커스텀 수요 없어 보류. ③ `TimeLabelBlock`·`ScreenModeBlock` 은 별도 블럭이 아니라 `ProgressBarBlock`
+> 에 통합(2D 레이아웃 강제 — §6·§7). ④ `PlayerSkinBlock.id`/`PlayerSkinBlockID`·`Blueprint.hiddenBlocks`
+> 제거 — block 자기 가시성(self-hide)으로 대체(§7).
 
 `Resources/` 를 실제로 추가할 때는 SwiftPM target 에 리소스 선언도 같이 들어가야 한다.
 
@@ -218,24 +225,29 @@ public enum PlayerSkinColorRole: Hashable, Sendable {
 ```swift
 import UIKit
 
-@MainActor
 public protocol PlayerSkinTheme {
     func color(_ role: PlayerSkinColorRole) -> UIColor
     func font(_ role: PlayerSkinFontRole) -> UIFont
+    /// 의미 아이콘 조회 (Tier1 교체점). 기본 = defaultAssetName → image(assetName:).
     func icon(_ icon: PlayerSkinIcon) -> UIImage?
-    var metrics: PlayerSkinMetrics { get }
+    /// host 주입 ExtraControl 등 동적 asset 이름 조회.
+    func image(assetName: String) -> UIImage?
 }
 
 /// ISP — 필요한 것만 구현. 나머지는 기본 제공.
 public extension PlayerSkinTheme {
-    var metrics: PlayerSkinMetrics { .default }
     func color(_ role: PlayerSkinColorRole) -> UIColor { role.defaultColor }
     func font(_ role: PlayerSkinFontRole) -> UIFont { role.defaultFont }
-    func icon(_ icon: PlayerSkinIcon) -> UIImage? {
-        UIImage(named: icon.defaultAssetName, in: .module, with: nil)   // 기본 번들 아이콘
-    }
+    func icon(_ icon: PlayerSkinIcon) -> UIImage? { image(assetName: icon.defaultAssetName) }
+    func image(assetName: String) -> UIImage? { UIImage(named: assetName) }
 }
 ```
+
+> **해석 경로 단일화:** `icon(_:)` 은 의미 → `defaultAssetName` → `image(assetName:)` 로 위임한다.
+> 따라서 번들 정책(.module / .main)은 `image(assetName:)` 한 곳만 오버라이드하면 되고, built-in 아이콘
+> asset 문자열은 `PlayerSkinIcon.defaultAssetName` 한 곳에만 존재한다(블럭 코드에 산재 없음).
+> `DefaultPlayerSkinTheme` 은 `image` 를 `.module → .main` 으로, 앱 테마는 자기 카탈로그로 구현한다.
+> host 가 built-in 아이콘 1개만 바꾸려면 `icon(_:)` 만 오버라이드한다.
 
 기본 role 매핑도 public extension 으로 같이 제공한다. 문서 예시와 host 코드가
 `role.defaultColor` / `icon.defaultAssetName` 에 의존하므로, 이 매핑이 실제 API 표면에
@@ -290,32 +302,23 @@ public extension PlayerSkinFontRole {
 }
 ```
 
-### `Theme/PlayerSkinMetrics.swift`
+### `Theme/PlayerSkinMetrics.swift` — **보류(미구현)**
+
+> 치수 토큰(바 높이/사이드 inset/아이콘 크기/중앙 간격/슬라이더 높이)을 한 곳에 모으는 설계였으나,
+> 치수 커스텀 수요가 없어 구현하지 않았다. 현재 치수는 스켈레톤/블럭에 상수로 직접 존재
+> (바 50, inset 20, 아이콘 44, 중앙 간격 56, 슬라이더 높이 21). 치수 커스텀 요구가 생기면 아래 형태로
+> `PlayerSkinTheme.metrics` 를 추가하고 `AssembledPlayerSkin` 의 상수를 치환한다.
 
 ```swift
+// 보류 — 수요 발생 시 도입
 import CoreGraphics
 
 public struct PlayerSkinMetrics: Equatable, Sendable {
-    public var barHeight: CGFloat
-    public var sideInset: CGFloat
-    public var iconButtonSize: CGFloat
-    public var centerControlSpacing: CGFloat
-    public var progressSliderHeight: CGFloat
-
-    public init(
-        barHeight: CGFloat = 50,
-        sideInset: CGFloat = 20,
-        iconButtonSize: CGFloat = 44,
-        centerControlSpacing: CGFloat = 56,
-        progressSliderHeight: CGFloat = 21
-    ) {
-        self.barHeight = barHeight
-        self.sideInset = sideInset
-        self.iconButtonSize = iconButtonSize
-        self.centerControlSpacing = centerControlSpacing
-        self.progressSliderHeight = progressSliderHeight
-    }
-
+    public var barHeight: CGFloat = 50
+    public var sideInset: CGFloat = 20
+    public var iconButtonSize: CGFloat = 44
+    public var centerControlSpacing: CGFloat = 56
+    public var progressSliderHeight: CGFloat = 21
     public static let `default` = PlayerSkinMetrics()
 }
 ```
@@ -345,9 +348,13 @@ public enum PlayerSkinSlot: Hashable, Sendable, CaseIterable {
     case centerControls                          // 중앙 재생 클러스터 (floating)
     case leftRail, rightRail                     // 세로 메뉴 (fullscreen/split)
     case bottomBar                               // 진행 바 영역
-    case floatingTrailing                        // 우하단 floating (배속/다음강의)
+    case floatingCenterTrailing                  // 영상 중앙-우측 floating (배속 버튼)
+    case floatingBottomTrailing                  // bottomBar 위 우측 floating (다음 강의 등)
 }
 ```
+
+> 설계 초안의 단일 `floatingTrailing` 은 실제 위치가 다른 두 요소(중앙-우측 배속 / 하단-우측 다음강의)를
+> 담지 못해 **2개 슬롯으로 분리**했다.
 
 ### `Assembly/PlayerSkinBlock.swift`
 
@@ -357,13 +364,16 @@ import UIKit
 /// 슬롯에 끼우는 컨트롤 단위. 상태 반영 + 액션 방출.
 @MainActor
 public protocol PlayerSkinBlock: AnyObject {
-    var id: PlayerSkinBlockID { get }
     var view: UIView { get }
     var onAction: ((PlayerSkinAction) -> Void)? { get set }
-    /// 매 프레임 상태 반영 (블럭 자신 관련 부분만).
+    /// 매 프레임 상태 반영 (블럭 자신 관련 부분만). 모드별 자기 가시성도 여기서 isHidden 토글.
     func render(_ state: PlayerSkinState, theme: PlayerSkinTheme)
 }
 ```
+
+> `id`/`PlayerSkinBlockID` 는 제거됐다. 초안에서 id 는 `Blueprint.hiddenBlocks`(블럭 단위 가시성 맵)
+> 조회용이었으나, 가시성을 **블럭 자신이 `render` 에서 `isHidden` 으로 결정**(self-hide)하도록 바꾸면서
+> id 와 hiddenBlocks 둘 다 불필요해졌다.
 
 ### `Assembly/PlayerSkinSlotLayout.swift` — 위치 세부조절
 
@@ -393,15 +403,6 @@ public struct PlayerSkinSlotLayout: Equatable, Sendable {
 ```swift
 import UIKit
 
-public enum PlayerSkinBlockID: Hashable, Sendable {
-    case close, title, displayScale, lock, more
-    case play, skipBackward, skipForward
-    case progress, currentTime, duration, screenMode
-    case rateButton, rateStepUp, rateStepDown
-    case sectionRepeat, setting
-    case extraControlsRail, extraFloating
-}
-
 public struct PlayerSkinBlueprint {
     /// 슬롯 → 블럭 생성기 배열 (순서 = 배치 순서).
     public var blocks: [PlayerSkinSlot: [() -> PlayerSkinBlock]]
@@ -409,63 +410,58 @@ public struct PlayerSkinBlueprint {
     public var layouts: [PlayerSkinSlot: PlayerSkinSlotLayout]
     /// layoutMode 별 노출 슬롯 (반응형 chrome 규칙의 coarse gate).
     public var visibleSlots: [PlayerSkinLayoutMode: Set<PlayerSkinSlot>]
-    /// 같은 슬롯 안에서 layoutMode 별로 숨겨야 하는 블럭.
-    /// 예: fullScreen 의 leftRail 은 슬롯은 보이지만 sectionRepeat 만 남고 setting/extra 는 숨는다.
-    public var hiddenBlocks: [PlayerSkinLayoutMode: Set<PlayerSkinBlockID>]
 
     public init(blocks: [PlayerSkinSlot: [() -> PlayerSkinBlock]],
                 layouts: [PlayerSkinSlot: PlayerSkinSlotLayout] = [:],
-                visibleSlots: [PlayerSkinLayoutMode: Set<PlayerSkinSlot>],
-                hiddenBlocks: [PlayerSkinLayoutMode: Set<PlayerSkinBlockID>] = [:]) {
-        self.blocks = blocks
-        self.layouts = layouts
-        self.visibleSlots = visibleSlots
-        self.hiddenBlocks = hiddenBlocks
+                visibleSlots: [PlayerSkinLayoutMode: Set<PlayerSkinSlot>]) {
+        self.blocks = blocks; self.layouts = layouts; self.visibleSlots = visibleSlots
     }
 }
 
 public extension PlayerSkinBlueprint {
-    /// 기본 = 현 DefaultPlayerSkin 배치 1:1 (0-config 시 동일 룩).
+    /// 기본 = 현 배치 1:1 (0-config 시 동일 룩).
     static var `default`: PlayerSkinBlueprint {
         PlayerSkinBlueprint(
             blocks: [
-                .topLeading:      [{ CloseButtonBlock() }],
-                .topCenter:       [{ TitleBlock() }],
-                .topTrailing:     [{ DisplayScaleBlock() }, { LockButtonBlock() }, { MoreButtonBlock() }],
-                .centerControls:  [{ SkipButtonBlock(.backward) }, { PlayButtonBlock() }, { SkipButtonBlock(.forward) }],
-                .leftRail:        [{ SectionRepeatBlock() }, { ExtraControlsRailBlock() }, { SettingButtonBlock() }],
-                .rightRail:       [{ RateStepBlock(.up) }, { RateStepBlock(.down) }],
-                .bottomBar:       [{ TimeLabelBlock(.current) }, { ProgressBarBlock() }, { TimeLabelBlock(.duration) }, { ScreenModeBlock() }],
-                .floatingTrailing:[{ RateButtonBlock() }, { ExtraFloatingBlock() }]
+                .topLeading:             [{ CloseButtonBlock() }],
+                .topCenter:              [{ TitleBlock() }],
+                .topTrailing:            [{ DisplayScaleBlock() }, { LockButtonBlock() }, { MoreButtonBlock() }],
+                .centerControls:         [{ SkipButtonBlock(.backward) }, { PlayButtonBlock() }, { SkipButtonBlock(.forward) }],
+                .leftRail:               [{ SectionRepeatBlock() }, { ExtraControlsRailBlock() }, { SettingButtonBlock() }],
+                .rightRail:              [{ RateStepBlock(.up) }, { RateStepBlock(.down) }],
+                .bottomBar:              [{ ProgressBarBlock() }],   // 슬라이더+시간2+화면모드 복합 블럭
+                .floatingCenterTrailing: [{ RateButtonBlock() }],
+                .floatingBottomTrailing: [{ ExtraFloatingBlock() }]
             ],
             layouts: [
-                .leftRail:        .init(axis: .vertical, alignment: .center, spacing: 12,
-                                        insets: .init(top: 0, left: 20, bottom: 0, right: 0)),
-                .centerControls:  .init(axis: .horizontal, alignment: .center, spacing: 56)
+                .topTrailing:    .init(alignment: .center, spacing: 4),
+                .centerControls: .init(alignment: .center, spacing: 56),
+                .leftRail:       .init(alignment: .center, spacing: 12),
+                .rightRail:      .init(alignment: .center, spacing: 12)
             ],
             visibleSlots: [
-                .verticalSplit:   [.topLeading, .topTrailing, .centerControls, .bottomBar, .floatingTrailing],
-                .horizontalSplit: [.topLeading, .topCenter, .topTrailing, .leftRail, .centerControls, .bottomBar, .floatingTrailing],
+                .verticalSplit:   [.topLeading, .topTrailing, .centerControls, .bottomBar,
+                                   .floatingCenterTrailing, .floatingBottomTrailing],
+                .horizontalSplit: [.topLeading, .topCenter, .topTrailing, .leftRail, .centerControls,
+                                   .bottomBar, .floatingCenterTrailing, .floatingBottomTrailing],
                 .fullScreen:      Set(PlayerSkinSlot.allCases)
-            ],
-            hiddenBlocks: [
-                .verticalSplit: [.displayScale],
-                .fullScreen: [.displayScale, .extraControlsRail, .setting]
             ]
         )
     }
 }
 ```
 
-`visibleSlots` 는 슬롯 단위 큰 게이트만 담당한다. 현재 `PlayerSkinControlView` parity 에는
-같은 슬롯 안의 일부 버튼만 숨기는 규칙이 있다.
+`visibleSlots` 는 슬롯 단위 큰 게이트만 담당한다(`AssembledPlayerSkin.applyVisibility`). 같은 슬롯 안에서
+일부 버튼만 숨기는 parity 규칙은 **블럭이 자기 `render` 에서 `isHidden` 으로 처리**한다(self-hide).
 
-- `verticalSplit`: topTrailing 슬롯은 보이지만 `displayScale` 은 숨고 lock/more 는 남는다.
-- `fullScreen`: leftRail 슬롯은 보이지만 `sectionRepeat` 만 남고 `extraControlsRail`/`setting` 은 숨는다.
-- `fullScreen`: topTrailing 슬롯은 보이지만 `displayScale` 은 숨고 lock/more 는 남는다.
+- `verticalSplit`/`fullScreen`: topTrailing 슬롯은 보이지만 `DisplayScaleBlock` 이 스스로 숨는다
+  (`isHidden = layoutMode == .fullScreen || .verticalSplit`). lock/more 는 남는다.
+- `fullScreen`: leftRail 슬롯은 보이지만 `SettingButtonBlock`·`ExtraControlsRailBlock` 이 스스로 숨고
+  `SectionRepeatBlock` 만 남는다.
 
-따라서 구현 시 `visibleSlots` 만으로 parity 를 보장하지 말고, `hiddenBlocks` 같은 block 단위
-visibility policy 를 함께 적용해야 한다.
+> **초안의 `hiddenBlocks` 맵은 채택하지 않았다.** 가시성 규칙을 blueprint 한 곳에 모으는 대신, 각 블럭이
+> 자기 `layoutMode` 의존 가시성을 소유한다(응집). 트레이드오프: 전 규칙을 한눈에 보긴 어렵지만, 블럭이
+> 이미 `render(state)` 를 받으므로 추가 인프라(id/맵) 없이 자연스럽다. parity 는 시뮬레이터 QA 로 검증한다.
 
 ### `Assembly/AssembledPlayerSkin.swift` — 조립 엔진
 
@@ -501,9 +497,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
 
     public func render(_ state: PlayerSkinState) {
         latestState = state
-        applyVisibleSlots(for: state.layoutMode, locked: state.isLocked)   // chrome 게이트 (한 곳)
-        applyHiddenBlocks(for: state.layoutMode)                            // 같은 슬롯 안의 부분 숨김
-        blocks.forEach { $0.render(state, theme: theme) }                  // 각 블럭 자기 갱신
+        applyVisibility(state)                              // 슬롯 단위 chrome/lock alpha 게이트 (한 곳)
+        blocks.forEach { $0.render(state, theme: theme) }   // 각 블럭 자기 갱신 + 자기 isHidden(self-hide)
     }
 
     private func assembleBlocks() {
@@ -519,9 +514,9 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     }
 
     // buildSkeleton(): 슬롯 컨테이너(UIStackView) 들을 고정 위치 제약으로 배치.
-    // applyVisibleSlots(for:locked:): layoutMode + lock 에 따라 슬롯 alpha/hidden 게이트.
-    // applyHiddenBlocks(for:): blueprint.hiddenBlocks 기반으로 block.view.isHidden 토글.
-    //   → 반응형·lock 규칙을 여기 한 곳에 집중. 블럭은 자기 상태 렌더만 책임.
+    // applyVisibility(_:): layoutMode(visibleSlots) + controlsVisible + lock 에 따라 슬롯 alpha 게이트.
+    //   top 슬롯은 controlsVisible, 나머지는 controlsVisible && !lock. 같은 슬롯 안의 부분 숨김은
+    //   각 블럭이 render 에서 isHidden 으로 처리(self-hide).
 }
 ```
 
@@ -531,7 +526,6 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
 import UIKit
 
 public final class PlayButtonBlock: UIView, PlayerSkinBlock {
-    public let id: PlayerSkinBlockID = .play
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
 
@@ -583,22 +577,22 @@ struct BrandTheme: PlayerSkinTheme {
 }
 let skinThemed = AssembledPlayerSkin(theme: BrandTheme())
 
-// (B-Tier2) 조립 — 배속 버튼을 우레일로 이동 + bottomBar inset 조정
+// (B-Tier2) 조립 — 배속 버튼을 우레일로 이동 + 중앙-우측 floating 비우기
 var bp = PlayerSkinBlueprint.default
-bp.blocks[.floatingTrailing] = [{ ExtraFloatingBlock() }]            // rate 제거
+bp.blocks[.floatingCenterTrailing] = []                              // 기존 rate 버튼 제거
 bp.blocks[.rightRail, default: []].append({ RateButtonBlock() })     // rate 를 우레일로
-bp.layouts[.bottomBar] = .init(insets: .init(top: 8, left: 24, bottom: 4, right: 24))
 let skinReassembled = AssembledPlayerSkin(blueprint: bp)
 
-// (B-Tier2) 블럭 교체 — 커스텀 파형 진행바
-final class WaveformProgressBlock: UIView, PlayerSkinBlock {
-    let id: PlayerSkinBlockID = .progress
+// (B-Tier2) 블럭 교체 — bottomBar 통째 교체 (파형 진행바 + 시간 + 화면모드 포함)
+// ※ bottomBar 는 단일 복합 블럭(ProgressBarBlock)이라 "진행바만" 교체는 불가.
+//    슬라이더/시간/화면모드를 모두 직접 그리는 복합 블럭으로 통째 갈아끼운다(§6·§7 trade-off).
+final class WaveformBottomBarBlock: UIView, PlayerSkinBlock {
     var view: UIView { self }
     var onAction: ((PlayerSkinAction) -> Void)?
-    func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) { /* 파형 진행바 */ }
+    func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) { /* 파형 슬라이더 + 시간 + 화면모드 */ }
 }
 var bp2 = PlayerSkinBlueprint.default
-bp2.blocks[.bottomBar] = [{ TimeLabelBlock(.current) }, { WaveformProgressBlock() }, { TimeLabelBlock(.duration) }]
+bp2.blocks[.bottomBar] = [{ WaveformBottomBarBlock() }]
 let skinWaveform = AssembledPlayerSkin(blueprint: bp2, theme: BrandTheme())
 
 // (C-Tier3) 통째 교체 — 완전 커스텀 뷰
@@ -687,13 +681,30 @@ block 분해 후에도 UI 테스트와 VoiceOver 품질을 깨지 않도록, 기
 | 설계 | 구현 파일 | 상태 |
 |---|---|---|
 | Tier3 PlayerSkin | `Contract/PlayerSkin.swift` | ✅ |
-| Tier1 Theme | `Theme/PlayerSkinTheme·ColorRole·FontRole·Metrics·DefaultPlayerSkinTheme.swift` | ✅ |
-| Tier2 조립 | `Assembly/PlayerSkinSlot·Block·SlotLayout·Blueprint·AssembledPlayerSkin.swift` | ✅ |
-| 기본 블럭 15종 | `Blocks/*.swift` | ✅ |
+| Tier1 Theme | `Theme/PlayerSkinTheme·ColorRole·FontRole·Icon·DefaultPlayerSkinTheme.swift` | ✅ (Metrics 보류) |
+| Tier2 조립 | `Assembly/PlayerSkinSlot·Block·SlotLayout·Blueprint·AssembledPlayerSkin.swift` | ✅ (id/hiddenBlocks 미채택) |
+| 기본 블럭 15종 | `Blocks/*.swift` (+ `PlayerSkinIconButton`) | ✅ |
 | 기본 진입점 | `Default/DefaultPlayerSkin.swift` | ✅ |
 | 기본 에셋 번들 | `Resources/PlayerSkin.xcassets` (아이콘19 + 색2, module→main fallback) | ✅ |
 | 자막 하단정렬 + 토글 | `PlayerCaptionView` (UIStackView + setVisible) | ✅ |
 
+> **설계 초안 대비 구현 편차(2026-06-01 갱신):**
+> - **icon**: `PlayerSkinIcon` enum + `theme.icon(_:)` 채택. built-in asset 문자열은 `defaultAssetName`
+>   한 곳에만 존재(블럭 산재 제거). host ExtraControl 동적 asset 은 `image(assetName:)` 별도 경로.
+> - **Metrics**: 미구현(치수 커스텀 수요 없어 보류).
+> - **Block.id / Blueprint.hiddenBlocks**: 미채택 → 블럭 self-hide(`render` 내 `isHidden`)로 대체.
+> - **슬롯**: `floatingTrailing` → `floatingCenterTrailing` + `floatingBottomTrailing` (2개).
+> - **bottomBar**: `TimeLabel`·`ScreenMode` 미분리 → `ProgressBarBlock` 단일 복합 블럭(2D 레이아웃 강제).
+>   진행바 단독 교체 불가(통째 교체만 가능).
+> - **Contract 이전**: `State/Action/ExtraControl` 은 패키지 루트 잔류(조직화 차이).
+> - **dead 코드**: 레거시 `PlayerSkinControlView.swift` 삭제 완료.
+
 - 빌드: SmartPlayer (Debug) BUILD SUCCEEDED. 패키지 Rx/앱심볼 의존 0.
 - 앱 결선: `LecturePlayerShellViewController.skin = DefaultPlayerSkin()`.
 - 남은 것: 실 강의 재생 시각 QA(자막 하단 표시·AI자막 토글 즉시 반영).
+
+### 주입 패턴 (host = 앱이 모든 룩 값 직접 정의)
+
+host 앱은 패키지 기본 테마에 의존하지 않고, 색/폰트/아이콘을 직접 정의한 테마를 skinFactory 로 주입.
+체인: Coordinator -> ContainerScene.Component(skinFactory) -> ContainerBuilder -> ShellScene.Component -> ShellVC(skin:).
+앱 LecturePlayerSkinTheme 가 color/font/image 전 값 명시. composition root 한 곳에서 결정(DIP).

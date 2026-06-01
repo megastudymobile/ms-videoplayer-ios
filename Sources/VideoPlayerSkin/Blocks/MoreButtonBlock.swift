@@ -11,7 +11,7 @@ public final class MoreButtonBlock: UIView, PlayerSkinBlock {
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
-        PlayerSkinIconButtonFactory.apply(button, assetName: "PlayerMoreNormal", fallbackTitle: "Set", theme: theme)
+        PlayerSkinIconButtonFactory.apply(button, icon: .more, fallbackTitle: "Set", theme: theme)
         button.isEnabled = !state.isLocked
     }
     @objc private func tap() { onAction?(.moreRequested) }

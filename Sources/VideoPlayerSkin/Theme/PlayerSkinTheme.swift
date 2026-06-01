@@ -14,12 +14,16 @@ import UIKit
 public protocol PlayerSkinTheme {
     func color(_ role: PlayerSkinColorRole) -> UIColor
     func font(_ role: PlayerSkinFontRole) -> UIFont
-    /// Asset Catalog 이름으로 아이콘 조회. 커스텀 테마가 교체점. nil 이면 호출부가 SF Symbol/텍스트 fallback.
+    /// 의미 기반 아이콘 조회 (Tier1 교체점). 기본 = `defaultAssetName` → `image(assetName:)`.
+    /// host 는 이것만 오버라이드해 built-in 아이콘을 재매핑한다(에셋 의존 역전).
+    func icon(_ icon: PlayerSkinIcon) -> UIImage?
+    /// host 주입 ExtraControl 등 동적 asset 이름 조회. nil 이면 호출부가 SF Symbol/텍스트 fallback.
     func image(assetName: String) -> UIImage?
 }
 
 public extension PlayerSkinTheme {
     func color(_ role: PlayerSkinColorRole) -> UIColor { role.defaultColor }
     func font(_ role: PlayerSkinFontRole) -> UIFont { role.defaultFont }
+    func icon(_ icon: PlayerSkinIcon) -> UIImage? { image(assetName: icon.defaultAssetName) }
     func image(assetName: String) -> UIImage? { UIImage(named: assetName) }
 }

@@ -1,7 +1,11 @@
 import UIKit
 
 /// bottomBar 복합 블럭: 진행 슬라이더 + 현재/총 시간 + 화면모드 버튼.
-/// 현 PlayerSkinControlView bottomBar 2D 레이아웃 parity.
+///
+/// **의도적 composite (trade-off):** bottomBar 는 슬라이더 아래 시간 라벨이 놓이는 2D 레이아웃이라
+/// stack 기반 슬롯으로 분해 불가 → 4개를 한 블럭에 묶었다. 결과로 host 가 "진행바만" 교체하는
+/// Tier2 시나리오는 이 슬롯에서 불가능하고, 통째 교체(이 블럭 대체)만 가능하다.
+/// 진행바 단독 교체 수요가 생기면 bottomBar 를 전용 2D 컨테이너 슬롯으로 재설계해야 한다.
 public final class ProgressBarBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
@@ -23,7 +27,7 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
         latestDuration = state.duration
         slider.minimumTrackTintColor = theme.color(.progressFill)
         slider.maximumTrackTintColor = theme.color(.progressTrack)
-        if let thumb = theme.image(assetName: "PlayerPlaybackSliderCircleNormal") {
+        if let thumb = theme.icon(.sliderThumb) {
             slider.setThumbImage(thumb, for: .normal)
         }
         currentTimeLabel.textColor = theme.color(.timeText); currentTimeLabel.font = theme.font(.time)
@@ -37,7 +41,7 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
 
         let isFull = (state.layoutMode == .fullScreen)
         PlayerSkinIconButtonFactory.apply(screenModeButton,
-            assetName: isFull ? "PlayerScreenLandscapeNormal" : "PlayerScreenPortraitNormal",
+            icon: isFull ? .screenShrink : .screenExpand,
             fallbackTitle: isFull ? "P" : "L", theme: theme)
         screenModeButton.accessibilityLabel = isFull ? "세로 모드" : "가로 모드"
 
