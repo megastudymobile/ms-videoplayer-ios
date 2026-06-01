@@ -73,11 +73,18 @@ public final class PlayerSkinControlView: UIView, PlayerSkin {
     private var centerControlsLeadingConstraint: NSLayoutConstraint?
     private var centerControlsCenterXConstraint: NSLayoutConstraint?
 
-    public override init(frame: CGRect) {
-        super.init(frame: frame)
+    private let theme: PlayerSkinTheme
+
+    public init(theme: PlayerSkinTheme = DefaultPlayerSkinTheme()) {
+        self.theme = theme
+        super.init(frame: .zero)
         configureUI()
         configureActions()
         render(.initial)
+    }
+
+    public override convenience init(frame: CGRect) {
+        self.init(theme: DefaultPlayerSkinTheme())
     }
 
     @available(*, unavailable)
@@ -224,7 +231,7 @@ private extension PlayerSkinControlView {
         // spec-052 Phase 4.1 — dev kMGPlayerSkinTitleLabelFontSize 16pt + AppleSDGothicNeo Regular.
         // swift system font Regular 로 매칭 (AppleSDGothicNeo 직접 사용 시 폰트 family 등록 추가 필요).
         titleLabel.textColor = .white
-        titleLabel.font = .systemFont(ofSize: 16, weight: .regular)
+        titleLabel.font = theme.font(.title)
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.textAlignment = .left
         titleLabel.numberOfLines = 1
@@ -262,33 +269,33 @@ private extension PlayerSkinControlView {
 
         // spec-052 Phase 4.2 — dev kMGPlayerSkinPlaybackTimeLabelFontSize 11pt + Regular.
         // dev `playbackTimeLabel.textColor = slWhite03` (90% white 추정) → white.alpha(0.9).
-        currentTimeLabel.textColor = UIColor.white.withAlphaComponent(0.9)
-        currentTimeLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        currentTimeLabel.textColor = theme.color(.timeText)
+        currentTimeLabel.font = theme.font(.time)
         // spec-063 P10-C — slider 아래 좌측 정렬 (dev parity).
         currentTimeLabel.textAlignment = .left
 
         // spec-052 Phase 4.2 — dev kMGPlayerSkinTotalPlaybackTimeLabelFontSize 11pt + Regular.
-        durationLabel.textColor = UIColor.white.withAlphaComponent(0.9)
-        durationLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        durationLabel.textColor = theme.color(.timeText)
+        durationLabel.font = theme.font(.time)
         // spec-063 P10-C — slider 아래 우측 정렬 (dev parity).
         durationLabel.textAlignment = .right
 
         progressSlider.minimumValue = 0
         progressSlider.maximumValue = 1
         // parity-I3 — dev `MGPlayerSkinView` 의 progress tint 는 `slPrimarySkyBlue` Asset Catalog 색.
-        progressSlider.minimumTrackTintColor = UIColor(named: "primarySkyBlue") ?? .systemBlue
+        progressSlider.minimumTrackTintColor = theme.color(.progressFill)
         // spec-052 Phase 4.2 — dev `SLPlayerPlaybackSlider` maximumTrack = slLineGrey03 (Line/grey-03).
-        progressSlider.maximumTrackTintColor = UIColor(named: "Line/grey-03") ?? UIColor.white.withAlphaComponent(0.35)
+        progressSlider.maximumTrackTintColor = theme.color(.progressTrack)
         // spec-052 Phase 4.2 — dev thumbImage = "PlayerPlaybackSliderCircleNormal" Asset.
-        if let thumbImage = UIImage(named: "PlayerPlaybackSliderCircleNormal") {
+        if let thumbImage = theme.image(assetName: "PlayerPlaybackSliderCircleNormal") {
             progressSlider.setThumbImage(thumbImage, for: .normal)
         }
 
         // spec-063 P7 — dev `SLPlayerRateControlView` 의 floating 회색 원형 parity.
         // bottomBar inline 에서 영상 우측 끝 floating 으로 분리.
-        rateButton.tintColor = .white
+        rateButton.tintColor = theme.color(.controlTint)
         rateButton.setTitleColor(.white, for: .normal)
-        rateButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        rateButton.titleLabel?.font = theme.font(.rateLabel)
         rateButton.titleLabel?.adjustsFontSizeToFitWidth = true
         rateButton.titleLabel?.minimumScaleFactor = 0.7
         rateButton.backgroundColor = UIColor(white: 0.3, alpha: 0.65)
@@ -383,7 +390,7 @@ private extension PlayerSkinControlView {
     }
 
     func configureBar(_ view: UIView) {
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.52)
+        view.backgroundColor = theme.color(.barBackground)
     }
 
     /// spec-062 C6 — seek 버튼 center 위의 "10" 숫자 라벨.
@@ -391,7 +398,7 @@ private extension PlayerSkinControlView {
     /// font `AppleSDGothicNeo SemiBold 12pt`, color `slWhite03`.
     /// 신은 system semibold 12pt + white α0.9 매핑.
     func configureSkipIntervalLabel(_ label: UILabel) {
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.font = theme.font(.skipInterval)
         label.textColor = UIColor.white.withAlphaComponent(0.9)
         label.textAlignment = .center
         label.numberOfLines = 1
@@ -406,7 +413,7 @@ private extension PlayerSkinControlView {
     }
 
     func configureIconButton(_ button: UIButton, imageName: String) {
-        button.tintColor = .white
+        button.tintColor = theme.color(.controlTint)
         setButtonImageOrTitle(
             button,
             imageName: imageName,
@@ -891,7 +898,7 @@ private extension PlayerSkinControlView {
         let button = UIButton(type: .system)
         button.setTitle(control.title, for: .normal)
         button.setTitleColor(.white, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        button.titleLabel?.font = theme.font(.extraControlTitle)
         button.backgroundColor = UIColor.black.withAlphaComponent(0.55)
         button.layer.cornerRadius = 6
         button.layer.masksToBounds = true
@@ -926,7 +933,7 @@ private extension PlayerSkinControlView {
         imageName: String,
         fallbackTitle: String
     ) {
-        if let assetImage = UIImage(named: imageName) {
+        if let assetImage = theme.image(assetName: imageName) {
             button.setImage(assetImage.withRenderingMode(.alwaysTemplate), for: .normal)
             button.setTitle(nil, for: .normal)
         } else if #available(iOS 13.0, *), let systemImage = UIImage(systemName: imageName) {
@@ -935,7 +942,7 @@ private extension PlayerSkinControlView {
         } else {
             button.setImage(nil, for: .normal)
             button.setTitle(fallbackTitle, for: .normal)
-            button.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+            button.titleLabel?.font = theme.font(.extraControlTitle)
         }
     }
 }
