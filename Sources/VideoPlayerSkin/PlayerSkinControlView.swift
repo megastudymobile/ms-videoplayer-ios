@@ -8,7 +8,10 @@
 
 import UIKit
 
-public final class PlayerSkinControlView: UIView {
+public final class PlayerSkinControlView: UIView, PlayerSkin {
+    /// spec-064 후속 — PlayerSkin 채택. host 가 add 할 실제 뷰.
+    public var view: UIView { self }
+
     /// spec-064 Phase 2 — Rx 제거. skin 은 클로저로 액션을 forward 한다 (패키지 Rx-free 준비).
     /// host(ShellVC) 가 주입해 PlayerSkinAction → reactor action 으로 매핑한다.
     public var onAction: ((PlayerSkinAction) -> Void)?
