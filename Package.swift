@@ -175,7 +175,8 @@ let package = Package(
                 .target(name: "VideoPlayerShellSupport", condition: .when(platforms: [.iOS])),
                 .target(name: "VideoPlayerEngineNative", condition: .when(platforms: [.iOS])),
                 .target(name: "VideoPlayerEngineKollus", condition: .when(platforms: [.iOS])),
-                .target(name: "VideoPlayerModule", condition: .when(platforms: [.iOS]))
+                .target(name: "VideoPlayerModule", condition: .when(platforms: [.iOS])),
+                .target(name: "VideoPlayerSkin", condition: .when(platforms: [.iOS]))
             ],
             path: "Tests/VideoPlayerModuleTests"
         )
