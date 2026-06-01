@@ -5,6 +5,7 @@ public final class SkipButtonBlock: UIView, PlayerSkinBlock {
     public enum Direction { case backward, forward }
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    public var theme: PlayerSkinTheme = .default
 
     private let direction: Direction
     private let button = PlayerSkinIconButtonFactory.make()
@@ -31,10 +32,14 @@ public final class SkipButtonBlock: UIView, PlayerSkinBlock {
 
     public func setInterval(seconds: Int) { intervalLabel.text = "\(seconds)" }
 
-    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+    public func didInjectTheme() {
+        intervalLabel.font = theme.font(.skipInterval)
+        intervalLabel.textColor = theme.color(.controlTint).withAlphaComponent(0.9)
+    }
+
+    public func render(_ state: PlayerSkinState) {
         let icon: PlayerSkinIcon = direction == .backward ? .skipBackward : .skipForward
         PlayerSkinIconButtonFactory.apply(button, icon: icon, fallbackTitle: direction == .backward ? "-10" : "+10", theme: theme)
-        intervalLabel.textColor = theme.color(.controlTint).withAlphaComponent(0.9)
         button.isEnabled = !state.isLocked
     }
     @objc private func tap() { onAction?(direction == .backward ? .skipBackward : .skipForward) }

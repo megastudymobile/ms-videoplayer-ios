@@ -5,10 +5,10 @@ import UIKit
 public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    public var theme: PlayerSkinTheme = .default
 
     private let stack = UIStackView()
     private var buttons: [(id: String, button: UIButton)] = []
-    private var theme: PlayerSkinTheme = DefaultPlayerSkinTheme()
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -22,8 +22,7 @@ public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
 
     /// host 주입 ExtraControl 중 placement == .leftMenu 만 buttons 로 구성.
-    public func setExtraControls(_ controls: [ExtraControl], theme: PlayerSkinTheme) {
-        self.theme = theme
+    public func setExtraControls(_ controls: [ExtraControl]) {
         buttons.forEach { $0.button.removeFromSuperview() }; buttons.removeAll()
         for control in controls where control.placement == .leftMenu {
             let button = PlayerSkinIconButtonFactory.make()
@@ -36,7 +35,7 @@ public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
         }
     }
 
-    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+    public func render(_ state: PlayerSkinState) {
         isHidden = (state.layoutMode == .fullScreen)
         for entry in buttons {
             entry.button.isHidden = state.hiddenExtraControlIDs.contains(entry.id)

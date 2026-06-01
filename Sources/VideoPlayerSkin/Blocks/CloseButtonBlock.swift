@@ -3,6 +3,7 @@ import UIKit
 public final class CloseButtonBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    public var theme: PlayerSkinTheme = .default
     private let button = PlayerSkinIconButtonFactory.make()
 
     public override init(frame: CGRect) {
@@ -12,7 +13,7 @@ public final class CloseButtonBlock: UIView, PlayerSkinBlock {
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
 
-    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+    public func render(_ state: PlayerSkinState) {
         PlayerSkinIconButtonFactory.apply(button, icon: .close, fallbackTitle: "X", theme: theme)
         // close 는 lock 중에도 사용 가능 (현 동작).
     }

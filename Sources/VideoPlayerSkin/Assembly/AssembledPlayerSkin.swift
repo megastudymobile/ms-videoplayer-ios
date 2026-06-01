@@ -21,7 +21,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private var latestState = PlayerSkinState.initial
 
     public init(blueprint: PlayerSkinBlueprint = .default,
-                theme: PlayerSkinTheme = DefaultPlayerSkinTheme()) {
+                theme: PlayerSkinTheme = .default) {
         self.blueprint = blueprint
         self.theme = theme
         super.init(frame: .zero)
@@ -39,14 +39,14 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         blocks.compactMap { $0 as? SkipButtonBlock }.forEach { $0.setInterval(seconds: seconds) }
     }
     public func setExtraControls(_ controls: [ExtraControl]) {
-        blocks.compactMap { $0 as? ExtraControlsRailBlock }.forEach { $0.setExtraControls(controls, theme: theme) }
-        blocks.compactMap { $0 as? ExtraFloatingBlock }.forEach { $0.setExtraControls(controls, theme: theme) }
+        blocks.compactMap { $0 as? ExtraControlsRailBlock }.forEach { $0.setExtraControls(controls) }
+        blocks.compactMap { $0 as? ExtraFloatingBlock }.forEach { $0.setExtraControls(controls) }
         render(latestState)
     }
     public func render(_ state: PlayerSkinState) {
         latestState = state
         applyVisibility(state)
-        blocks.forEach { $0.render(state, theme: theme) }
+        blocks.forEach { $0.render(state) }
     }
 
     // MARK: 스켈레톤
@@ -129,6 +129,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             guard let container = slotContainers[slot], let makers = blueprint.blocks[slot] else { continue }
             for make in makers {
                 let block = make()
+                block.theme = theme
+                block.didInjectTheme()
                 block.onAction = { [weak self] action in self?.onAction?(action) }
                 container.addArrangedSubview(block.view)
                 blocks.append(block)

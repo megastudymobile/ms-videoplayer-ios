@@ -10,7 +10,7 @@ import UIKit
 public final class DefaultPlayerSkin: PlayerSkin {
     private let assembled: AssembledPlayerSkin
 
-    public init(theme: PlayerSkinTheme = DefaultPlayerSkinTheme()) {
+    public init(theme: PlayerSkinTheme = .default) {
         self.assembled = AssembledPlayerSkin(blueprint: .default, theme: theme)
     }
 

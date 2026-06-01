@@ -11,5 +11,11 @@ import UIKit
 public protocol PlayerSkinBlock: AnyObject {
     var view: UIView { get }
     var onAction: ((PlayerSkinAction) -> Void)? { get set }
-    func render(_ state: PlayerSkinState, theme: PlayerSkinTheme)
+    var theme: PlayerSkinTheme { get set }
+    func didInjectTheme()
+    func render(_ state: PlayerSkinState)
+}
+
+public extension PlayerSkinBlock {
+    func didInjectTheme() {}
 }

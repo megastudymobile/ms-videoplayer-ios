@@ -5,6 +5,7 @@ public final class RateStepBlock: UIView, PlayerSkinBlock {
     public enum Step { case up, down }
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    public var theme: PlayerSkinTheme = .default
     private let step: Step
     private let button = PlayerSkinIconButtonFactory.make()
     public init(_ step: Step) {
@@ -13,7 +14,7 @@ public final class RateStepBlock: UIView, PlayerSkinBlock {
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
-    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+    public func render(_ state: PlayerSkinState) {
         let icon: PlayerSkinIcon = step == .up ? .rateUp : .rateDown
         PlayerSkinIconButtonFactory.apply(button, icon: icon, fallbackTitle: step == .up ? "^" : "v", theme: theme)
         button.isEnabled = !state.isLocked

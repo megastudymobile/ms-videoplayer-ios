@@ -3,6 +3,7 @@ import UIKit
 public final class LockButtonBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    public var theme: PlayerSkinTheme = .default
     private let button = PlayerSkinIconButtonFactory.make()
     public override init(frame: CGRect) {
         super.init(frame: frame); pin(button)
@@ -10,7 +11,7 @@ public final class LockButtonBlock: UIView, PlayerSkinBlock {
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
-    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+    public func render(_ state: PlayerSkinState) {
         PlayerSkinIconButtonFactory.apply(button,
             icon: state.isLocked ? .lock : .unlock,
             fallbackTitle: state.isLocked ? "Lock" : "Unlock", theme: theme)

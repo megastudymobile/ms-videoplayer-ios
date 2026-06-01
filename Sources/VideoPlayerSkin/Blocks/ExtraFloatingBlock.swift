@@ -4,6 +4,7 @@ import UIKit
 public final class ExtraFloatingBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    public var theme: PlayerSkinTheme = .default
 
     private let stack = UIStackView()
     private var buttons: [(id: String, button: UIButton)] = []
@@ -19,7 +20,7 @@ public final class ExtraFloatingBlock: UIView, PlayerSkinBlock {
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
 
-    public func setExtraControls(_ controls: [ExtraControl], theme: PlayerSkinTheme) {
+    public func setExtraControls(_ controls: [ExtraControl]) {
         buttons.forEach { $0.button.removeFromSuperview() }; buttons.removeAll()
         for control in controls where control.placement == .floating {
             let button = UIButton(type: .system)
@@ -36,7 +37,7 @@ public final class ExtraFloatingBlock: UIView, PlayerSkinBlock {
         }
     }
 
-    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+    public func render(_ state: PlayerSkinState) {
         for entry in buttons {
             entry.button.isHidden = state.hiddenExtraControlIDs.contains(entry.id)
             entry.button.isEnabled = !state.isLocked

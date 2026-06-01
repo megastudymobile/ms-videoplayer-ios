@@ -4,6 +4,7 @@ import UIKit
 public final class RateButtonBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    public var theme: PlayerSkinTheme = .default
     private let button = UIButton(type: .system)
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -23,9 +24,12 @@ public final class RateButtonBlock: UIView, PlayerSkinBlock {
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
-    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+    public func didInjectTheme() {
         button.tintColor = theme.color(.controlTint)
         button.titleLabel?.font = theme.font(.rateLabel)
+    }
+
+    public func render(_ state: PlayerSkinState) {
         button.setTitle(String(format: "%.1fx", state.playbackRate), for: .normal)
         button.isEnabled = !state.isLocked
     }
