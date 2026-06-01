@@ -11,7 +11,7 @@ import Foundation
 
 /// 신규 Swift Player Shell 의 백그라운드 오디오 재생을 위한 AudioSession 카테고리 설정 utility.
 ///
-/// dev `MegaStudyMoviePlayerController.m:3480` 의 `setCategory: AVAudioSessionCategoryPlayback` 1:1 대응.
+/// 레거시 `MoviePlayerController.m:3480` 의 `setCategory: AVAudioSessionCategoryPlayback` 1:1 대응.
 /// `Info.plist` 의 `UIBackgroundModes = audio` 와 결합되어 home 진입 후에도 오디오 재생 유지.
 public enum PlayerAudioSessionConfigurator {
     public static func configureForPlayback() {

@@ -26,10 +26,6 @@ let package = Package(
             targets: ["VideoPlayerEngineKollus"]
         ),
         .library(
-            name: "VideoPlayerModule",
-            targets: ["VideoPlayerModule"]
-        ),
-        .library(
             name: "VideoPlayerSkin",
             targets: ["VideoPlayerSkin"]
         )
@@ -37,43 +33,12 @@ let package = Package(
     targets: [
         .target(
             name: "VideoPlayerCore",
-            path: "Sources/VideoPlayerModule",
-            sources: [
-                "Core/Domain/Bookmark.swift",
-                "Core/Domain/NextEpisodeInfo.swift",
-                "Core/Domain/PlaybackCommand.swift",
-                "Core/Domain/PlaybackSource.swift",
-                "Core/Domain/PlaybackState.swift",
-                "Core/Domain/PlayerCaption.swift",
-                "Core/Domain/PlayerError.swift",
-                "Core/Domain/PlayerEvent.swift",
-                "Core/Domain/PlayerFeaturePolicy.swift",
-                "Core/Domain/PlayerCapabilities.swift",
-                "Core/Domain/PlayerFeatureSet.swift",
-                "Core/Domain/PlayerIdentity.swift",
-                "Core/Domain/PlayerStateSnapshot.swift",
-                "Core/Domain/StreamInfo.swift",
-                "Core/Internal/PlayerCore.swift",
-                "Core/UseCase/ControlPlaybackUseCase.swift",
-                "Core/UseCase/ObservePlaybackStateUseCase.swift",
-                "Core/UseCase/StartPlaybackUseCase.swift",
-                "Engine/PlayerEngineAdapter.swift"
-            ]
+            path: "Sources/VideoPlayerCore"
         ),
         .target(
             name: "VideoPlayerShellSupport",
             dependencies: ["VideoPlayerCore"],
-            path: "Sources/VideoPlayerModule",
-            sources: [
-                "ShellSupport/PlayerAudioSessionManager.swift",
-                "ShellSupport/PlayerError+NSError.swift",
-                "ShellSupport/PlayerLifecycleCoordinator.swift",
-                "ShellSupport/PlayerModuleConfiguration.swift",
-                "ShellSupport/PlayerModuleWiring.swift",
-                "ShellSupport/PlayerRenderBindingEngine.swift",
-                "ShellSupport/PlayerRenderSurface.swift",
-                "ShellSupport/PlayerStateBinder.swift"
-            ],
+            path: "Sources/VideoPlayerShellSupport",
             linkerSettings: [
                 .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
                 .linkedFramework("UIKit", .when(platforms: [.iOS]))
@@ -82,10 +47,7 @@ let package = Package(
         .target(
             name: "VideoPlayerEngineNative",
             dependencies: ["VideoPlayerShellSupport"],
-            path: "Sources/VideoPlayerModule",
-            sources: [
-                "Engine/Native/AVPlayerAdapter.swift"
-            ],
+            path: "Sources/VideoPlayerEngineNative",
             linkerSettings: [
                 .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
                 .linkedFramework("UIKit", .when(platforms: [.iOS]))
@@ -98,24 +60,7 @@ let package = Package(
                 "VideoPlayerKollusBinary",
                 "VideoPlayerPallyConBinary"
             ],
-            path: "Sources/VideoPlayerModule",
-            sources: [
-                "Engine/Kollus/KollusDRMConfiguration.swift",
-                "Engine/Kollus/KollusDelegateBridge.swift",
-                "Engine/Kollus/KollusDiagnosticsSink.swift",
-                "Engine/Kollus/KollusEngineSignal.swift",
-                "Engine/Kollus/KollusEnvironment.swift",
-                "Engine/Kollus/KollusLiveChatProfile.swift",
-                "Engine/Kollus/KollusObserver.swift",
-                "Engine/Kollus/KollusPlayerAdapter.swift",
-                "Engine/Kollus/KollusPlayerModuleFactory.swift",
-                "Engine/Kollus/KollusSessionBootstrapper.swift",
-                "Engine/Kollus/KollusStorageAdapter.swift",
-                "Engine/Kollus/KollusStorageProtocol.swift",
-                "Engine/Kollus/Downloads/KollusContentSnapshot.swift",
-                "Engine/Kollus/Downloads/KollusDownloadCenter.swift",
-                "Engine/Kollus/Downloads/KollusStorageBridge.swift"
-            ],
+            path: "Sources/VideoPlayerEngineKollus",
             linkerSettings: [
                 .linkedFramework("UIKit",               .when(platforms: [.iOS])),
                 .linkedFramework("AVFoundation",        .when(platforms: [.iOS])),
@@ -131,16 +76,6 @@ let package = Package(
                 .linkedLibrary("z",                     .when(platforms: [.iOS])),
                 .linkedLibrary("c++",                   .when(platforms: [.iOS]))
             ]
-        ),
-        .target(
-            name: "VideoPlayerModule",
-            dependencies: [
-                "VideoPlayerCore",
-                "VideoPlayerShellSupport",
-                "VideoPlayerEngineNative",
-                "VideoPlayerEngineKollus"
-            ],
-            path: "Sources/VideoPlayerModuleExports"
         ),
         // spec-064 — 재사용 가능한 재생기 skin (Rx/ReactorKit/SnapKit 의존 없음).
         // 엔진은 host 가 조립한 PlayerModule 을 주입 → EngineNative/Kollus 의존 불필요.
@@ -175,7 +110,6 @@ let package = Package(
                 .target(name: "VideoPlayerShellSupport", condition: .when(platforms: [.iOS])),
                 .target(name: "VideoPlayerEngineNative", condition: .when(platforms: [.iOS])),
                 .target(name: "VideoPlayerEngineKollus", condition: .when(platforms: [.iOS])),
-                .target(name: "VideoPlayerModule", condition: .when(platforms: [.iOS])),
                 .target(name: "VideoPlayerSkin", condition: .when(platforms: [.iOS]))
             ],
             path: "Tests/VideoPlayerModuleTests"
