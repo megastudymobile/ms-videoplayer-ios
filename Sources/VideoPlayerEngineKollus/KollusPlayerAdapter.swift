@@ -394,7 +394,15 @@ public actor KollusPlayerAdapter:
     public func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
         self.displayScaleMode = mode
         await MainActor.run {
-            self.playerView?.scalingMode = Self.scalingMode(mode: mode)
+            guard let playerView = self.playerView else { return }
+            playerView.scalingMode = Self.scalingMode(mode: mode)
+            if let containerView = playerView.superview {
+                playerView.frame = containerView.bounds
+                containerView.setNeedsLayout()
+                containerView.layoutIfNeeded()
+            }
+            playerView.setNeedsLayout()
+            playerView.layoutIfNeeded()
         }
     }
 
