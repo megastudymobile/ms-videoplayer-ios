@@ -66,7 +66,9 @@ public protocol PlayerDisplayLockEngine: Actor {
 }
 
 public protocol PlayerDisplayScalingEngine: Actor {
+    func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws
     func setDisplayScaled(_ isScaled: Bool) async throws
+    func toggleDisplayScaleMode() async throws
     func toggleDisplayScaling() async throws
 }
 

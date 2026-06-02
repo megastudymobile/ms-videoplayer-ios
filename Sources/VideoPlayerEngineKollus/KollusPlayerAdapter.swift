@@ -42,7 +42,7 @@ public actor KollusPlayerAdapter:
 
     private var state: PlaybackState
     private weak var renderSurface: PlayerRenderSurface?
-    private var isDisplayScaled = false
+    private var displayScaleMode: PlayerDisplayScaleMode = .aspectFit
     @MainActor private var playerView: KollusPlayerView?
     @MainActor private var bridge: KollusDelegateBridge?
     /// `setSubTitlePath`에 전달한 C-string의 backing storage.
@@ -53,6 +53,7 @@ public actor KollusPlayerAdapter:
     private var isSubtitleVisible: Bool = true
     private var currentZoom: CGFloat = 0
     private var hasEmittedNextEpisode: Bool = false
+    private var lastNextEpisodeDebugLogSecond: Int?
     private var isPiPRunning: Bool = false
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
 
@@ -387,21 +388,29 @@ public actor KollusPlayerAdapter:
     // MARK: - PlayerDisplayScalingEngine
 
     public func setDisplayScaled(_ isScaled: Bool) async throws {
-        self.isDisplayScaled = isScaled
+        try await setDisplayScaleMode(isScaled ? .aspectFill : .aspectFit)
+    }
+
+    public func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
+        self.displayScaleMode = mode
         await MainActor.run {
-            self.playerView?.scalingMode = Self.scalingMode(isScaled: isScaled)
+            self.playerView?.scalingMode = Self.scalingMode(mode: mode)
         }
     }
 
     public func toggleDisplayScaling() async throws {
-        let fallbackValue = !isDisplayScaled
-        let nextValue = await MainActor.run {
+        try await toggleDisplayScaleMode()
+    }
+
+    public func toggleDisplayScaleMode() async throws {
+        let fallbackMode = displayScaleMode.next
+        let nextMode = await MainActor.run {
             if let playerView {
-                return playerView.scalingMode != .scaleAspectFill
+                return Self.displayScaleMode(for: playerView.scalingMode).next
             }
-            return fallbackValue
+            return fallbackMode
         }
-        try await setDisplayScaled(nextValue)
+        try await setDisplayScaleMode(nextMode)
     }
 
     // MARK: - Render surface binding
@@ -442,14 +451,21 @@ public actor KollusPlayerAdapter:
         }
 
         let boundSurface = renderSurface
-        let isDisplayScaled = self.isDisplayScaled
+        let displayScaleMode = self.displayScaleMode
         let playerType = self.playerType
         let observer = self.observer
         let diagnostics = self.diagnostics
 
         try await MainActor.run { [weak self] in
             guard let self else { return }
-            self.playerView?.removeFromSuperview()
+            // 재진입(다음 강의/강의 선택) 시 이전 playerView 를 stop 없이 폐기하면 KollusProxyPlayerView 의
+            // releaseServerAndStop(NSTimer) 가 해제 메모리에서 발화해 크래시한다. discard 전 stop 으로
+            // proxy 를 동기 해제한다(dev `stop` 후 재 prepareToPlay 정렬).
+            if let previous = self.playerView {
+                try? previous.stop()
+                previous.removeFromSuperview()
+            }
+            self.playerView = nil
 
             guard let playerView = Self.makePlayerView(for: source) else {
                 throw PlayerError.engineError("KollusPlayerView 초기화에 실패했습니다.")
@@ -481,7 +497,7 @@ public actor KollusPlayerAdapter:
             if let proxyPort = environment.proxyPort, proxyPort > 0 {
                 playerView.proxyPort = UInt(proxyPort)
             }
-            playerView.scalingMode = Self.scalingMode(isScaled: isDisplayScaled)
+            playerView.scalingMode = Self.scalingMode(mode: displayScaleMode)
             if let cert = environment.drm.fpsCertificateURL {
                 playerView.fpsCertURL = cert.absoluteString
             }
@@ -553,10 +569,15 @@ public actor KollusPlayerAdapter:
         }
 
         let boundSurface = renderSurface
-        let isDisplayScaled = self.isDisplayScaled
+        let displayScaleMode = self.displayScaleMode
         let playerType = self.playerType
         let preparedState = try await MainActor.run { () throws -> PlaybackState in
-            self.playerView?.removeFromSuperview()
+            // 재진입 시 이전 playerView stop 후 폐기(proxy releaseServerAndStop 타이머 크래시 방지).
+            if let previous = self.playerView {
+                try? previous.stop()
+                previous.removeFromSuperview()
+            }
+            self.playerView = nil
 
             guard let playerView = Self.makePlayerView(for: source) else {
                 throw PlayerError.engineError("KollusPlayerView 초기화에 실패했습니다.")
@@ -566,7 +587,7 @@ public actor KollusPlayerAdapter:
             if let proxyPort = environment?.proxyPort, proxyPort > 0 {
                 playerView.proxyPort = UInt(proxyPort)
             }
-            playerView.scalingMode = Self.scalingMode(isScaled: isDisplayScaled)
+            playerView.scalingMode = Self.scalingMode(mode: displayScaleMode)
 
             if let boundSurface {
                 self.attach(playerView: playerView, to: boundSurface)
@@ -731,7 +752,6 @@ public actor KollusPlayerAdapter:
         let snapshot = await MainActor.run { () -> NextEpisodeSnapshot? in
             guard let view = playerView else { return nil }
             let showAt = TimeInterval(view.nextEpisodeShowTime)
-            guard showAt > 0 else { return nil }
             let rawParams = view.nextEpisodeCallbackParams as? [String: Any] ?? [:]
             let params: [String: String] = Dictionary(uniqueKeysWithValues: rawParams.compactMap { key, value in
                 guard let v = value as? String else { return nil }
@@ -744,10 +764,49 @@ public actor KollusPlayerAdapter:
                 showsButton: view.nextEpisodeShowButton
             )
         }
-        guard let snapshot,
-              currentTime >= snapshot.showAt,
-              let urlString = snapshot.callbackURLString,
+        guard let snapshot else {
+#if DEBUG
+            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
+                NSLog("[KollusNextEpisode] playerView unavailable currentTime=%.3f", currentTime)
+            }
+#endif
+            return
+        }
+#if DEBUG
+        logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
+            NSLog(
+                "[KollusNextEpisode] raw showAt=%.3f currentTime=%.3f showsButton=%d hasCallbackURL=%d paramKeys=%@",
+                snapshot.showAt,
+                currentTime,
+                snapshot.showsButton ? 1 : 0,
+                snapshot.callbackURLString?.isEmpty == false ? 1 : 0,
+                snapshot.params.keys.sorted().joined(separator: ",")
+            )
+        }
+#endif
+        guard snapshot.showAt > 0 else {
+#if DEBUG
+            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
+                NSLog("[KollusNextEpisode] skip: showAt is not positive")
+            }
+#endif
+            return
+        }
+        guard currentTime >= snapshot.showAt else {
+#if DEBUG
+            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
+                NSLog("[KollusNextEpisode] skip: waiting for showAt")
+            }
+#endif
+            return
+        }
+        guard let urlString = snapshot.callbackURLString,
               let url = URL(string: urlString) else {
+#if DEBUG
+            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
+                NSLog("[KollusNextEpisode] skip: invalid callbackURL")
+            }
+#endif
             return
         }
         hasEmittedNextEpisode = true
@@ -757,8 +816,20 @@ public actor KollusPlayerAdapter:
             callbackParameters: snapshot.params,
             showsButton: snapshot.showsButton
         )
+#if DEBUG
+        NSLog("[KollusNextEpisode] publish nextEpisodeAvailable showAt=%.3f", info.showAt)
+#endif
         publish(event: .nextEpisodeAvailable(info))
     }
+
+#if DEBUG
+    private func logNextEpisodeDebugIfNeeded(currentTime: TimeInterval, _ log: () -> Void) {
+        let second = Int(currentTime.rounded(.down))
+        guard lastNextEpisodeDebugLogSecond != second else { return }
+        lastNextEpisodeDebugLogSecond = second
+        log()
+    }
+#endif
 
     private func readyStateSnapshot() async -> PlaybackState {
         struct ReadySnapshot {
@@ -872,8 +943,28 @@ public actor KollusPlayerAdapter:
         return .unknown((error as NSError).localizedDescription)
     }
 
-    private static func scalingMode(isScaled: Bool) -> KollusPlayerContentMode {
-        isScaled ? .scaleAspectFill : .scaleAspectFit
+    private static func scalingMode(mode: PlayerDisplayScaleMode) -> KollusPlayerContentMode {
+        switch mode {
+        case .aspectFit:
+            return .scaleAspectFit
+        case .aspectFill:
+            return .scaleAspectFill
+        case .fill:
+            return .scaleFill
+        }
+    }
+
+    private static func displayScaleMode(for scalingMode: KollusPlayerContentMode) -> PlayerDisplayScaleMode {
+        switch scalingMode {
+        case .scaleAspectFit:
+            return .aspectFit
+        case .scaleAspectFill:
+            return .aspectFill
+        case .scaleFill:
+            return .fill
+        @unknown default:
+            return .aspectFit
+        }
     }
 
     @MainActor

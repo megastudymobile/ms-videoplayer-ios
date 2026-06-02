@@ -164,8 +164,12 @@ public actor PlayerCore {
             try await selectSubtitleFile(fileURL)
         case .setDisplayLocked(let isLocked):
             try await setDisplayLocked(isLocked)
+        case .setDisplayScaleMode(let mode):
+            try await setDisplayScaleMode(mode)
         case .setDisplayScaled(let isScaled):
             try await setDisplayScaled(isScaled)
+        case .toggleDisplayScaleMode:
+            try await toggleDisplayScaleMode()
         case .toggleDisplayScaling:
             try await toggleDisplayScaling()
         case .stop:
@@ -266,7 +270,8 @@ public actor PlayerCore {
                     allowsBackgroundPlayback: false,
                     maxPlaybackRate: policy.maxPlaybackRate,
                     allowsAutoplay: policy.allowsAutoplay,
-                    skipInterval: policy.skipInterval
+                    skipInterval: policy.skipInterval,
+                    nextEpisodeButtonLeadTime: policy.nextEpisodeButtonLeadTime
                 ),
                 .missingContinuesWithoutSurface
             )
@@ -300,7 +305,8 @@ public actor PlayerCore {
             allowsBackgroundPlayback: currentPolicy.allowsBackgroundPlayback,
             maxPlaybackRate: currentPolicy.maxPlaybackRate,
             allowsAutoplay: currentPolicy.allowsAutoplay,
-            skipInterval: interval
+            skipInterval: interval,
+            nextEpisodeButtonLeadTime: currentPolicy.nextEpisodeButtonLeadTime
         )
     }
 
@@ -379,19 +385,27 @@ public actor PlayerCore {
     }
 
     private func setDisplayScaled(_ isScaled: Bool) async throws {
+        try await setDisplayScaleMode(isScaled ? .aspectFill : .aspectFit)
+    }
+
+    private func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
         guard let displayEngine = engine as? any PlayerDisplayScalingEngine else {
             throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
         }
 
-        try await displayEngine.setDisplayScaled(isScaled)
+        try await displayEngine.setDisplayScaleMode(mode)
     }
 
     private func toggleDisplayScaling() async throws {
+        try await toggleDisplayScaleMode()
+    }
+
+    private func toggleDisplayScaleMode() async throws {
         guard let displayEngine = engine as? any PlayerDisplayScalingEngine else {
             throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
         }
 
-        try await displayEngine.toggleDisplayScaling()
+        try await displayEngine.toggleDisplayScaleMode()
     }
 
     private func seekTargetTime(

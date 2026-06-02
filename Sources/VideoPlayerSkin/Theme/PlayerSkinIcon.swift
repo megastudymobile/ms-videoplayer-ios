@@ -9,7 +9,7 @@ public enum PlayerSkinIcon: Hashable, Sendable {
     case close, more, lock, unlock
     case play, pause, skipBackward, skipForward
     case screenExpand, screenShrink         // 전체화면 진입 / 해제
-    case displayScaleFit, displayScaleFill  // 화면 맞춤 / 채움
+    case displayScaleFit, displayScaleAspectFill, displayScaleFill  // 화면 맞춤 / 자름 / 꽉참
     case rateUp, rateDown
     case sectionRepeatIdle, sectionRepeatActive
     case sliderThumb

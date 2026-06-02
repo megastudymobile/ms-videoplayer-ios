@@ -37,7 +37,7 @@ public struct PlayerSkinTheme {
         fonts: [
             .title: Self.appleSDGothic(size: 16, weight: .regular),
             .time: Self.appleSDGothic(size: 11, weight: .regular),
-            .rateLabel: Self.appleSDGothic(size: 13, weight: .semibold),
+            .rateLabel: Self.appleSDGothic(size: 13, weight: .regular),
             .skipInterval: Self.appleSDGothic(size: 12, weight: .semibold),
             .extraControlTitle: Self.appleSDGothic(size: 13, weight: .semibold),
             .sectionRepeatRange: Self.appleSDGothic(size: 15, weight: .regular),
@@ -52,12 +52,11 @@ public struct PlayerSkinTheme {
             .pause: UIImage(named: "PlayerPauseNormal", in: .module, with: nil),
             .skipBackward: UIImage(named: "PlayerBackwardNormal", in: .module, with: nil),
             .skipForward: UIImage(named: "PlayerForwardNormal", in: .module, with: nil),
-            .screenExpand: UIImage(named: "PlayerScreenFullNormal", in: .module, with: nil)
-                ?? UIImage(named: "PlayerScreenPortraitNormal", in: .module, with: nil),
+            .screenExpand: UIImage(named: "PlayerScreenPortraitNormal", in: .module, with: nil),
             .screenShrink: UIImage(named: "PlayerScreenLandscapeNormal", in: .module, with: nil),
             .displayScaleFit: UIImage(named: "PlayerScreenScalingAspectFitNormal", in: .module, with: nil),
-            .displayScaleFill: UIImage(named: "PlayerScreenScalingFillNormal", in: .module, with: nil)
-                ?? UIImage(named: "PlayerScreenScalingAspectFillNormal", in: .module, with: nil),
+            .displayScaleAspectFill: UIImage(named: "PlayerScreenScalingAspectFillNormal", in: .module, with: nil),
+            .displayScaleFill: UIImage(named: "PlayerScreenScalingFillNormal", in: .module, with: nil),
             .rateUp: UIImage(named: "PlayerControlRateUp", in: .module, with: nil)
                 ?? UIImage(named: "PlayerRatePlusButton", in: .module, with: nil),
             .rateDown: UIImage(named: "PlayerControlRateDown", in: .module, with: nil)

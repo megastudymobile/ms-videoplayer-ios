@@ -39,7 +39,8 @@ public struct PlayerSkinState: Equatable {
     public var previousPlaybackRate: Double
     public var isRatePanelPresented: Bool
     public var isFullScreenMode: Bool
-    public var isDisplayScaled: Bool
+    public var displayScaleMode: PlayerDisplayScaleMode
+    public var isDisplayScaled: Bool { displayScaleMode.isScaled }
     /// spec-064 Phase 1 — host 주입 추가 버튼(ExtraControl) 중 현재 숨길 id 집합.
     /// 다음 강의 버튼 등 동적 가시성을 generic 하게 표현 (구 `nextEpisodeButtonVisible` 대체).
     public var hiddenExtraControlIDs: Set<String>
@@ -60,6 +61,7 @@ public struct PlayerSkinState: Equatable {
         isRatePanelPresented: false,
         isFullScreenMode: false,
         isDisplayScaled: false,
+        displayScaleMode: .aspectFit,
         hiddenExtraControlIDs: [],
         layoutMode: .verticalSplit
     )
@@ -77,6 +79,7 @@ public struct PlayerSkinState: Equatable {
         isRatePanelPresented: Bool = false,
         isFullScreenMode: Bool,
         isDisplayScaled: Bool,
+        displayScaleMode: PlayerDisplayScaleMode? = nil,
         hiddenExtraControlIDs: Set<String> = [],
         isLocked: Bool = false,
         sectionRepeat: SectionRepeatState = .idle,
@@ -93,7 +96,7 @@ public struct PlayerSkinState: Equatable {
         self.previousPlaybackRate = previousPlaybackRate ?? 1.0
         self.isRatePanelPresented = isRatePanelPresented
         self.isFullScreenMode = isFullScreenMode
-        self.isDisplayScaled = isDisplayScaled
+        self.displayScaleMode = displayScaleMode ?? (isDisplayScaled ? .aspectFill : .aspectFit)
         self.hiddenExtraControlIDs = hiddenExtraControlIDs
         self.isLocked = isLocked
         self.sectionRepeat = sectionRepeat
@@ -107,6 +110,7 @@ public struct PlayerSkinState: Equatable {
         controlsVisible: Bool,
         isFullScreenMode: Bool,
         isDisplayScaled: Bool,
+        displayScaleMode: PlayerDisplayScaleMode? = nil,
         hiddenExtraControlIDs: Set<String> = [],
         layoutMode: PlayerSkinLayoutMode = .verticalSplit
     ) {
@@ -126,6 +130,7 @@ public struct PlayerSkinState: Equatable {
             isRatePanelPresented: isRatePanelPresented,
             isFullScreenMode: isFullScreenMode,
             isDisplayScaled: isDisplayScaled,
+            displayScaleMode: displayScaleMode,
             hiddenExtraControlIDs: hiddenExtraControlIDs,
             layoutMode: layoutMode
         )
@@ -144,12 +149,22 @@ public struct PlayerSkinState: Equatable {
         isRatePanelPresented: Bool? = nil,
         isFullScreenMode: Bool? = nil,
         isDisplayScaled: Bool? = nil,
+        displayScaleMode: PlayerDisplayScaleMode? = nil,
         hiddenExtraControlIDs: Set<String>? = nil,
         isLocked: Bool? = nil,
         sectionRepeat: SectionRepeatState? = nil,
         layoutMode: PlayerSkinLayoutMode? = nil
     ) -> PlayerSkinState {
-        PlayerSkinState(
+        let nextDisplayScaleMode: PlayerDisplayScaleMode
+        if let displayScaleMode {
+            nextDisplayScaleMode = displayScaleMode
+        } else if let isDisplayScaled {
+            nextDisplayScaleMode = isDisplayScaled ? .aspectFill : .aspectFit
+        } else {
+            nextDisplayScaleMode = self.displayScaleMode
+        }
+
+        return PlayerSkinState(
             isPlaying: isPlaying ?? self.isPlaying,
             isLoading: isLoading ?? self.isLoading,
             isSeekEnabled: isSeekEnabled ?? self.isSeekEnabled,
@@ -161,7 +176,8 @@ public struct PlayerSkinState: Equatable {
             previousPlaybackRate: previousPlaybackRate ?? self.previousPlaybackRate,
             isRatePanelPresented: isRatePanelPresented ?? self.isRatePanelPresented,
             isFullScreenMode: isFullScreenMode ?? self.isFullScreenMode,
-            isDisplayScaled: isDisplayScaled ?? self.isDisplayScaled,
+            isDisplayScaled: nextDisplayScaleMode.isScaled,
+            displayScaleMode: nextDisplayScaleMode,
             hiddenExtraControlIDs: hiddenExtraControlIDs ?? self.hiddenExtraControlIDs,
             isLocked: isLocked ?? self.isLocked,
             sectionRepeat: sectionRepeat ?? self.sectionRepeat,

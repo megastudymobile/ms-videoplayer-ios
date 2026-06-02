@@ -12,11 +12,13 @@ struct PlayerDisplayScalingEngineTests {
             engineCapabilities: DisplayScalingOnlyEngine.capabilities
         )
 
+        try await core.execute(command: .setDisplayScaleMode(.aspectFill))
         try await core.execute(command: .setDisplayScaled(true))
+        try await core.execute(command: .toggleDisplayScaleMode)
         try await core.execute(command: .toggleDisplayScaling)
 
-        #expect(await engine.recordedDisplayScale == true)
-        #expect(await engine.toggleDisplayScalingCallCount == 1)
+        #expect(await engine.recordedDisplayScaleMode == .aspectFill)
+        #expect(await engine.toggleDisplayScaleModeCallCount == 2)
     }
 
     @Test("engine가 scaling만 지원할 때 display lock을 거부")
@@ -48,7 +50,8 @@ private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, PlayerDisplayScali
     }
 
     private(set) var recordedDisplayScale: Bool?
-    private(set) var toggleDisplayScalingCallCount = 0
+    private(set) var recordedDisplayScaleMode: PlayerDisplayScaleMode?
+    private(set) var toggleDisplayScaleModeCallCount = 0
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
@@ -60,7 +63,15 @@ private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, PlayerDisplayScali
         recordedDisplayScale = isScaled
     }
 
+    func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
+        recordedDisplayScaleMode = mode
+    }
+
     func toggleDisplayScaling() async throws {
-        toggleDisplayScalingCallCount += 1
+        toggleDisplayScaleModeCallCount += 1
+    }
+
+    func toggleDisplayScaleMode() async throws {
+        toggleDisplayScaleModeCallCount += 1
     }
 }

@@ -24,7 +24,9 @@ public enum PlaybackCommand: Equatable, Sendable {
     case removeBookmark(at: TimeInterval)
     case selectSubtitleFile(URL?)
     case setDisplayLocked(Bool)
+    case setDisplayScaleMode(PlayerDisplayScaleMode)
     case setDisplayScaled(Bool)
+    case toggleDisplayScaleMode
     case toggleDisplayScaling
     case stop
 }

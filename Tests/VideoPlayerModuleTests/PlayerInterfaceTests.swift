@@ -64,7 +64,9 @@ struct PlayerInterfaceTests {
         let captionFontSizeCommand = PlaybackCommand.setCaptionFontSize(20)
         let addBookmarkCommand = PlaybackCommand.addBookmark(at: 45)
         let displayLockedCommand = PlaybackCommand.setDisplayLocked(true)
+        let displayScaleModeCommand = PlaybackCommand.setDisplayScaleMode(.fill)
         let displayScaledCommand = PlaybackCommand.setDisplayScaled(true)
+        let toggleDisplayScaleModeCommand = PlaybackCommand.toggleDisplayScaleMode
         let toggleDisplayScalingCommand = PlaybackCommand.toggleDisplayScaling
         let metadataID = PlayerTimedMetadataID(rawValue: "metadata-1")
         let seekCommand = PlaybackCommand.seekWithOrigin(
@@ -79,7 +81,9 @@ struct PlayerInterfaceTests {
         #expect(captionFontSizeCommand == .setCaptionFontSize(20))
         #expect(addBookmarkCommand == .addBookmark(at: 45))
         #expect(displayLockedCommand == .setDisplayLocked(true))
+        #expect(displayScaleModeCommand == .setDisplayScaleMode(.fill))
         #expect(displayScaledCommand == .setDisplayScaled(true))
+        #expect(toggleDisplayScaleModeCommand == .toggleDisplayScaleMode)
         #expect(toggleDisplayScalingCommand == .toggleDisplayScaling)
         #expect(
             seekCommand == .seekWithOrigin(to: 45, origin: .timedMetadata(metadataID))
@@ -293,15 +297,17 @@ struct PlayerInterfaceTests {
         )
 
         try await core.execute(command: .setDisplayLocked(true))
+        try await core.execute(command: .setDisplayScaleMode(.fill))
         try await core.execute(command: .setDisplayScaled(true))
+        try await core.execute(command: .toggleDisplayScaleMode)
         try await core.execute(command: .toggleDisplayScaling)
 
         let recordedDisplayLock = await engine.recordedDisplayLock
-        let recordedDisplayScale = await engine.recordedDisplayScale
-        let toggleDisplayScalingCallCount = await engine.toggleDisplayScalingCallCount
+        let recordedDisplayScaleMode = await engine.recordedDisplayScaleMode
+        let toggleDisplayScaleModeCallCount = await engine.toggleDisplayScaleModeCallCount
         #expect(recordedDisplayLock == true)
-        #expect(recordedDisplayScale == true)
-        #expect(toggleDisplayScalingCallCount == 1)
+        #expect(recordedDisplayScaleMode == .aspectFill)
+        #expect(toggleDisplayScaleModeCallCount == 2)
     }
 
     @Test("skip origin을 현재 재생 시간으로부터 해석한다")
@@ -472,7 +478,8 @@ private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngi
 
     private(set) var recordedDisplayLock: Bool?
     private(set) var recordedDisplayScale: Bool?
-    private(set) var toggleDisplayScalingCallCount = 0
+    private(set) var recordedDisplayScaleMode: PlayerDisplayScaleMode?
+    private(set) var toggleDisplayScaleModeCallCount = 0
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
@@ -488,8 +495,16 @@ private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngi
         recordedDisplayScale = isScaled
     }
 
+    func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
+        recordedDisplayScaleMode = mode
+    }
+
     func toggleDisplayScaling() async throws {
-        toggleDisplayScalingCallCount += 1
+        toggleDisplayScaleModeCallCount += 1
+    }
+
+    func toggleDisplayScaleMode() async throws {
+        toggleDisplayScaleModeCallCount += 1
     }
 }
 
