@@ -10,22 +10,22 @@ import UIKit
 
 public final class PlayerCaptionView: UIView {
     private enum Metric {
-        static let secondarySpacing: CGFloat = 35
+        static let primaryBottomOffsetWhenSecondaryVisible: CGFloat = 35
         static let horizontalInset: CGFloat = 10
         /// dev `MGPlayerViewController.kMGPlayerCaptionBottomInset` parity.
         static let defaultBottomInset: CGFloat = 5
     }
 
     private let primaryLabel = UILabel()
-    private let secondaryLabel = UILabel()
-    /// 두 자막 라벨을 쌓는 컨테이너 (hidden 라벨은 stack 이 자동 collapse).
-    private let labelStack = UIStackView()
-    private var bottomConstraint: NSLayoutConstraint?
+    private let secondaryLabel = LegacySubCaptionLabel()
+    private var primaryBottomConstraint: NSLayoutConstraint?
+    private var primaryBottomWithSecondaryConstraint: NSLayoutConstraint?
+    private var secondaryBottomConstraint: NSLayoutConstraint?
     private var currentState = PlayerCaptionState.initial
 
-    /// 영상 하단으로부터의 자막 여백(컨트롤바 위). host 가 조정 가능.
+    /// 영상 하단으로부터의 자막 여백. dev `captionView.bottom = playerView.bottom - 5` parity.
     public var bottomInset: CGFloat = Metric.defaultBottomInset {
-        didSet { bottomConstraint?.constant = -bottomInset }
+        didSet { updateBottomConstraintConstants() }
     }
 
     public override init(frame: CGRect) {
@@ -48,6 +48,7 @@ public final class PlayerCaptionView: UIView {
 
         primaryLabel.isHidden = state.hasPrimaryCaption == false
         secondaryLabel.isHidden = state.hasSecondaryCaption == false
+        updatePrimaryBottomConstraint(hasSecondaryCaption: state.hasSecondaryCaption)
     }
 
     public func update(text: String, isSecondary: Bool) {
@@ -90,24 +91,45 @@ private extension PlayerCaptionView {
         primaryLabel.accessibilityIdentifier = "lecturePlayer.caption.primaryLabel"
         secondaryLabel.accessibilityIdentifier = "lecturePlayer.caption.secondaryLabel"
 
-        labelStack.axis = .vertical
-        labelStack.alignment = .center
-        labelStack.spacing = Metric.secondarySpacing
-        labelStack.translatesAutoresizingMaskIntoConstraints = false
-        labelStack.addArrangedSubview(primaryLabel)
-        labelStack.addArrangedSubview(secondaryLabel)
-        addSubview(labelStack)
+        primaryLabel.translatesAutoresizingMaskIntoConstraints = false
+        secondaryLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(primaryLabel)
+        addSubview(secondaryLabel)
 
-        // captionView 는 영상 영역 전체를 덮고(host 가 fill 앵커), 자막 블럭은 하단(bottomInset 위)에 정렬.
-        let bottom = labelStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -bottomInset)
-        bottomConstraint = bottom
+        let primaryBottom = primaryLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -bottomInset)
+        let primaryBottomWithSecondary = primaryLabel.bottomAnchor.constraint(
+            equalTo: bottomAnchor,
+            constant: -(bottomInset + Metric.primaryBottomOffsetWhenSecondaryVisible)
+        )
+        let secondaryBottom = secondaryLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -bottomInset)
+        primaryBottomConstraint = primaryBottom
+        primaryBottomWithSecondaryConstraint = primaryBottomWithSecondary
+        secondaryBottomConstraint = secondaryBottom
+
         NSLayoutConstraint.activate([
-            labelStack.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: Metric.horizontalInset),
-            bottom,
-            labelStack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: Metric.horizontalInset),
-            labelStack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -Metric.horizontalInset),
-            labelStack.centerXAnchor.constraint(equalTo: centerXAnchor)
+            primaryLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            primaryLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: Metric.horizontalInset),
+            primaryLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -Metric.horizontalInset),
+            primaryLabel.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: Metric.horizontalInset),
+            primaryBottom,
+
+            secondaryLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            secondaryLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: Metric.horizontalInset),
+            secondaryLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -Metric.horizontalInset),
+            secondaryLabel.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: Metric.horizontalInset),
+            secondaryBottom
         ])
+    }
+
+    func updateBottomConstraintConstants() {
+        primaryBottomConstraint?.constant = -bottomInset
+        primaryBottomWithSecondaryConstraint?.constant = -(bottomInset + Metric.primaryBottomOffsetWhenSecondaryVisible)
+        secondaryBottomConstraint?.constant = -bottomInset
+    }
+
+    func updatePrimaryBottomConstraint(hasSecondaryCaption: Bool) {
+        primaryBottomConstraint?.isActive = hasSecondaryCaption == false
+        primaryBottomWithSecondaryConstraint?.isActive = hasSecondaryCaption
     }
 
     func attributedCaption(_ text: String, fontSize: CGFloat) -> NSAttributedString {
@@ -141,5 +163,31 @@ private extension PlayerCaptionView {
             .foregroundColor: UIColor.white,
             .paragraphStyle: paragraphStyle
         ]
+    }
+}
+
+private final class LegacySubCaptionLabel: UILabel {
+    private enum Metric {
+        static let topPadding: CGFloat = 12
+        static let defaultPadding: CGFloat = 1.5
+    }
+
+    override func drawText(in rect: CGRect) {
+        let insets = UIEdgeInsets(
+            top: Metric.topPadding,
+            left: Metric.defaultPadding,
+            bottom: Metric.defaultPadding,
+            right: Metric.defaultPadding
+        )
+        super.drawText(in: rect.inset(by: insets))
+    }
+
+    override var intrinsicContentSize: CGSize {
+        let size = super.intrinsicContentSize
+        guard size.height > 0 else { return .zero }
+        return CGSize(
+            width: size.width + (Metric.defaultPadding * 2),
+            height: size.height + Metric.topPadding + Metric.defaultPadding
+        )
     }
 }

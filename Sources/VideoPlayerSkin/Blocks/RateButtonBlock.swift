@@ -2,6 +2,10 @@ import UIKit
 
 /// 영상 우측 floating 회색 원형 배속 버튼 (현 PlayerSkinControlView P7 parity).
 public final class RateButtonBlock: UIView, PlayerSkinBlock {
+    private enum Metric {
+        static let inactiveBackgroundAlpha: CGFloat = 0.24
+    }
+
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
     private let button = UIButton(type: .system)
@@ -10,7 +14,7 @@ public final class RateButtonBlock: UIView, PlayerSkinBlock {
     public override init(frame: CGRect) {
         super.init(frame: frame)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitleColor(.white, for: .normal)
+        button.setTitleColor(UIColor(named: "White-03", in: .module, compatibleWith: nil) ?? .white, for: .normal)
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.7
         button.layer.masksToBounds = true
@@ -38,7 +42,7 @@ public final class RateButtonBlock: UIView, PlayerSkinBlock {
         button.layer.cornerRadius = size * 0.5
         button.backgroundColor = state.isRatePanelPresented
             ? theme.color(.progressFill)
-            : UIColor.white.withAlphaComponent(0.3)
+            : UIColor.white.withAlphaComponent(Metric.inactiveBackgroundAlpha)
         button.titleLabel?.font = theme.font(.rateLabel)
         button.setTitle(String(format: "%.1fx", state.playbackRate), for: .normal)
         button.isEnabled = !state.isLocked

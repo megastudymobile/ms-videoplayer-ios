@@ -36,28 +36,20 @@ public extension PlayerSkinBlueprint {
                     { LockButtonBlock() },
                     { MoreButtonBlock() }
                 ],
-                .centerControls: [
-                    { SkipButtonBlock(.backward) },
-                    { PlayButtonBlock() },
-                    { SkipButtonBlock(.forward) }
-                ],
+                .centerControls: [{ CenterPlaybackControlsBlock() }],
                 .leftRail: [
                     { SectionRepeatBlock() },
                     { ExtraControlsRailBlock() },
                     { SettingButtonBlock() }
                 ],
-                .rightRail: [
-                    { RateStepBlock(.up) },
-                    { RateStepBlock(.down) }
-                ],
                 .bottomBar: [{ ProgressBarBlock() }],
                 .sectionRepeatRange: [{ SectionRepeatRangeBlock() }],
-                .floatingCenterTrailing: [{ RateButtonBlock() }],
+                .floatingCenterTrailing: [{ RateControlBlock() }],
                 .floatingBottomTrailing: [{ ExtraFloatingBlock() }]
             ],
             layouts: [
                 .topTrailing: .init(alignment: .center, spacing: 8),
-                .centerControls: .init(alignment: .center, spacing: 56),
+                .centerControls: .init(alignment: .fill, spacing: 0),
                 .leftRail: .init(alignment: .center, spacing: 0),
                 .rightRail: .init(alignment: .center, spacing: 12)
             ],

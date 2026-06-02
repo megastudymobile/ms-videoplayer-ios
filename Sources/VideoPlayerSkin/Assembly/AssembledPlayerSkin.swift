@@ -40,6 +40,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     }
     public func updateSkipIntervalLabel(seconds: Int) {
         blocks.compactMap { $0 as? SkipButtonBlock }.forEach { $0.setInterval(seconds: seconds) }
+        blocks.compactMap { $0 as? CenterPlaybackControlsBlock }.forEach { $0.setInterval(seconds: seconds) }
     }
     public func setExtraControls(_ controls: [ExtraControl]) {
         blocks.compactMap { $0 as? TopMenuExtraControlsBlock }.forEach { $0.setExtraControls(controls) }
@@ -91,7 +92,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             let layout = blueprint.layouts[slot] ?? PlayerSkinSlotLayout()
             stack.axis = (slot == .leftRail || slot == .rightRail) ? .vertical : .horizontal
             stack.spacing = layout.spacing
-            stack.alignment = (slot == .bottomBar) ? .fill : .center
+            stack.alignment = (slot == .bottomBar || slot == .centerControls) ? .fill : .center
             slotContainers[slot] = stack
             addSubview(stack)
             positionSlot(slot, stack)
@@ -117,7 +118,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
                 stack.centerYAnchor.constraint(equalTo: topBarBackground.centerYAnchor)])
         case .centerControls:
             NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+                stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+                stack.trailingAnchor.constraint(equalTo: trailingAnchor),
                 stack.centerYAnchor.constraint(equalTo: centerYAnchor)])
         case .leftRail:
             NSLayoutConstraint.activate([
@@ -141,10 +143,10 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             ])
         case .floatingCenterTrailing:
             NSLayoutConstraint.activate([
-                stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -inset),
+                stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -(inset - 10)),
                 stack.centerYAnchor.constraint(equalTo: centerYAnchor)])
         case .floatingBottomTrailing:
-            let bottom = stack.bottomAnchor.constraint(equalTo: bottomBarBackground.topAnchor, constant: -12)
+            let bottom = stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -48)
             floatingBottomConstraint = bottom
             NSLayoutConstraint.activate([
                 stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -inset),
@@ -165,11 +167,11 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     }
 
     private func applyLegacyMetrics(_ state: PlayerSkinState) {
-        let isPad = traitCollection.userInterfaceIdiom == .pad
-        slotContainers[.topTrailing]?.spacing = isPad ? 12 : 8
-        slotContainers[.leftRail]?.spacing = isPad ? 10 : 0
+        let usesPadMetrics = traitCollection.userInterfaceIdiom == .pad && state.layoutMode == .fullScreen
+        slotContainers[.topTrailing]?.spacing = usesPadMetrics ? 12 : 8
+        slotContainers[.leftRail]?.spacing = usesPadMetrics ? 10 : 0
         let nextEpisodeOffset: CGFloat
-        if isPad {
+        if usesPadMetrics {
             nextEpisodeOffset = -72
         } else if state.layoutMode == .verticalSplit {
             nextEpisodeOffset = -48

@@ -16,6 +16,7 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
     private let screenModeButton = PlayerSkinIconButtonFactory.make()
     private var isSeeking = false
     private var latestDuration: TimeInterval = 0
+    private var sliderTopConstraint: NSLayoutConstraint?
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -38,8 +39,9 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
             currentTimeLabel.text = PlayerSkinState.formatTime(state.currentTime)
         }
         durationLabel.text = PlayerSkinState.formatTime(state.duration)
+        sliderTopConstraint?.constant = state.layoutMode == .fullScreen ? 4 : 12
 
-        let isFull = (state.layoutMode == .fullScreen)
+        let isFull = state.isFullScreenMode
         PlayerSkinIconButtonFactory.apply(screenModeButton,
             icon: isFull ? .screenShrink : .screenExpand,
             fallbackTitle: isFull ? "P" : "L", theme: theme)
@@ -57,14 +59,16 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
         [slider, currentTimeLabel, durationLabel, screenModeButton].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false; addSubview($0)
         }
+        let sliderTop = slider.topAnchor.constraint(equalTo: topAnchor, constant: 12)
+        sliderTopConstraint = sliderTop
         NSLayoutConstraint.activate([
             slider.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 24),
-            slider.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            sliderTop,
             slider.heightAnchor.constraint(equalToConstant: 21),
 
             screenModeButton.leadingAnchor.constraint(equalTo: slider.trailingAnchor, constant: 8),
             screenModeButton.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -20),
-            screenModeButton.centerYAnchor.constraint(equalTo: slider.centerYAnchor),
+            screenModeButton.bottomAnchor.constraint(equalTo: durationLabel.bottomAnchor, constant: 6),
 
             currentTimeLabel.leadingAnchor.constraint(equalTo: slider.leadingAnchor),
             currentTimeLabel.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 1),

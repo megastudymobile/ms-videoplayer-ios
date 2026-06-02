@@ -30,7 +30,7 @@ public struct PlayerCaptionState: Equatable {
     public static let initial = PlayerCaptionState(
         primaryText: "",
         secondaryText: "",
-        fontSize: 16,
+        fontSize: 20,
         isVisible: true
     )
 
