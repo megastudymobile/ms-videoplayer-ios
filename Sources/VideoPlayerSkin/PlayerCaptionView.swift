@@ -10,10 +10,10 @@ import UIKit
 
 public final class PlayerCaptionView: UIView {
     private enum Metric {
-        static let secondarySpacing: CGFloat = 6
+        static let secondarySpacing: CGFloat = 35
         static let horizontalInset: CGFloat = 10
-        /// 컨트롤바(50) + 여백. 자막은 영상 하단에서 이만큼 위에 표시.
-        static let defaultBottomInset: CGFloat = 62
+        /// dev `MGPlayerViewController.kMGPlayerCaptionBottomInset` parity.
+        static let defaultBottomInset: CGFloat = 5
     }
 
     private let primaryLabel = UILabel()
@@ -136,7 +136,8 @@ private extension PlayerCaptionView {
         paragraphStyle.alignment = .center
         paragraphStyle.lineBreakMode = .byWordWrapping
         return [
-            .font: UIFont.systemFont(ofSize: fontSize, weight: .medium),
+            .font: UIFont(name: "AppleSDGothicNeo-Regular", size: fontSize)
+                ?? UIFont.systemFont(ofSize: fontSize, weight: .regular),
             .foregroundColor: UIColor.white,
             .paragraphStyle: paragraphStyle
         ]

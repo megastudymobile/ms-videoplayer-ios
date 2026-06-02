@@ -21,6 +21,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private var slotContainers: [PlayerSkinSlot: UIStackView] = [:]
     private var blocks: [PlayerSkinBlock] = []
     private var latestState = PlayerSkinState.initial
+    private var floatingBottomConstraint: NSLayoutConstraint?
 
     public init(blueprint: PlayerSkinBlueprint = .default,
                 theme: PlayerSkinTheme = .default) {
@@ -41,12 +42,14 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         blocks.compactMap { $0 as? SkipButtonBlock }.forEach { $0.setInterval(seconds: seconds) }
     }
     public func setExtraControls(_ controls: [ExtraControl]) {
+        blocks.compactMap { $0 as? TopMenuExtraControlsBlock }.forEach { $0.setExtraControls(controls) }
         blocks.compactMap { $0 as? ExtraControlsRailBlock }.forEach { $0.setExtraControls(controls) }
         blocks.compactMap { $0 as? ExtraFloatingBlock }.forEach { $0.setExtraControls(controls) }
         render(latestState)
     }
     public func render(_ state: PlayerSkinState) {
         latestState = state
+        applyLegacyMetrics(state)
         applyVisibility(state)
         blocks.forEach { $0.render(state, theme: theme) }
         // lecture-ui-parity 05 §4.9 — preparing/buffering(state.isLoading) 시 중앙 ring 표시.
@@ -60,6 +63,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
 
     // MARK: 스켈레톤
     private func buildSkeleton() {
+        backgroundColor = .clear
         topBarBackground.translatesAutoresizingMaskIntoConstraints = false
         bottomBarBackground.translatesAutoresizingMaskIntoConstraints = false
         addSubview(topBarBackground); addSubview(bottomBarBackground)
@@ -130,14 +134,21 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
                 stack.topAnchor.constraint(equalTo: bottomBarBackground.topAnchor),
                 stack.bottomAnchor.constraint(equalTo: bottomBarBackground.bottomAnchor)])
             stack.distribution = .fill
+        case .sectionRepeatRange:
+            NSLayoutConstraint.activate([
+                stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+                stack.bottomAnchor.constraint(equalTo: bottomBarBackground.topAnchor, constant: -42)
+            ])
         case .floatingCenterTrailing:
             NSLayoutConstraint.activate([
                 stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -inset),
                 stack.centerYAnchor.constraint(equalTo: centerYAnchor)])
         case .floatingBottomTrailing:
+            let bottom = stack.bottomAnchor.constraint(equalTo: bottomBarBackground.topAnchor, constant: -12)
+            floatingBottomConstraint = bottom
             NSLayoutConstraint.activate([
                 stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -inset),
-                stack.bottomAnchor.constraint(equalTo: bottomBarBackground.topAnchor, constant: -12)])
+                bottom])
         }
     }
 
@@ -153,21 +164,40 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         }
     }
 
-    /// 반응형 슬롯 노출 + controlsVisible/lock alpha 게이트 (현 PlayerSkinControlView render parity).
+    private func applyLegacyMetrics(_ state: PlayerSkinState) {
+        let isPad = traitCollection.userInterfaceIdiom == .pad
+        slotContainers[.topTrailing]?.spacing = isPad ? 12 : 8
+        slotContainers[.leftRail]?.spacing = isPad ? 10 : 0
+        let nextEpisodeOffset: CGFloat
+        if isPad {
+            nextEpisodeOffset = -72
+        } else if state.layoutMode == .verticalSplit {
+            nextEpisodeOffset = -48
+        } else {
+            nextEpisodeOffset = -60
+        }
+        floatingBottomConstraint?.constant = nextEpisodeOffset
+    }
+
+    /// 반응형 슬롯 노출 + controlsVisible/lock 게이트 (legacy `setHiddenWithControl` parity).
     private func applyVisibility(_ state: PlayerSkinState) {
         let visible = blueprint.visibleSlots[state.layoutMode] ?? Set(PlayerSkinSlot.allCases)
         let controlsVisible = state.controlsVisible
         let baseVisible = controlsVisible && !state.isLocked
 
+        backgroundColor = controlsVisible ? UIColor.black.withAlphaComponent(0.5) : .clear
+
         topBarBackground.alpha = controlsVisible ? 1 : 0
         bottomBarBackground.alpha = baseVisible ? 1 : 0
+        topBarBackground.isHidden = !controlsVisible
+        bottomBarBackground.isHidden = !baseVisible
 
         for (slot, container) in slotContainers {
             let inMode = visible.contains(slot)
-            let topSlot = (slot == .topLeading || slot == .topCenter || slot == .topTrailing)
-            // top 슬롯: controlsVisible 게이트(lock 중 close/unlock 노출). 나머지: baseVisible.
-            let alpha: CGFloat = inMode ? (topSlot ? (controlsVisible ? 1 : 0) : (baseVisible ? 1 : 0)) : 0
+            let isLockSurvivor = state.isLocked && (slot == .topCenter || slot == .topTrailing)
+            let alpha: CGFloat = inMode ? ((baseVisible || (controlsVisible && isLockSurvivor)) ? 1 : 0) : 0
             container.alpha = alpha
+            container.isHidden = alpha == 0
             container.isUserInteractionEnabled = (alpha > 0)
         }
     }

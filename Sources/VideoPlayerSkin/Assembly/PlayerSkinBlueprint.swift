@@ -31,6 +31,7 @@ public extension PlayerSkinBlueprint {
                 .topLeading: [{ CloseButtonBlock() }],
                 .topCenter: [{ TitleBlock() }],
                 .topTrailing: [
+                    { TopMenuExtraControlsBlock() },
                     { DisplayScaleBlock() },
                     { LockButtonBlock() },
                     { MoreButtonBlock() }
@@ -50,13 +51,14 @@ public extension PlayerSkinBlueprint {
                     { RateStepBlock(.down) }
                 ],
                 .bottomBar: [{ ProgressBarBlock() }],
+                .sectionRepeatRange: [{ SectionRepeatRangeBlock() }],
                 .floatingCenterTrailing: [{ RateButtonBlock() }],
                 .floatingBottomTrailing: [{ ExtraFloatingBlock() }]
             ],
             layouts: [
-                .topTrailing: .init(alignment: .center, spacing: 4),
+                .topTrailing: .init(alignment: .center, spacing: 8),
                 .centerControls: .init(alignment: .center, spacing: 56),
-                .leftRail: .init(alignment: .center, spacing: 12),
+                .leftRail: .init(alignment: .center, spacing: 0),
                 .rightRail: .init(alignment: .center, spacing: 12)
             ],
             visibleSlots: [
@@ -75,6 +77,7 @@ public extension PlayerSkinBlueprint {
                     .leftRail,
                     .centerControls,
                     .bottomBar,
+                    .sectionRepeatRange,
                     .floatingCenterTrailing,
                     .floatingBottomTrailing
                 ],

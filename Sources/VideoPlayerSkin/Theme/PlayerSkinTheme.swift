@@ -35,11 +35,13 @@ public struct PlayerSkinTheme {
             .timeText: UIColor.white.withAlphaComponent(0.9)
         ],
         fonts: [
-            .title: .systemFont(ofSize: 16, weight: .regular),
-            .time: .monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-            .rateLabel: .systemFont(ofSize: 13, weight: .semibold),
-            .skipInterval: .systemFont(ofSize: 12, weight: .semibold),
-            .extraControlTitle: .systemFont(ofSize: 13, weight: .semibold)
+            .title: Self.appleSDGothic(size: 16, weight: .regular),
+            .time: Self.appleSDGothic(size: 11, weight: .regular),
+            .rateLabel: Self.appleSDGothic(size: 13, weight: .semibold),
+            .skipInterval: Self.appleSDGothic(size: 12, weight: .semibold),
+            .extraControlTitle: Self.appleSDGothic(size: 13, weight: .semibold),
+            .sectionRepeatRange: Self.appleSDGothic(size: 15, weight: .regular),
+            .caption: Self.appleSDGothic(size: 16, weight: .regular)
         ],
         icons: [
             .close: UIImage(named: "PlayerCloseNormal", in: .module, with: nil),
@@ -50,12 +52,16 @@ public struct PlayerSkinTheme {
             .pause: UIImage(named: "PlayerPauseNormal", in: .module, with: nil),
             .skipBackward: UIImage(named: "PlayerBackwardNormal", in: .module, with: nil),
             .skipForward: UIImage(named: "PlayerForwardNormal", in: .module, with: nil),
-            .screenExpand: UIImage(named: "PlayerScreenPortraitNormal", in: .module, with: nil),
+            .screenExpand: UIImage(named: "PlayerScreenFullNormal", in: .module, with: nil)
+                ?? UIImage(named: "PlayerScreenPortraitNormal", in: .module, with: nil),
             .screenShrink: UIImage(named: "PlayerScreenLandscapeNormal", in: .module, with: nil),
             .displayScaleFit: UIImage(named: "PlayerScreenScalingAspectFitNormal", in: .module, with: nil),
-            .displayScaleFill: UIImage(named: "PlayerScreenScalingAspectFillNormal", in: .module, with: nil),
-            .rateUp: UIImage(named: "PlayerRatePlusButton", in: .module, with: nil),
-            .rateDown: UIImage(named: "PlayerRateMinusButton", in: .module, with: nil),
+            .displayScaleFill: UIImage(named: "PlayerScreenScalingFillNormal", in: .module, with: nil)
+                ?? UIImage(named: "PlayerScreenScalingAspectFillNormal", in: .module, with: nil),
+            .rateUp: UIImage(named: "PlayerControlRateUp", in: .module, with: nil)
+                ?? UIImage(named: "PlayerRatePlusButton", in: .module, with: nil),
+            .rateDown: UIImage(named: "PlayerControlRateDown", in: .module, with: nil)
+                ?? UIImage(named: "PlayerRateMinusButton", in: .module, with: nil),
             .sectionRepeatIdle: UIImage(named: "PlayerRepeatNormal", in: .module, with: nil),
             .sectionRepeatActive: UIImage(named: "PlayerRepeatSelected", in: .module, with: nil),
             .sliderThumb: UIImage(named: "PlayerPlaybackSliderCircleNormal", in: .module, with: nil)
@@ -74,8 +80,52 @@ public struct PlayerSkinTheme {
         icons[icon] ?? PlayerSkinTheme.default.icons[icon]
     }
 
+    public func icon(_ icon: PlayerSkinIcon, compatibleWith traitCollection: UITraitCollection) -> UIImage? {
+        if traitCollection.userInterfaceIdiom == .pad {
+            switch icon {
+            case .play:
+                return image(assetName: "PlayerPlayNormaliPad") ?? self.icon(icon)
+            case .pause:
+                return image(assetName: "PlayerPauseNormaliPad") ?? self.icon(icon)
+            case .skipBackward:
+                return image(assetName: "PlayerBackwardNormaliPad") ?? self.icon(icon)
+            case .skipForward:
+                return image(assetName: "PlayerForwardNormaliPad") ?? self.icon(icon)
+            default:
+                break
+            }
+        }
+        return self.icon(icon)
+    }
+
+    public func highlightedBackground(for icon: PlayerSkinIcon, compatibleWith traitCollection: UITraitCollection) -> UIImage? {
+        let isPad = traitCollection.userInterfaceIdiom == .pad
+        switch icon {
+        case .play, .pause, .skipBackward, .skipForward:
+            return image(assetName: isPad ? "PlayerTouchMHighlightediPad" : "PlayerTouchMHighlighted")
+        default:
+            return image(assetName: "PlayerTouchSHighlighted")
+        }
+    }
+
     /// host 주입 ExtraControl 등 동적 asset 이름 조회: 패키지 번들 → 앱 main 번들.
     public func image(assetName: String) -> UIImage? {
         UIImage(named: assetName, in: .module, with: nil) ?? UIImage(named: assetName)
+    }
+
+    private static func appleSDGothic(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+        let suffix: String
+        switch weight {
+        case .bold:
+            suffix = "Bold"
+        case .semibold:
+            suffix = "SemiBold"
+        case .light:
+            suffix = "Light"
+        default:
+            suffix = "Regular"
+        }
+        return UIFont(name: "AppleSDGothicNeo-\(suffix)", size: size)
+            ?? .systemFont(ofSize: size, weight: weight)
     }
 }

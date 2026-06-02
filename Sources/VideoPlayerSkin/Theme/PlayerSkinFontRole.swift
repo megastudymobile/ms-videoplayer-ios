@@ -14,4 +14,6 @@ public enum PlayerSkinFontRole: Hashable, Sendable {
     case rateLabel          // 배속 버튼
     case skipInterval       // seek "10" 오버레이
     case extraControlTitle  // floating 추가버튼 ("다음 강의")
+    case sectionRepeatRange // 구간 반복 시작/끝 버튼
+    case caption            // 영상 자막
 }

@@ -1,7 +1,7 @@
 import UIKit
 
-/// leftRail 의 host 주입 추가버튼들(placement .leftMenu): 강의 인덱스/북마크 등.
-/// fullScreen 에선 숨김(현 parity). hiddenExtraControlIDs 로 개별 숨김.
+/// leftRail 의 host 주입 추가버튼들(placement .leftMenu): 강의 인덱스/해설/북마크 등.
+/// legacy 는 fullscreen 에서 좌측 메뉴를 표시한다. hiddenExtraControlIDs 로 개별 숨김.
 public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
@@ -13,7 +13,7 @@ public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
-        stack.axis = .vertical; stack.alignment = .center; stack.spacing = 12
+        stack.axis = .vertical; stack.alignment = .center; stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         NSLayoutConstraint.activate([
@@ -33,7 +33,8 @@ public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
 
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         rebuildButtonsIfNeeded(theme: theme)
-        isHidden = (state.layoutMode == .fullScreen)
+        stack.spacing = traitCollection.userInterfaceIdiom == .pad ? 10 : 0
+        isHidden = state.isLocked || state.layoutMode != .fullScreen
         for entry in buttons {
             entry.button.isHidden = state.hiddenExtraControlIDs.contains(entry.id)
             entry.button.isEnabled = !state.isLocked
@@ -48,6 +49,8 @@ public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
             PlayerSkinIconButtonFactory.apply(
                 button,
                 assetName: control.iconName,
+                selectedAssetName: control.selectedIconName,
+                isSelected: control.isSelected,
                 fallbackTitle: control.title,
                 theme: theme
             )

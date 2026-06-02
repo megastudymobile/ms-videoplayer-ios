@@ -13,7 +13,7 @@ public final class SettingButtonBlock: UIView, PlayerSkinBlock {
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         PlayerSkinIconButtonFactory.apply(button, icon: .more, fallbackTitle: "Set", theme: theme)
         button.isEnabled = !state.isLocked
-        isHidden = (state.layoutMode == .fullScreen)
+        isHidden = true
     }
     @objc private func tap() { onAction?(.settingRequested) }
     private func pin(_ subview: UIView) {

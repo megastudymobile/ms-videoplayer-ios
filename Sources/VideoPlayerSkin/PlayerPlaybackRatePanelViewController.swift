@@ -39,10 +39,19 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
     private let initialRate: Double
     private let mode: Mode
+    private let isFullScreenMode: Bool
+    private let anchorFrameInPresenter: CGRect?
 
-    public init(initialRate: Double, mode: Mode) {
+    public init(
+        initialRate: Double,
+        mode: Mode,
+        isFullScreenMode: Bool = false,
+        anchorFrameInPresenter: CGRect? = nil
+    ) {
         self.initialRate = initialRate
         self.mode = mode
+        self.isFullScreenMode = isFullScreenMode
+        self.anchorFrameInPresenter = anchorFrameInPresenter
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .overFullScreen
         modalTransitionStyle = .crossDissolve
@@ -121,12 +130,28 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
         let panelWidth = isPadDevice ? Metrics.padPanelWidth : Metrics.phonePanelWidth
         let panelHeight = isPadDevice ? Metrics.padPanelHeight : Metrics.phonePanelHeight
 
-        NSLayoutConstraint.activate([
-            cardView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            cardView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+        var cardConstraints: [NSLayoutConstraint] = [
             cardView.widthAnchor.constraint(equalToConstant: panelWidth),
             cardView.heightAnchor.constraint(equalToConstant: panelHeight)
-        ])
+        ]
+        if isFullScreenMode {
+            cardConstraints.append(contentsOf: [
+                cardView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+                cardView.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+        } else if let anchorFrameInPresenter {
+            cardConstraints.append(contentsOf: [
+                cardView.topAnchor.constraint(equalTo: view.topAnchor, constant: anchorFrameInPresenter.maxY + 12),
+                cardView.trailingAnchor.constraint(equalTo: view.leadingAnchor, constant: anchorFrameInPresenter.maxX - 15)
+            ])
+            cardConstraints.append(cardView.leadingAnchor.constraint(greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16))
+        } else {
+            cardConstraints.append(contentsOf: [
+                cardView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                cardView.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+        }
+        NSLayoutConstraint.activate(cardConstraints)
 
         // mainColumn: topRow (rate label + - / +) → middleColumn (slider + caption row) → preset row.
         let topRow = UIView()
@@ -196,7 +221,8 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
         // dev rate label: AppleSDGothicNeo Bold 22/24pt, color white03.
         let rateFontSize = isPadDevice ? Metrics.rateLabelPadFontSize : Metrics.rateLabelPhoneFontSize
-        rateLabel.font = .systemFont(ofSize: rateFontSize, weight: .bold)
+        rateLabel.font = UIFont(name: "AppleSDGothicNeo-Bold", size: rateFontSize)
+            ?? .systemFont(ofSize: rateFontSize, weight: .bold)
         rateLabel.textColor = UIColor(named: "White-03") ?? UIColor.white.withAlphaComponent(0.9)
         rateLabel.textAlignment = .center
 
@@ -229,7 +255,8 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
         slider.setThumbImage(thumb, for: .highlighted)
 
         let captionFontSize = isPadDevice ? Metrics.captionPadFontSize : Metrics.captionPhoneFontSize
-        let captionFont = UIFont.systemFont(ofSize: captionFontSize, weight: .regular)
+        let captionFont = UIFont(name: "AppleSDGothicNeo-Regular", size: captionFontSize)
+            ?? .systemFont(ofSize: captionFontSize, weight: .regular)
         let captionColor = (UIColor(named: "White-03") ?? UIColor.white).withAlphaComponent(Metrics.captionAlpha)
         minCaptionLabel.font = captionFont
         maxCaptionLabel.font = captionFont
@@ -278,7 +305,8 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
             button.translatesAutoresizingMaskIntoConstraints = false
             button.setTitle(String(format: "%.1f", rate), for: .normal)
             button.setTitleColor(titleColor, for: .normal)
-            button.titleLabel?.font = .systemFont(ofSize: fontSize, weight: .semibold)
+            button.titleLabel?.font = UIFont(name: "AppleSDGothicNeo-SemiBold", size: fontSize)
+                ?? .systemFont(ofSize: fontSize, weight: .semibold)
             button.backgroundColor = bgColor
             button.layer.cornerRadius = height * 0.5
             button.layer.masksToBounds = true

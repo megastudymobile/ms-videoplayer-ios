@@ -16,6 +16,8 @@ import Foundation
 public struct ExtraControl: Equatable {
     /// skin 상 배치 슬롯.
     public enum Placement: Equatable {
+        /// 상단 우측 메뉴 (Q&A 작성 등). legacy topMenuStackView 앞쪽에 렌더.
+        case topMenu
         /// 가로 fullscreen / split 좌측 vertical 메뉴 (sectionRepeat 와 setting 사이).
         case leftMenu
         /// bottomBar 위 영상 우측 floating (다음 강의 등). title 버튼으로 렌더.
@@ -25,6 +27,7 @@ public struct ExtraControl: Equatable {
     public let id: String
     /// `.leftMenu` 는 아이콘 버튼(Asset Catalog 이름). `.floating` 은 빈 문자열 + `title` 사용.
     public let iconName: String
+    public let selectedIconName: String?
     public let title: String
     public let placement: Placement
     public var isSelected: Bool
@@ -32,12 +35,14 @@ public struct ExtraControl: Equatable {
     public init(
         id: String,
         iconName: String,
+        selectedIconName: String? = nil,
         title: String,
         placement: Placement,
         isSelected: Bool = false
     ) {
         self.id = id
         self.iconName = iconName
+        self.selectedIconName = selectedIconName
         self.title = title
         self.placement = placement
         self.isSelected = isSelected

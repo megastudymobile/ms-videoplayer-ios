@@ -16,6 +16,7 @@ public final class SectionRepeatBlock: UIView, PlayerSkinBlock {
             icon: looping ? .sectionRepeatActive : .sectionRepeatIdle,
             fallbackTitle: looping ? "AB●" : "AB", theme: theme)
         button.isEnabled = !state.isLocked
+        isHidden = state.isLocked || state.layoutMode != .fullScreen
     }
     @objc private func tap() { onAction?(.sectionRepeatToggleRequested) }
     private func pin(_ subview: UIView) {

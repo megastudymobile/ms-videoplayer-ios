@@ -23,6 +23,7 @@ public final class RateStepBlock: UIView, PlayerSkinBlock {
             theme: theme
         )
         button.isEnabled = !state.isLocked
+        isHidden = state.isLocked || state.layoutMode != .fullScreen
     }
     @objc private func tap() { onAction?(step == .up ? .rateStepUp : .rateStepDown) }
     private func pin(_ subview: UIView) {

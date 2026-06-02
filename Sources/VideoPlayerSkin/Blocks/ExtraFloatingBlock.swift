@@ -8,6 +8,7 @@ public final class ExtraFloatingBlock: UIView, PlayerSkinBlock {
     private let stack = UIStackView()
     private var controls: [ExtraControl] = []
     private var buttons: [(id: String, button: UIButton)] = []
+    private var sizeConstraints: [String: (width: NSLayoutConstraint, height: NSLayoutConstraint)] = [:]
     private var needsRebuild = true
 
     public override init(frame: CGRect) {
@@ -31,7 +32,15 @@ public final class ExtraFloatingBlock: UIView, PlayerSkinBlock {
 
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         rebuildButtonsIfNeeded(theme: theme)
+        let size = traitCollection.userInterfaceIdiom == .pad
+            ? CGSize(width: 110, height: 38)
+            : CGSize(width: 85, height: 30)
         for entry in buttons {
+            if let constraints = sizeConstraints[entry.id] {
+                constraints.width.constant = size.width
+                constraints.height.constant = size.height
+            }
+            entry.button.layer.cornerRadius = size.height * 0.5
             entry.button.isHidden = state.hiddenExtraControlIDs.contains(entry.id)
             entry.button.isEnabled = !state.isLocked
         }
@@ -50,12 +59,17 @@ public final class ExtraFloatingBlock: UIView, PlayerSkinBlock {
             configuration.attributedTitle = attributedTitle
             configuration.baseForegroundColor = .white
             configuration.baseBackgroundColor = UIColor.black.withAlphaComponent(0.55)
-            configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12)
-            configuration.background.cornerRadius = 6
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8)
+            configuration.background.cornerRadius = 15
             button.configuration = configuration
+            button.layer.masksToBounds = true
             button.accessibilityIdentifier = "lecturePlayer.skin.extra.\(control.id)"
             button.addTarget(self, action: #selector(tap(_:)), for: .touchUpInside)
             stack.addArrangedSubview(button)
+            let width = button.widthAnchor.constraint(equalToConstant: 85)
+            let height = button.heightAnchor.constraint(equalToConstant: 30)
+            NSLayoutConstraint.activate([width, height])
+            sizeConstraints[control.id] = (width, height)
             buttons.append((control.id, button))
         }
         needsRebuild = false

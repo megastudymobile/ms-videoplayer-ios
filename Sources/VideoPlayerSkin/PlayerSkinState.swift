@@ -37,6 +37,7 @@ public struct PlayerSkinState: Equatable {
     public var progress: Float
     public var playbackRate: Double
     public var previousPlaybackRate: Double
+    public var isRatePanelPresented: Bool
     public var isFullScreenMode: Bool
     public var isDisplayScaled: Bool
     /// spec-064 Phase 1 — host 주입 추가 버튼(ExtraControl) 중 현재 숨길 id 집합.
@@ -56,6 +57,7 @@ public struct PlayerSkinState: Equatable {
         duration: 0,
         progress: 0,
         playbackRate: 1.0,
+        isRatePanelPresented: false,
         isFullScreenMode: false,
         isDisplayScaled: false,
         hiddenExtraControlIDs: [],
@@ -72,6 +74,7 @@ public struct PlayerSkinState: Equatable {
         progress: Float,
         playbackRate: Double,
         previousPlaybackRate: Double? = nil,
+        isRatePanelPresented: Bool = false,
         isFullScreenMode: Bool,
         isDisplayScaled: Bool,
         hiddenExtraControlIDs: Set<String> = [],
@@ -88,6 +91,7 @@ public struct PlayerSkinState: Equatable {
         self.progress = progress
         self.playbackRate = playbackRate
         self.previousPlaybackRate = previousPlaybackRate ?? 1.0
+        self.isRatePanelPresented = isRatePanelPresented
         self.isFullScreenMode = isFullScreenMode
         self.isDisplayScaled = isDisplayScaled
         self.hiddenExtraControlIDs = hiddenExtraControlIDs
@@ -99,6 +103,7 @@ public struct PlayerSkinState: Equatable {
     public init(
         playbackState: PlaybackState,
         playbackRate: Double,
+        isRatePanelPresented: Bool = false,
         controlsVisible: Bool,
         isFullScreenMode: Bool,
         isDisplayScaled: Bool,
@@ -118,6 +123,7 @@ public struct PlayerSkinState: Equatable {
             duration: sanitizedDuration,
             progress: min(max(progress, 0), 1),
             playbackRate: playbackRate,
+            isRatePanelPresented: isRatePanelPresented,
             isFullScreenMode: isFullScreenMode,
             isDisplayScaled: isDisplayScaled,
             hiddenExtraControlIDs: hiddenExtraControlIDs,
@@ -135,6 +141,7 @@ public struct PlayerSkinState: Equatable {
         progress: Float? = nil,
         playbackRate: Double? = nil,
         previousPlaybackRate: Double? = nil,
+        isRatePanelPresented: Bool? = nil,
         isFullScreenMode: Bool? = nil,
         isDisplayScaled: Bool? = nil,
         hiddenExtraControlIDs: Set<String>? = nil,
@@ -152,6 +159,7 @@ public struct PlayerSkinState: Equatable {
             progress: progress ?? self.progress,
             playbackRate: playbackRate ?? self.playbackRate,
             previousPlaybackRate: previousPlaybackRate ?? self.previousPlaybackRate,
+            isRatePanelPresented: isRatePanelPresented ?? self.isRatePanelPresented,
             isFullScreenMode: isFullScreenMode ?? self.isFullScreenMode,
             isDisplayScaled: isDisplayScaled ?? self.isDisplayScaled,
             hiddenExtraControlIDs: hiddenExtraControlIDs ?? self.hiddenExtraControlIDs,

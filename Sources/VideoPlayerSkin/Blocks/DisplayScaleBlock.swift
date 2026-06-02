@@ -16,8 +16,7 @@ public final class DisplayScaleBlock: UIView, PlayerSkinBlock {
             fallbackTitle: state.isDisplayScaled ? "Fit" : "Fill", theme: theme)
         button.accessibilityLabel = state.isDisplayScaled ? "화면 맞춤" : "화면 채움"
         button.isEnabled = !state.isLocked
-        // 가로 fullscreen 에선 displayScaling 숨김 (현 동작).
-        isHidden = (state.layoutMode == .fullScreen) || (state.layoutMode == .verticalSplit)
+        isHidden = state.isLocked || state.layoutMode == .verticalSplit
     }
     @objc private func tap() { onAction?(.toggleDisplayScaling) }
     private func pin(_ subview: UIView) {
