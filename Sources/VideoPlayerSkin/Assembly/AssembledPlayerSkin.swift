@@ -16,6 +16,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private let theme: PlayerSkinTheme
     private let topBarBackground = UIView()
     private let bottomBarBackground = UIView()
+    // lecture-ui-parity 05 §4.9 — dev `MGPlayerLoadingView` ring parity. skin 소유라 모든 host 공통.
+    private let loadingIndicatorView = PlayerLoadingIndicatorView()
     private var slotContainers: [PlayerSkinSlot: UIStackView] = [:]
     private var blocks: [PlayerSkinBlock] = []
     private var latestState = PlayerSkinState.initial
@@ -47,6 +49,13 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         latestState = state
         applyVisibility(state)
         blocks.forEach { $0.render(state, theme: theme) }
+        // lecture-ui-parity 05 §4.9 — preparing/buffering(state.isLoading) 시 중앙 ring 표시.
+        if state.isLoading {
+            loadingIndicatorView.setMode(.clear)
+            loadingIndicatorView.startAnimating()
+        } else {
+            loadingIndicatorView.stopAnimating()
+        }
     }
 
     // MARK: 스켈레톤
@@ -54,6 +63,10 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         topBarBackground.translatesAutoresizingMaskIntoConstraints = false
         bottomBarBackground.translatesAutoresizingMaskIntoConstraints = false
         addSubview(topBarBackground); addSubview(bottomBarBackground)
+        // lecture-ui-parity 05 §4.9 — 로딩 ring 은 배경 위·슬롯(컨트롤) 아래. non-interactive 라 tap 무영향.
+        loadingIndicatorView.translatesAutoresizingMaskIntoConstraints = false
+        loadingIndicatorView.setRingColor(theme.color(.progressFill))
+        addSubview(loadingIndicatorView)
         NSLayoutConstraint.activate([
             topBarBackground.topAnchor.constraint(equalTo: topAnchor),
             topBarBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -62,7 +75,11 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             bottomBarBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
             bottomBarBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
             bottomBarBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
-            bottomBarBackground.heightAnchor.constraint(equalToConstant: 50)
+            bottomBarBackground.heightAnchor.constraint(equalToConstant: 50),
+            loadingIndicatorView.topAnchor.constraint(equalTo: topAnchor),
+            loadingIndicatorView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            loadingIndicatorView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            loadingIndicatorView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
         PlayerSkinSlot.allCases.forEach { slot in
             let stack = UIStackView()
