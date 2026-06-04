@@ -33,8 +33,12 @@ public actor KollusPlayerAdapter:
     PlayerZoomEngine,
     PlayerScrollEngine,
     PlayerAdaptiveStreamingEngine,
+    PlayerEngineOutputProducing,
     PlayerPiPCapability {
-    public nonisolated static let capabilities: EngineCapabilities = []
+    // emitsObservedCommandState: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
+    // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의
+    // .stateInput만 신뢰한다(이중 적용 방지). (설계 §5.2.1)
+    public nonisolated static let capabilities: EngineCapabilities = [.emitsObservedCommandState]
 
     public var currentState: PlaybackState {
         state
@@ -42,7 +46,12 @@ public actor KollusPlayerAdapter:
 
     public let eventStream: AsyncStream<PlayerEvent>
 
+    /// B안 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
+    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다. (설계 §8 4단계)
+    public let outputStream: AsyncStream<PlayerEngineOutput>
+
     private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
+    private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private let bootstrapper: KollusSessionBootstrapper?
     private let environment: KollusEnvironment?
     private let observer: KollusObserver?
@@ -115,6 +124,11 @@ public actor KollusPlayerAdapter:
             bridgeContinuation = $0
         }
         self.bridgeEventContinuation = bridgeContinuation!
+        var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
+            outputContinuation = $0
+        }
+        self.outputContinuation = outputContinuation!
         self.bootstrapper = bootstrapper
         self.environment = environment
         self.observer = observer
@@ -150,6 +164,11 @@ public actor KollusPlayerAdapter:
             bridgeContinuation = $0
         }
         self.bridgeEventContinuation = bridgeContinuation!
+        var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
+            outputContinuation = $0
+        }
+        self.outputContinuation = outputContinuation!
         self.bootstrapper = nil
         self.environment = nil
         self.observer = nil
@@ -166,6 +185,7 @@ public actor KollusPlayerAdapter:
         positionPollTask?.cancel()
         bridgeEventContinuation.finish()
         eventContinuation.finish()
+        outputContinuation.finish()
     }
 
     /// H1 — bridge 신호를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
@@ -736,6 +756,11 @@ public actor KollusPlayerAdapter:
     }
 
     func handleSignal(_ signal: KollusEngineSignal) async {
+        // B안 권위 경로: 신호를 매퍼로 정규화해 outputStream에 발행한다(Core가 reducer로 소비).
+        // 아래 switch는 전환기 mirror(eventStream/state) + 부수효과(polling/prepare continuation/
+        // next-episode)를 그대로 유지한다.
+        await emitOutput(signal)
+
         switch signal {
         case .prepareToPlayCompleted(let error):
             if let error {
@@ -859,6 +884,34 @@ public actor KollusPlayerAdapter:
     private func handleBookmarks(_ bookmarks: [Bookmark]) {
         lastKnownBookmarks = bookmarks
         publish(event: .bookmarksDidLoad(bookmarks))
+    }
+
+    /// 신호를 매퍼로 정규화해 outputStream에 발행한다(Core 권위 경로).
+    /// 부수효과(polling/prepare continuation/next-episode)는 `handleSignal`의 switch가 담당한다.
+    private func emitOutput(_ signal: KollusEngineSignal) async {
+        guard let output = await KollusSignalMapper.normalize(
+            signal,
+            preparedSnapshot: { await self.makePlaybackPreparedSnapshot() },
+            mapError: { self.playerError(from: $0, operation: $1) }
+        ) else {
+            return
+        }
+        outputContinuation.yield(output)
+    }
+
+    /// prepare 완료 스냅샷 — SDK에서 position/duration/live만 조회한다(부수효과 없음).
+    /// next-episode 메타 캐시/`hasEmittedNextEpisode` 리셋은 `readyStateSnapshot`이 계속 담당한다.
+    private func makePlaybackPreparedSnapshot() async -> PlaybackPreparedSnapshot {
+        await MainActor.run {
+            let view = playerView
+            let liveDuration = view?.liveDuration ?? 0
+            return PlaybackPreparedSnapshot(
+                position: view?.content?.position ?? 0,
+                duration: view?.content?.duration ?? 0,
+                isLive: view?.isLive ?? false,
+                liveDuration: liveDuration > 0 ? liveDuration : nil
+            )
+        }
     }
 
     private func installPrepareContinuation(_ continuation: CheckedContinuation<Void, Error>) {
