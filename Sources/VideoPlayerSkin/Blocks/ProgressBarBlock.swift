@@ -17,6 +17,11 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
     private var isSeeking = false
     private var latestDuration: TimeInterval = 0
     private var sliderTopConstraint: NSLayoutConstraint?
+    /// 라이브 프리뷰 seek throttle. 드래그는 ~120Hz로 valueChanged를 쏘는데, 매 틱 실제 엔진 seek을
+    /// 호출하면(메인스레드 디코드) thumb 추적/애니메이션과 경쟁해 버벅인다. thumb/시간 라벨은 매 틱
+    /// 갱신하되, 엔진 seek 유발(onAction)은 이 간격으로 제한한다. 최종 위치는 touchUp의 seekEnded가 보장.
+    private var lastPreviewEmit: CFTimeInterval = 0
+    private static let previewThrottleInterval: CFTimeInterval = 0.12
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -83,17 +88,26 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
 
     @objc private func seekBegan() {
         isSeeking = true
+        // 드래그 시작 순간엔 첫 프리뷰 seek을 한 interval 미룬다 — touch-down의 pause(Kollus 메인)와
+        // 첫 엔진 seek이 겹쳐 시작이 버벅이던 문제 방지. 0으로 리셋하면 첫 seekChanged가 즉시 seek한다.
+        lastPreviewEmit = CACurrentMediaTime()
         // 레거시 parity: 스크러버를 잡는 순간 재생을 멈춘다(host가 pause).
         onAction?(.seekBegan)
     }
     @objc private func seekChanged() {
         let time = PlayerSkinState.previewTime(for: slider.value, duration: latestDuration)
+        // thumb은 UISlider가 네이티브로 추적하고, 시간 라벨은 매 틱 갱신(가벼움).
         currentTimeLabel.text = PlayerSkinState.formatTime(time)
+        // 실제 엔진 seek을 유발하는 프리뷰는 throttle — 메인스레드 디코드가 thumb 애니메이션을 막지 않게.
+        let now = CACurrentMediaTime()
+        guard now - lastPreviewEmit >= Self.previewThrottleInterval else { return }
+        lastPreviewEmit = now
         onAction?(.seekPreviewChanged(time))
     }
     @objc private func seekEnded() {
         let time = PlayerSkinState.previewTime(for: slider.value, duration: latestDuration)
         isSeeking = false
+        // 릴리스 시 최종 위치는 throttle과 무관하게 항상 정확히 반영.
         onAction?(.seekEnded(time))
     }
     @objc private func screenModeTap() { onAction?(.toggleScreenMode) }
