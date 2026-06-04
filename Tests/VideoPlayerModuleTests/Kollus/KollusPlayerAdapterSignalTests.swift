@@ -45,7 +45,7 @@ struct KollusPlayerAdapterSignalTests {
             Issue.record("Expected failed state, got \(state.status)")
             return
         }
-        #expect(playerError == .engineError("Kollus play 실패: play denied"))
+        #expect(playerError == .engineError("play denied"))
 
         var iterator = stream.makeAsyncIterator()
         guard case .stateDidChange(let emittedState)? = await iterator.next() else {
@@ -76,7 +76,7 @@ struct KollusPlayerAdapterSignalTests {
             return
         }
         #expect(!(state.isBuffering))
-        #expect(playerError == .engineError("Kollus buffering 실패: buffer failed"))
+        #expect(playerError == .engineError("buffer failed"))
 
         var iterator = stream.makeAsyncIterator()
         guard case .stateDidChange? = await iterator.next() else {

@@ -62,7 +62,17 @@ public actor KollusPlayerAdapter:
     private var lastKnownBookmarks: [Bookmark] = []
     private var currentZoom: CGFloat = 0
     private var hasEmittedNextEpisode: Bool = false
-    private var lastNextEpisodeDebugLogSecond: Int?
+    /// 다음 회차 메타데이터 — `.readyToPlay` 시 MainActor에서 1회 캐시.
+    /// positionChanged hot path가 매 신호마다 MainActor를 왕복하면(단일 FIFO consumer가
+    /// 그 왕복에 막혀) currentTime 발행이 실시간보다 지연된다. 캐시 후 hot path는 산술 비교만 한다.
+    /// 엔진 next-episode가 없으면(showTime<=0) nil → hot path 즉시 단락.
+    private struct NextEpisodeMeta: Sendable {
+        let showAt: TimeInterval
+        let callbackURL: URL?
+        let params: [String: String]
+        let showsButton: Bool
+    }
+    private var nextEpisodeMeta: NextEpisodeMeta?
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
 
     /// H1 — SDK delegate(bridge) 신호를 단일 FIFO 스트림으로 직렬 소비한다.
@@ -76,6 +86,14 @@ public actor KollusPlayerAdapter:
     private nonisolated let bridgeEventStream: AsyncStream<BridgeEvent>
     private nonisolated let bridgeEventContinuation: AsyncStream<BridgeEvent>.Continuation
     private var signalConsumerTask: Task<Void, Never>?
+
+    /// 재생 위치 주기 폴링 Task.
+    /// Kollus `kollusPlayerView:position:error:` delegate는 **seek 시에만** 호출되고 재생 중 주기 통지를
+    /// 하지 않는다. 따라서 재생바 currentTime이 갱신되지 않는다. 레거시(`playbackProgressTimer`,
+    /// `LegacyMoviePlayerController.m:5593`, 1.0s)처럼 재생 중 `currentPlaybackTime`을 주기적으로 읽어
+    /// `.timeDidChange`를 발행한다. playStarted에 시작, pause/stop에 중지.
+    private var positionPollTask: Task<Void, Never>?
+    private static let positionPollInterval: UInt64 = 500_000_000 // 0.5s
 
     // MARK: - Initializers
 
@@ -145,6 +163,7 @@ public actor KollusPlayerAdapter:
 
     deinit {
         signalConsumerTask?.cancel()
+        positionPollTask?.cancel()
         bridgeEventContinuation.finish()
         eventContinuation.finish()
     }
@@ -680,11 +699,47 @@ public actor KollusPlayerAdapter:
 
     // MARK: - Signal handling (bootstrapped path)
 
+    // MARK: - Position polling (재생바 시간 주기 갱신)
+
+    private func startPositionPolling() {
+        guard positionPollTask == nil else { return }
+        positionPollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: Self.positionPollInterval)
+                guard let self else { return }
+                if Task.isCancelled { return }
+                await self.pollCurrentPlaybackTime()
+            }
+        }
+    }
+
+    private func stopPositionPolling() {
+        positionPollTask?.cancel()
+        positionPollTask = nil
+    }
+
+    private func pollCurrentPlaybackTime() async {
+        let snapshot = await MainActor.run { () -> (time: TimeInterval, isSeeking: Bool)? in
+            guard let playerView else { return nil }
+            return (playerView.currentPlaybackTime, playerView.isSeeking)
+        }
+        guard let snapshot, !snapshot.isSeeking else { return }
+        let polled = snapshot.time
+        // 레거시 주석(LegacyMoviePlayerController.m:5603/5627) — play 직후/pause 시 SDK가
+        // currentPlaybackTime을 0으로 반환하는 이슈. 기존 위치가 있으면 0 회귀를 무시한다.
+        if polled <= 0, state.currentTime > 0 { return }
+        guard polled != state.currentTime else { return }
+        let nextState = state.updating(currentTime: polled)
+        transition(to: nextState, emitStateEvent: false)
+        publish(event: .timeDidChange(currentTime: polled, duration: nextState.duration))
+        emitNextEpisodeIfNeeded(currentTime: polled)
+    }
+
     func handleSignal(_ signal: KollusEngineSignal) async {
         switch signal {
         case .prepareToPlayCompleted(let error):
             if let error {
-                let pe = PlayerError.classify(error, engineContext: "Kollus prepareToPlay 실패")
+                let pe = playerError(from: error, operation: "prepareToPlay")
                 transition(to: state.updating(status: .failed(pe), isBuffering: false))
                 if pendingPrepareContinuation != nil {
                     completePendingPrepare(with: .failure(pe))
@@ -699,21 +754,23 @@ public actor KollusPlayerAdapter:
 
         case .playStarted(_, let error):
             if let error {
-                handleFailure(PlayerError.classify(error, engineContext: "Kollus play 실패"))
+                handleFailure(playerError(from: error, operation: "play"))
                 return
             }
             transition(to: state.updating(status: .playing, isBuffering: false))
+            startPositionPolling()
 
         case .pauseStarted(_, let error):
             if let error {
-                handleFailure(PlayerError.classify(error, engineContext: "Kollus pause 실패"))
+                handleFailure(playerError(from: error, operation: "pause"))
                 return
             }
+            stopPositionPolling()
             transition(to: state.updating(status: .paused, isBuffering: false))
 
         case .bufferingChanged(let buffering, _, let error):
             if let error {
-                handleFailure(PlayerError.classify(error, engineContext: "Kollus buffering 실패"))
+                handleFailure(playerError(from: error, operation: "buffering"))
                 return
             }
             // M3 — terminal 상태(.finished/.failed)는 늦은 buffering 이벤트로 되살리지 않는다.
@@ -738,9 +795,10 @@ public actor KollusPlayerAdapter:
 
         case .stopStarted(let userInteraction, let error):
             if let error {
-                handleFailure(PlayerError.classify(error, engineContext: "Kollus stop 실패"))
+                handleFailure(playerError(from: error, operation: "stop"))
                 return
             }
+            stopPositionPolling()
             let nextStatus: PlaybackState.Status = userInteraction ? .idle : .finished
             transition(to: state.updating(status: nextStatus, isBuffering: false))
             if nextStatus == .finished {
@@ -752,11 +810,11 @@ public actor KollusPlayerAdapter:
             let nextState = state.updating(currentTime: time)
             transition(to: nextState, emitStateEvent: false)
             publish(event: .timeDidChange(currentTime: time, duration: nextState.duration))
-            // T056 — 다음 회차 진입 시간 도달 검사 (컨텐츠당 1회).
-            await emitNextEpisodeIfNeeded(currentTime: time)
+            // T056 — 다음 회차 진입 시간 도달 검사 (컨텐츠당 1회). 캐시된 메타로 산술 비교만 — MainActor 왕복 없음.
+            emitNextEpisodeIfNeeded(currentTime: time)
 
         case .unknownError(let error):
-            let pe = PlayerError.classify(error, engineContext: "Kollus unknown error")
+            let pe = playerError(from: error, operation: "unknown")
             transition(to: state.updating(status: .failed(pe), isBuffering: false))
             publish(event: .didFail(pe))
 
@@ -820,80 +878,18 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    private func emitNextEpisodeIfNeeded(currentTime: TimeInterval) async {
-        guard !hasEmittedNextEpisode else { return }
-        struct NextEpisodeSnapshot {
-            let showAt: TimeInterval
-            let callbackURLString: String?
-            let params: [String: String]
-            let showsButton: Bool
-        }
-        let snapshot = await MainActor.run { () -> NextEpisodeSnapshot? in
-            guard let view = playerView else { return nil }
-            let showAt = TimeInterval(view.nextEpisodeShowTime)
-            let rawParams = view.nextEpisodeCallbackParams as? [String: Any] ?? [:]
-            let params: [String: String] = Dictionary(uniqueKeysWithValues: rawParams.compactMap { key, value in
-                guard let v = value as? String else { return nil }
-                return (key, v)
-            })
-            return NextEpisodeSnapshot(
-                showAt: showAt,
-                callbackURLString: view.nextEpisodeCallbackURL,
-                params: params,
-                showsButton: view.nextEpisodeShowButton
-            )
-        }
-        guard let snapshot else {
-#if DEBUG
-            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
-                NSLog("[KollusNextEpisode] playerView unavailable currentTime=%.3f", currentTime)
-            }
-#endif
-            return
-        }
-#if DEBUG
-        logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
-            NSLog(
-                "[KollusNextEpisode] raw showAt=%.3f currentTime=%.3f showsButton=%d hasCallbackURL=%d paramKeys=%@",
-                snapshot.showAt,
-                currentTime,
-                snapshot.showsButton ? 1 : 0,
-                snapshot.callbackURLString?.isEmpty == false ? 1 : 0,
-                snapshot.params.keys.sorted().joined(separator: ",")
-            )
-        }
-#endif
-        guard snapshot.showAt > 0 else {
-#if DEBUG
-            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
-                NSLog("[KollusNextEpisode] skip: showAt is not positive")
-            }
-#endif
-            return
-        }
-        guard currentTime >= snapshot.showAt else {
-#if DEBUG
-            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
-                NSLog("[KollusNextEpisode] skip: waiting for showAt")
-            }
-#endif
-            return
-        }
-        guard let urlString = snapshot.callbackURLString,
-              let url = URL(string: urlString) else {
-#if DEBUG
-            logNextEpisodeDebugIfNeeded(currentTime: currentTime) {
-                NSLog("[KollusNextEpisode] skip: invalid callbackURL")
-            }
-#endif
-            return
-        }
+    /// T056 — 다음 회차 진입 시간 도달 검사. **동기·산술 전용**(MainActor 왕복 없음).
+    /// 메타는 `readyStateSnapshot`에서 1회 캐시되므로 positionChanged마다 호출돼도 consumer를 막지 않는다.
+    private func emitNextEpisodeIfNeeded(currentTime: TimeInterval) {
+        guard !hasEmittedNextEpisode, let meta = nextEpisodeMeta else { return }
+        guard currentTime >= meta.showAt else { return }
+        guard let url = meta.callbackURL else { return }
         hasEmittedNextEpisode = true
         let info = NextEpisodeInfo(
-            showAt: snapshot.showAt,
+            showAt: meta.showAt,
             callbackURL: url,
-            callbackParameters: snapshot.params,
-            showsButton: snapshot.showsButton
+            callbackParameters: meta.params,
+            showsButton: meta.showsButton
         )
 #if DEBUG
         NSLog("[KollusNextEpisode] publish nextEpisodeAvailable showAt=%.3f", info.showAt)
@@ -901,29 +897,47 @@ public actor KollusPlayerAdapter:
         publish(event: .nextEpisodeAvailable(info))
     }
 
-#if DEBUG
-    private func logNextEpisodeDebugIfNeeded(currentTime: TimeInterval, _ log: () -> Void) {
-        let second = Int(currentTime.rounded(.down))
-        guard lastNextEpisodeDebugLogSecond != second else { return }
-        lastNextEpisodeDebugLogSecond = second
-        log()
-    }
-#endif
-
     private func readyStateSnapshot() async -> PlaybackState {
         struct ReadySnapshot {
             let position: TimeInterval
             let duration: TimeInterval
             let isLive: Bool
             let liveDuration: TimeInterval
+            let nextEpisodeShowAt: TimeInterval
+            let nextEpisodeCallbackURLString: String?
+            let nextEpisodeParams: [String: String]
+            let nextEpisodeShowsButton: Bool
         }
         let snap = await MainActor.run { () -> ReadySnapshot in
-            ReadySnapshot(
-                position: playerView?.content?.position ?? 0,
-                duration: playerView?.content?.duration ?? 0,
-                isLive: playerView?.isLive ?? false,
-                liveDuration: playerView?.liveDuration ?? 0
+            let view = playerView
+            let rawParams = view?.nextEpisodeCallbackParams as? [String: Any] ?? [:]
+            let params: [String: String] = Dictionary(uniqueKeysWithValues: rawParams.compactMap { key, value in
+                guard let v = value as? String else { return nil }
+                return (key, v)
+            })
+            return ReadySnapshot(
+                position: view?.content?.position ?? 0,
+                duration: view?.content?.duration ?? 0,
+                isLive: view?.isLive ?? false,
+                liveDuration: view?.liveDuration ?? 0,
+                nextEpisodeShowAt: TimeInterval(view?.nextEpisodeShowTime ?? 0),
+                nextEpisodeCallbackURLString: view?.nextEpisodeCallbackURL,
+                nextEpisodeParams: params,
+                nextEpisodeShowsButton: view?.nextEpisodeShowButton ?? false
             )
+        }
+        // 다음 회차 메타 1회 캐시 + 재진입 시 재-probe 위해 emit 플래그 리셋.
+        // 엔진 next-episode가 없으면(showAt<=0) nil → positionChanged hot path 즉시 단락.
+        hasEmittedNextEpisode = false
+        if snap.nextEpisodeShowAt > 0 {
+            nextEpisodeMeta = NextEpisodeMeta(
+                showAt: snap.nextEpisodeShowAt,
+                callbackURL: snap.nextEpisodeCallbackURLString.flatMap { URL(string: $0) },
+                params: snap.nextEpisodeParams,
+                showsButton: snap.nextEpisodeShowsButton
+            )
+        } else {
+            nextEpisodeMeta = nil
         }
         // T055 — isLive/liveDuration 캡처. liveDuration 0이면 nil 표기(타임쉬프트 길이 unknown).
         let liveDurationValue: TimeInterval? = snap.liveDuration > 0 ? snap.liveDuration : nil
@@ -971,6 +985,7 @@ public actor KollusPlayerAdapter:
     }
 
     private func performStop() async throws {
+        stopPositionPolling()
         try await MainActor.run {
             if let playerView {
                 try playerView.stop()
@@ -1005,7 +1020,26 @@ public actor KollusPlayerAdapter:
         }
     }
 
+    /// SDK 신호 에러 → PlayerError. 사용자 메시지는 SDK `localizedDescription`을 그대로 노출한다
+    /// (레거시 `SLKollusManager.errorMessageWithError:` parity — "Kollus X 실패:" 같은 dev 접두 없음).
+    /// 네트워크/인증/디코딩은 classify가 분류(NSURLErrorDomain 등), 그 외는 접두 없는 engineError.
+    /// 실패한 작업(operation)은 DEBUG 로그에만 남긴다.
+    private func playerError(from error: Error, operation: String) -> PlayerError {
+        if let playerError = error as? PlayerError {
+            return playerError
+        }
+        let classified = PlayerError.classify(error)
+        if case .unknown(let message) = classified {
+#if DEBUG
+            NSLog("[KollusEngine] %@ 실패: %@", operation, message)
+#endif
+            return .engineError(message)
+        }
+        return classified
+    }
+
     private func handleFailure(_ error: PlayerError) {
+        stopPositionPolling()
         let nextState = state.updating(status: .failed(error), isBuffering: false)
         transition(to: nextState)
         publish(event: .didFail(error))

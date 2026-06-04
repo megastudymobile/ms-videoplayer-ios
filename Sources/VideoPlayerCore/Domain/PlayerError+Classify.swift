@@ -45,18 +45,4 @@ public extension PlayerError {
             return .unknown(message)
         }
     }
-
-    /// H3 — `classify` 결과가 `.unknown`이면 엔진 컨텍스트를 붙여 `.engineError`로 승격한다.
-    /// 네트워크/인증/디코딩으로 분류된 경우 그 분류를 그대로 유지한다.
-    static func classify(_ error: Error, engineContext context: String) -> PlayerError {
-        if let playerError = error as? PlayerError {
-            return playerError
-        }
-
-        let classified = classify(error)
-        if case .unknown = classified {
-            return .engineError("\(context): \((error as NSError).localizedDescription)")
-        }
-        return classified
-    }
 }
