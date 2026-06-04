@@ -176,23 +176,25 @@ public actor PlayerCore {
             try await executeEngineCommand {
                 try await engine.play()
             }
-            transition(to: currentState.updating(status: .playing, isBuffering: false))
+            // 권위 콜백 엔진(Kollus)은 outputStream `.playStarted`가 상태를 만든다.
+            // 권위 콜백이 없는 엔진(Native)은 Core가 command-origin으로 닫는다. (설계 §5.2.1)
+            applyCommandOriginIfNeeded(.playStarted)
         case .pause:
             try await executeEngineCommand {
                 try await engine.pause()
             }
-            transition(to: currentState.updating(status: .paused, isBuffering: false))
+            applyCommandOriginIfNeeded(.pauseStarted)
         case .seek(let time):
             try await executeEngineCommand {
                 try await engine.seek(to: time)
             }
-            transition(to: currentState.updating(currentTime: time))
+            applyCommandOriginIfNeeded(.positionChanged(time: time, duration: nil))
         case .seekWithOrigin(let time, let origin):
             let targetTime = seekTargetTime(for: time, origin: origin)
             try await executeEngineCommand {
                 try await engine.seek(to: targetTime)
             }
-            transition(to: currentState.updating(currentTime: targetTime))
+            applyCommandOriginIfNeeded(.positionChanged(time: targetTime, duration: nil))
         case .setPlaybackRate(let rate):
             try await setPlaybackRate(rate)
         case .setSkipInterval(let interval):
@@ -228,7 +230,8 @@ public actor PlayerCore {
                 try await engine.stop(reason: .userClosed)
             }
             currentSource = nil
-            transition(to: .idle)
+            // stop은 양쪽 엔진 모두 command-origin으로 닫아도 안전(.idle은 멱등).
+            apply(stateReducer.reduce(.stopped(.userClosed), state: currentState))
         }
     }
 
@@ -273,6 +276,16 @@ public actor PlayerCore {
         currentState = output.next
         stateContinuation.yield(output.next)
         output.events.forEach { publish(event: $0) }
+    }
+
+    /// 권위 콜백이 없는 엔진(`!emitsObservedCommandState`, 예: Native)에서만 명령 성공 직후
+    /// command-origin 입력을 reducer에 넣는다. 권위 콜백이 있는 엔진(Kollus)은 outputStream의
+    /// `.stateInput`이 상태를 만들므로 여기서 또 넣으면 이중 적용/경합이 된다. (설계 §5.2.1)
+    private func applyCommandOriginIfNeeded(_ input: PlaybackStateInput) {
+        guard !engineCapabilities.contains(.emitsObservedCommandState) else {
+            return
+        }
+        apply(stateReducer.reduce(input, state: currentState))
     }
 
     /// 미전환 엔진의 `PlayerEvent`를 `PlayerEngineOutput`으로 감싸는 비손실 bridge. (설계 §8 2단계)

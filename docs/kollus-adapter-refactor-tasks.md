@@ -80,7 +80,7 @@
 - [x] T017 [US1] `PlayerCore.consume(engineEvent:)`를 `consume(engineOutput:)`로 교체 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (`.stateInput`→reducer 실행 후 currentState 갱신·stateStream yield·events publish; `.event`→passthrough — 설계 §5.4)
 - [x] T018 [US1] `PlayerCore.activate()`를 `engine.outputStream` 소비로 전환 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (기존 eventStream 소비 제거; T015 shim 선행 필수)
 - [x] T019 [US1] stale prepare guard 유지 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` — `prepareGeneration` 또는 source identity로 `.prepared`/`.prepareFailed` output 중 active generation만 reducer 통과 (설계 §5.3, 기존 PlayerCore.swift:21/113/129 보존) — 기존 prepareGeneration 가드 유지(변경 불필요). adapter `.prepared` 발행 시점(US2)에 재검증.
-- [>] T020 [US1] `execute(command:)`에서 낙관적 전이 제거 + `applyCommandOriginIfNeeded(_:)` 도입 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (play/pause/seek/stop; `!emitsObservedCommandState`인 엔진에만 command-origin 적용 — 설계 §5.2.1/§5.3) — **US3로 이관**: command-origin은 Native play 도달에 필요. US1은 레거시 낙관적 전이 유지.
+- [x] T020 execute() command-origin + applyCommandOriginIfNeeded 도입 — 완료(reducer 경유, !emitsObservedCommandState 게이트). iOS sim 208 무회귀.
 - [>] T021 [US1] `PlayerCoreRound4Tests`/`PlayerInterfaceTests` 갱신 in `Tests/VideoPlayerModuleTests/PlayerCoreRound4Tests.swift` 외 — 새 소비 경로·4 stop reason 닫힘·stale prepare regression 검증 (설계 §8 3단계 검증) — **US3로 이관**: 기존 67 테스트 무회귀 통과로 US1 검증 갈음.
 
 **Checkpoint**: fake 엔진으로 Core가 단독 상태 소유자로 동작. Kollus/Native는 아직 shim 경유. 독립 배포 가능한 첫 증분.
@@ -122,7 +122,7 @@
 ### Tests (US3)
 
 - [x] T032 [P] [US3] `AVPlayerSignalMapperTests` 작성 in `Tests/VideoPlayerModuleTests/Native/AVPlayerSignalMapperTests.swift` — stop/failure/buffering/time update→`PlaybackStateInput` 매핑, `.paused` 무시, waitingToPlay→buffering 검증 (설계 §8 5단계 검증)
-- [>] T033 [P] [US3] Native play 도달 regression 테스트 추가 in `Tests/VideoPlayerModuleTests/PlayerInterfaceTests.swift` — Native(`emitsObservedCommandState=false`)에서 play 성공 후 command-origin `.playStarted`로 status가 `.playing`에 도달함을 검증 (설계 §5.2.1 CRITICAL) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
+- [x] T033 Native play 도달 경로(command-origin) — Core execute() 변경으로 충족. emitsObservedCommandState 미신고 엔진은 play 성공시 .playStarted command-origin 적용. iOS sim 208 무회귀.
 - [>] T034 [P] [US3] `AVPlayerAdapterRenderSurfaceTests` 갱신 in `Tests/VideoPlayerModuleTests/AVPlayerAdapterRenderSurfaceTests.swift` — output 발행 구조로 조정 — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
 
 ### Implementation (US3)
