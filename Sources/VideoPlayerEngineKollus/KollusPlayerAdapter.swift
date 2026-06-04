@@ -752,6 +752,12 @@ public actor KollusPlayerAdapter:
         let nextState = state.updating(currentTime: polled)
         transition(to: nextState, emitStateEvent: false)
         publish(event: .timeDidChange(currentTime: polled, duration: nextState.duration))
+        // Core 권위 경로: polling 위치는 handleSignal 밖이라 별도로 outputStream에 발행해야
+        // Core(outputStream 소비)가 재생바를 갱신한다. (device QA B2에서 발견)
+        outputContinuation.yield(.stateInput(.positionChanged(time: polled, duration: nextState.duration)))
+        #if DEBUG
+        NSLog("[Kollus.out] poll positionChanged time=%.3f", polled)
+        #endif
         emitNextEpisodeIfNeeded(currentTime: polled)
     }
 
@@ -884,6 +890,8 @@ public actor KollusPlayerAdapter:
     private func handleBookmarks(_ bookmarks: [Bookmark]) {
         lastKnownBookmarks = bookmarks
         publish(event: .bookmarksDidLoad(bookmarks))
+        // Core 권위 경로 (handleSignal 밖 emit — bookmarks 로드).
+        outputContinuation.yield(.event(.bookmarksDidLoad(bookmarks)))
     }
 
     /// 신호를 매퍼로 정규화해 outputStream에 발행한다(Core 권위 경로).
@@ -950,8 +958,11 @@ public actor KollusPlayerAdapter:
         )
 #if DEBUG
         NSLog("[KollusNextEpisode] publish nextEpisodeAvailable showAt=%.3f", info.showAt)
+        NSLog("[Kollus.out] event nextEpisodeAvailable showAt=%.3f", info.showAt)
 #endif
         publish(event: .nextEpisodeAvailable(info))
+        // Core 권위 경로 (device QA B6에서 발견 — handleSignal 밖 emit).
+        outputContinuation.yield(.event(.nextEpisodeAvailable(info)))
     }
 
     private func readyStateSnapshot() async -> PlaybackState {
