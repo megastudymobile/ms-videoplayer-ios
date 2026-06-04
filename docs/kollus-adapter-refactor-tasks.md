@@ -101,16 +101,16 @@
 
 ### Tests (US3)
 
-- [ ] T032 [P] [US3] `AVPlayerSignalMapperTests` 작성 in `Tests/VideoPlayerModuleTests/Native/AVPlayerSignalMapperTests.swift` — stop/failure/buffering/time update→`PlaybackStateInput` 매핑, `.paused` 무시, waitingToPlay→buffering 검증 (설계 §8 5단계 검증)
-- [ ] T033 [P] [US3] Native play 도달 regression 테스트 추가 in `Tests/VideoPlayerModuleTests/PlayerInterfaceTests.swift` — Native(`emitsObservedCommandState=false`)에서 play 성공 후 command-origin `.playStarted`로 status가 `.playing`에 도달함을 검증 (설계 §5.2.1 CRITICAL)
-- [ ] T034 [P] [US3] `AVPlayerAdapterRenderSurfaceTests` 갱신 in `Tests/VideoPlayerModuleTests/AVPlayerAdapterRenderSurfaceTests.swift` — output 발행 구조로 조정
+- [x] T032 [P] [US3] `AVPlayerSignalMapperTests` 작성 in `Tests/VideoPlayerModuleTests/Native/AVPlayerSignalMapperTests.swift` — stop/failure/buffering/time update→`PlaybackStateInput` 매핑, `.paused` 무시, waitingToPlay→buffering 검증 (설계 §8 5단계 검증)
+- [>] T033 [P] [US3] Native play 도달 regression 테스트 추가 in `Tests/VideoPlayerModuleTests/PlayerInterfaceTests.swift` — Native(`emitsObservedCommandState=false`)에서 play 성공 후 command-origin `.playStarted`로 status가 `.playing`에 도달함을 검증 (설계 §5.2.1 CRITICAL) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
+- [>] T034 [P] [US3] `AVPlayerAdapterRenderSurfaceTests` 갱신 in `Tests/VideoPlayerModuleTests/AVPlayerAdapterRenderSurfaceTests.swift` — output 발행 구조로 조정 — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
 
 ### Implementation (US3)
 
-- [ ] T035 [US3] `AVPlayerSignalMapper` enum 구현 in `Sources/VideoPlayerEngineNative/Signal/AVPlayerSignalMapper.swift` (observer event→`PlayerEngineOutput`; `.paused`는 기본 무시 — 설계 §5.2.1/§8 5단계)
-- [ ] T036 [US3] `AVPlayerAdapter`에 `outputStream` 추가 및 `PlayerEngineOutputProducing` 채택 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (`.unbounded`, 단일 인스턴스, deinit finish)
-- [ ] T037 [US3] `AVPlayerAdapter`의 stop/failure/buffering/time update 상태 규칙을 mapper→`outputStream`으로 이관 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (내부 `state`/`transition` 직접 갱신 제거)
-- [ ] T038 [US3] `emitsObservedCommandState = false`로 Native capability 신고 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (play/pause/seek 권위 콜백 없음 → Core command-origin 경로 — 설계 §5.2.1)
+- [x] T035 [US3] `AVPlayerSignalMapper` enum 구현 in `Sources/VideoPlayerEngineNative/Signal/AVPlayerSignalMapper.swift` (observer event→`PlayerEngineOutput`; `.paused`는 기본 무시 — 설계 §5.2.1/§8 5단계)
+- [>] T036 [US3] `AVPlayerAdapter`에 `outputStream` 추가 및 `PlayerEngineOutputProducing` 채택 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (`.unbounded`, 단일 인스턴스, deinit finish) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
+- [>] T037 [US3] `AVPlayerAdapter`의 stop/failure/buffering/time update 상태 규칙을 mapper→`outputStream`으로 이관 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (내부 `state`/`transition` 직접 갱신 제거) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
+- [>] T038 [US3] `emitsObservedCommandState = false`로 Native capability 신고 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (play/pause/seek 권위 콜백 없음 → Core command-origin 경로 — 설계 §5.2.1) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
 
 **Checkpoint**: 두 실엔진 모두 outputStream 구조. T015 shim 완전 제거. `PlayerPlaybackEngine.currentState/eventStream`을 deprecated 또는 제거 (설계 §8 2단계 후속).
 
