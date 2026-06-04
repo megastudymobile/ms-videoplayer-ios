@@ -22,6 +22,17 @@ public struct EngineCapabilities: OptionSet, Sendable {
     public static let continuesWithoutSurface = EngineCapabilities(rawValue: 1 << 0)
     public static let seamlessSurfaceSwap = EngineCapabilities(rawValue: 1 << 1)
     public static let nativePiP = EngineCapabilities(rawValue: 1 << 2)
+
+    /// 엔진이 play/pause/seek 성공을 별도 observer 신호(권위 콜백)로 다시 통지하는가.
+    ///
+    /// - Kollus = `true`: `playStarted`/`pauseStarted` 등 콜백이 상태를 만든다. Core는 명령 성공 후
+    ///   상태를 만들지 않고 outputStream의 `.stateInput`만 신뢰한다.
+    /// - Native = `false`: `timeControlStatus(.playing)`은 play-started 상태 입력을 만들지 않으므로,
+    ///   Core가 명령 성공 직후 command-origin `PlaybackStateInput`을 reducer에 넣어야 한다.
+    ///
+    /// 이 비트가 없으면 Native에서 play 성공 후 status가 `.playing`에 도달하지 못한다.
+    /// (설계 문서 §5.2.1 명령별 상태 권위 매트릭스)
+    public static let emitsObservedCommandState = EngineCapabilities(rawValue: 1 << 3)
 }
 
 public protocol PlayerPlaybackEngine: Actor {
