@@ -35,14 +35,36 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
     private var timeObserverToken: Any?
     private var displayScaleMode: PlayerDisplayScaleMode = .aspectFit
 
+    /// H1 — KVO/Notification/periodic observer 콜백을 단일 FIFO 스트림으로 직렬 소비한다.
+    /// 콜백마다 `Task`를 새로 만들면 임의 스레드에서 도착한 이벤트의 actor 처리 순서가 비결정적이라
+    /// `timeControlStatus(.playing)`와 `periodicTime`이 뒤바뀌는 등 상태 역전이 발생한다.
+    /// 콜백은 continuation에 동기 yield만 하고, 단일 consumer가 순서대로 처리.
+    private enum ObserverEvent: Sendable {
+        case itemFailed(PlayerError)
+        case failedToEnd(PlayerError)
+        case timeControl(AVPlayer.TimeControlStatus)
+        case didFinish
+        case periodicTime(seconds: Double)
+    }
+    private nonisolated let observerEventStream: AsyncStream<ObserverEvent>
+    private nonisolated let observerEventContinuation: AsyncStream<ObserverEvent>.Continuation
+    private var observerConsumerTask: Task<Void, Never>?
+
     public init(player: AVPlayer = AVPlayer()) {
         var continuation: AsyncStream<PlayerEvent>.Continuation?
         self.eventStream = AsyncStream<PlayerEvent>(bufferingPolicy: .bufferingNewest(8)) {
             continuation = $0
         }
         self.eventContinuation = continuation!
+        var observerContinuation: AsyncStream<ObserverEvent>.Continuation?
+        self.observerEventStream = AsyncStream<ObserverEvent>(bufferingPolicy: .unbounded) {
+            observerContinuation = $0
+        }
+        self.observerEventContinuation = observerContinuation!
         self.player = player
         self.state = .idle
+        self.observerConsumerTask = nil
+        startObserverConsumerIfNeeded()
     }
 
     deinit {
@@ -61,7 +83,30 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
             player.removeTimeObserver(timeObserverToken)
         }
 
+        observerConsumerTask?.cancel()
+        observerEventContinuation.finish()
         eventContinuation.finish()
+    }
+
+    /// H1 — observer 이벤트를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
+    private func startObserverConsumerIfNeeded() {
+        guard observerConsumerTask == nil else { return }
+        observerConsumerTask = Task { [weak self] in
+            guard let stream = self?.observerEventStream else { return }
+            for await event in stream {
+                guard let self else { return }
+                switch event {
+                case .itemFailed(let error), .failedToEnd(let error):
+                    await self.handleFailure(error)
+                case .timeControl(let status):
+                    await self.handleTimeControlStatus(status)
+                case .didFinish:
+                    await self.handleDidFinish()
+                case .periodicTime(let seconds):
+                    await self.handlePeriodicTimeUpdate(seconds: seconds)
+                }
+            }
+        }
     }
 
     public func prepare(source: PlaybackSource) async throws {
@@ -221,73 +266,43 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
     }
 
     private func installObservers(for item: AVPlayerItem) {
-        statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            guard let self else {
-                return
-            }
-
+        statusObservation = item.observe(\.status, options: [.new]) { [observerEventContinuation] item, _ in
             guard item.status == .failed else {
                 return
             }
 
             let error = PlayerError.engineError(item.error?.localizedDescription ?? "AVPlayerItem status failed")
-            Task {
-                await self.handleFailure(error)
-            }
+            observerEventContinuation.yield(.itemFailed(error))
         }
 
-        timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
-            guard let self else {
-                return
-            }
-
-            Task {
-                await self.handleTimeControlStatus(player.timeControlStatus)
-            }
+        timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [observerEventContinuation] player, _ in
+            observerEventContinuation.yield(.timeControl(player.timeControlStatus))
         }
 
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,
             queue: .main
-        ) { [weak self] _ in
-            guard let self else {
-                return
-            }
-
-            Task {
-                await self.handleDidFinish()
-            }
+        ) { [observerEventContinuation] _ in
+            observerEventContinuation.yield(.didFinish)
         }
 
         failedToEndObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemFailedToPlayToEndTime,
             object: item,
             queue: .main
-        ) { [weak self] notification in
-            guard let self else {
-                return
-            }
-
+        ) { [observerEventContinuation] notification in
             let error = (notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? NSError)?
                 .localizedDescription ?? "AVPlayerItem failed to play to end"
-
-            Task {
-                await self.handleFailure(.engineError(error))
-            }
+            observerEventContinuation.yield(.failedToEnd(.engineError(error)))
         }
 
         timeObserverToken = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
             queue: .main
-        ) { [weak self] time in
-            guard let self else {
-                return
-            }
-
-            Task {
-                await self.handlePeriodicTimeUpdate(time)
-            }
+        ) { [observerEventContinuation] time in
+            let seconds = max(0, time.seconds.isFinite ? time.seconds : 0)
+            observerEventContinuation.yield(.periodicTime(seconds: seconds))
         }
     }
 
@@ -349,8 +364,8 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
         }
     }
 
-    private func handlePeriodicTimeUpdate(_ time: CMTime) {
-        let currentTime = max(0, time.seconds.isFinite ? time.seconds : 0)
+    private func handlePeriodicTimeUpdate(seconds: Double) {
+        let currentTime = max(0, seconds)
         let duration = Self.duration(for: player.currentItem)
         let nextState = state.updating(currentTime: currentTime, duration: duration)
         state = nextState
