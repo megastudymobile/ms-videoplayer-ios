@@ -11,10 +11,12 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine {
+public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine {
     public nonisolated static let capabilities: EngineCapabilities = [
         .continuesWithoutSurface,
         .seamlessSurfaceSwap
+        // emitsObservedCommandState 미포함: Native는 play/pause/seek 권위 콜백이 없어
+        // Core command-origin이 그 상태를 닫는다. (설계 §5.2.1)
     ]
 
     public var currentState: PlaybackState {
@@ -23,8 +25,13 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
 
     public let eventStream: AsyncStream<PlayerEvent>
 
+    /// B안 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
+    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다. (설계 §8 4단계)
+    public let outputStream: AsyncStream<PlayerEngineOutput>
+
     private let player: AVPlayer
     private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
+    private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private var state: PlaybackState
     private weak var renderSurface: PlayerRenderSurface?
     @MainActor private var playerLayer: AVPlayerLayer?
@@ -61,6 +68,11 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
             observerContinuation = $0
         }
         self.observerEventContinuation = observerContinuation!
+        var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
+            outputContinuation = $0
+        }
+        self.outputContinuation = outputContinuation!
         self.player = player
         self.state = .idle
         self.observerConsumerTask = nil
@@ -86,6 +98,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
         observerConsumerTask?.cancel()
         observerEventContinuation.finish()
         eventContinuation.finish()
+        outputContinuation.finish()
     }
 
     /// H1 — observer 이벤트를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
@@ -98,12 +111,16 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
                 switch event {
                 case .itemFailed(let error), .failedToEnd(let error):
                     await self.handleFailure(error)
+                    await self.emitOutput(.failed(error))
                 case .timeControl(let status):
                     await self.handleTimeControlStatus(status)
+                    await self.emitOutput(.timeControl(status))
                 case .didFinish:
                     await self.handleDidFinish()
+                    await self.emitOutput(.didFinish)
                 case .periodicTime(let seconds):
                     await self.handlePeriodicTimeUpdate(seconds: seconds)
+                    await self.emitOutput(.periodicTime(seconds: seconds))
                 }
             }
         }
@@ -132,6 +149,10 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
             isBuffering: false
         )
         transition(to: nextState)
+        // Core 권위 경로: prepared 스냅샷을 outputStream으로 발행 → Core reducer가 readyToPlay 생성.
+        outputContinuation.yield(.stateInput(.prepared(
+            PlaybackPreparedSnapshot(position: 0, duration: duration, isLive: false, liveDuration: nil)
+        )))
     }
 
     public func play() async throws {
@@ -408,6 +429,15 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
 
     private func publish(event: PlayerEvent) {
         eventContinuation.yield(event)
+    }
+
+    /// observer 신호를 매퍼로 정규화해 outputStream에 발행한다(Core 권위 경로).
+    /// play/pause/seek/prepare는 명령 결과이므로 여기로 보내지 않는다(Core command-origin이 닫음).
+    private func emitOutput(_ signal: AVPlayerSignal) {
+        guard let output = AVPlayerSignalMapper.normalize(signal) else {
+            return
+        }
+        outputContinuation.yield(output)
     }
 
     private func setState(_ nextState: PlaybackState) {

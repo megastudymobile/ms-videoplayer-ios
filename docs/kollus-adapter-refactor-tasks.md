@@ -128,9 +128,9 @@
 ### Implementation (US3)
 
 - [x] T035 [US3] `AVPlayerSignalMapper` enum 구현 in `Sources/VideoPlayerEngineNative/Signal/AVPlayerSignalMapper.swift` (observer event→`PlayerEngineOutput`; `.paused`는 기본 무시 — 설계 §5.2.1/§8 5단계)
-- [>] T036 [US3] `AVPlayerAdapter`에 `outputStream` 추가 및 `PlayerEngineOutputProducing` 채택 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (`.unbounded`, 단일 인스턴스, deinit finish) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
-- [>] T037 [US3] `AVPlayerAdapter`의 stop/failure/buffering/time update 상태 규칙을 mapper→`outputStream`으로 이관 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (내부 `state`/`transition` 직접 갱신 제거) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
-- [>] T038 [US3] `emitsObservedCommandState = false`로 Native capability 신고 in `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` (play/pause/seek 권위 콜백 없음 → Core command-origin 경로 — 설계 §5.2.1) — **device/통합 QA 후속**: US1 bridge로 Native 현행 정상 동작. adapter outputStream 전환 + command-origin(Core execute)은 Kollus와 동시 전환 시 검증이 안전하므로 분리.
+- [x] T036 AVPlayerAdapter outputStream 추가 + PlayerEngineOutputProducing 채택 — 완료(.unbounded, deinit finish). AVPlayerEngineContractTests 통과.
+- [~] T037 observer state 규칙 → mapper→outputStream 이관 — 가산적 완료: observer가 AVPlayerSignal→mapper→outputStream 발행, Core가 reducer로 소비. 내부 state/eventStream mirror는 계약 호환 위해 전환기 유지(완전 제거는 공유 PlayerEngineContract 마이그레이션 후).
+- [x] T038 Native emitsObservedCommandState 미신고(=false) — 확인. play/pause/seek는 Core command-origin이 닫음.
 
 **Checkpoint**: 두 실엔진 모두 outputStream 구조. T015 shim 완전 제거. `PlayerPlaybackEngine.currentState/eventStream`을 deprecated 또는 제거 (설계 §8 2단계 후속).
 
