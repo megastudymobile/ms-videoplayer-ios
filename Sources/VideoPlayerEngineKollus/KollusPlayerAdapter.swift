@@ -13,6 +13,16 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
+// MARK: - KollusPlayerType Swift alias
+// NS_ENUM(KollusPlayerType) 케이스명(PlayerType*)이 타입명(KollusPlayerType)의 prefix와 달라
+// Swift automatic prefix stripping이 적용되지 않는다. rawValue로 안전하게 wrap.
+// swiftlint:disable force_unwrapping
+extension KollusPlayerType {
+    /// PlayerTypeNative (rawValue 1) — PiP 가능 여부 판단에 사용.
+    static let native = KollusPlayerType(rawValue: 1)! // PlayerTypeNative
+}
+// swiftlint:enable force_unwrapping
+
 public actor KollusPlayerAdapter:
     PlayerEngineAdapter,
     PlayerPlaybackRateEngine,
@@ -50,12 +60,22 @@ public actor KollusPlayerAdapter:
     /// utf8String 포인터는 NSString lifetime 동안 유효.
     @MainActor private var subtitlePathBuffer: NSString?
     private var lastKnownBookmarks: [Bookmark] = []
-    private var isSubtitleVisible: Bool = true
     private var currentZoom: CGFloat = 0
     private var hasEmittedNextEpisode: Bool = false
     private var lastNextEpisodeDebugLogSecond: Int?
-    private var isPiPRunning: Bool = false
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
+
+    /// H1 — SDK delegate(bridge) 신호를 단일 FIFO 스트림으로 직렬 소비한다.
+    /// 매 신호마다 `Task`를 새로 만들면 actor 도달 순서가 비결정적이라 `stopStarted` 뒤
+    /// 늦게 도착한 `positionChanged`가 상태를 되살리는 등 상태 꼬임이 발생한다.
+    /// bridge 콜백은 MainActor에서 continuation에 동기 yield만 하고, 단일 consumer가 순서대로 소비.
+    private enum BridgeEvent: Sendable {
+        case signal(KollusEngineSignal)
+        case bookmarks([Bookmark])
+    }
+    private nonisolated let bridgeEventStream: AsyncStream<BridgeEvent>
+    private nonisolated let bridgeEventContinuation: AsyncStream<BridgeEvent>.Continuation
+    private var signalConsumerTask: Task<Void, Never>?
 
     // MARK: - Initializers
 
@@ -72,6 +92,11 @@ public actor KollusPlayerAdapter:
             continuation = $0
         }
         self.eventContinuation = continuation!
+        var bridgeContinuation: AsyncStream<BridgeEvent>.Continuation?
+        self.bridgeEventStream = AsyncStream<BridgeEvent>(bufferingPolicy: .unbounded) {
+            bridgeContinuation = $0
+        }
+        self.bridgeEventContinuation = bridgeContinuation!
         self.bootstrapper = bootstrapper
         self.environment = environment
         self.observer = observer
@@ -79,6 +104,8 @@ public actor KollusPlayerAdapter:
         self.legacyStorage = nil
         self.playerType = playerType
         self.state = .idle
+        self.signalConsumerTask = nil
+        startSignalConsumerIfNeeded()
     }
 
     /// Test-only init: 외부 공개 표면에서 제거됨(T062, gate 0.3.0).
@@ -100,6 +127,11 @@ public actor KollusPlayerAdapter:
             continuation = $0
         }
         self.eventContinuation = continuation!
+        var bridgeContinuation: AsyncStream<BridgeEvent>.Continuation?
+        self.bridgeEventStream = AsyncStream<BridgeEvent>(bufferingPolicy: .unbounded) {
+            bridgeContinuation = $0
+        }
+        self.bridgeEventContinuation = bridgeContinuation!
         self.bootstrapper = nil
         self.environment = nil
         self.observer = nil
@@ -107,10 +139,31 @@ public actor KollusPlayerAdapter:
         self.legacyStorage = storage
         self.playerType = playerType
         self.state = .idle
+        self.signalConsumerTask = nil
+        startSignalConsumerIfNeeded()
     }
 
     deinit {
+        signalConsumerTask?.cancel()
+        bridgeEventContinuation.finish()
         eventContinuation.finish()
+    }
+
+    /// H1 — bridge 신호를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
+    private func startSignalConsumerIfNeeded() {
+        guard signalConsumerTask == nil else { return }
+        signalConsumerTask = Task { [weak self] in
+            guard let stream = self?.bridgeEventStream else { return }
+            for await event in stream {
+                guard let self else { return }
+                switch event {
+                case .signal(let signal):
+                    await self.handleSignal(signal)
+                case .bookmarks(let bookmarks):
+                    await self.handleBookmarks(bookmarks)
+                }
+            }
+        }
     }
 
     // MARK: - PlayerEngineAdapter
@@ -135,8 +188,13 @@ public actor KollusPlayerAdapter:
 
     public func seek(to time: TimeInterval) async throws {
         let clampedTime = max(0, time)
-        await MainActor.run {
-            self.playerView?.currentPlaybackTime = clampedTime
+        // H6 — playerView가 없으면(idle 등) 옵셔널 체이닝으로 조용히 무시하지 않고 throw한다.
+        // 과거엔 seek가 무시되고도 가짜 timeDidChange를 emit해 상태를 오염시켰다.
+        try await MainActor.run {
+            guard let playerView else {
+                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
+            }
+            playerView.currentPlaybackTime = clampedTime
         }
         let nextState = state.updating(currentTime: clampedTime)
         transition(to: nextState, emitStateEvent: false)
@@ -232,8 +290,8 @@ public actor KollusPlayerAdapter:
     // MARK: - PlayerSubtitleEngine / PlayerExternalSubtitleEngine
 
     public func setSubtitleVisible(_ isVisible: Bool) async throws {
-        isSubtitleVisible = isVisible
         // KollusSDK는 자막 가시성 직접 API를 노출하지 않는다. 정책 다운그레이드 이벤트로 surfacing.
+        // (M12 — 과거 저장만 하고 읽지 않던 isSubtitleVisible 필드 제거.)
         publish(event: .policyDowngraded(reason: .custom("Kollus SDK는 자막 가시성 토글을 지원하지 않습니다. isVisible=\(isVisible)")))
     }
 
@@ -357,13 +415,13 @@ public actor KollusPlayerAdapter:
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
             }
         }
-        guard playerType.rawValue == 1 else {
+        guard playerType == .native else {
             throw PlayerError.engineError("PIP는 KollusPlayerType.native 한정으로 지원됩니다.")
         }
-        // KollusSDK는 PIP 직접 API를 노출하지 않음 — 실 구현은 host의 AVPictureInPictureController가 KollusPlayerView 내부 AVPlayer를 사용.
-        // 현재 단계에서는 환경 적격성만 검사하고 not-implemented signal을 발행.
-        isPiPRunning = true
-        publish(event: .policyDowngraded(reason: .custom("PIP 시작 — host AVPictureInPictureController 통합 필요")))
+        // H9 — KollusSDK는 PiP 직접 API가 없고 실 구현은 host AVPictureInPictureController 통합이 필요하다.
+        // 과거엔 isPiPRunning 플래그를 토글해 isPiPActive가 실제 PiP 상태와 무관하게 true로 거짓 보고됐다.
+        // 미구현 동안 내부 상태를 바꾸지 않고(=isPiPActive 항상 false) 통지 이벤트만 발행한다.
+        publish(event: .policyDowngraded(reason: .custom("PIP 미구현 — host AVPictureInPictureController 통합 필요")))
     }
 
     public func stopPiP() async throws {
@@ -372,16 +430,16 @@ public actor KollusPlayerAdapter:
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
             }
         }
-        guard playerType.rawValue == 1 else {
+        guard playerType == .native else {
             throw PlayerError.engineError("PIP는 KollusPlayerType.native 한정으로 지원됩니다.")
         }
-        isPiPRunning = false
-        publish(event: .policyDowngraded(reason: .custom("PIP 중지 — host AVPictureInPictureController 통합 필요")))
+        publish(event: .policyDowngraded(reason: .custom("PIP 미구현 — host AVPictureInPictureController 통합 필요")))
     }
 
+    /// H9 — 실제 PiP 미구현이므로 항상 false. startPiP가 내부 플래그를 토글하지 않아 거짓 활성 보고가 없다.
     public var isPiPActive: Bool {
         get async {
-            isPiPRunning
+            false
         }
     }
 
@@ -480,16 +538,14 @@ public actor KollusPlayerAdapter:
             }
 
             // 1) bridge 생성 + 4종 delegate 부착 (prepareToPlay 호출 전 필수)
+            // H1 — 콜백은 단일 FIFO 스트림에 동기 yield만. 순서 보장은 consumer가 담당.
+            let bridgeEventContinuation = self.bridgeEventContinuation
             let bridge = KollusDelegateBridge(
                 onSignal: { signal in
-                    Task { [weak self] in
-                        await self?.handleSignal(signal)
-                    }
+                    bridgeEventContinuation.yield(.signal(signal))
                 },
                 onBookmarks: { bookmarks in
-                    Task { [weak self] in
-                        await self?.handleBookmarks(bookmarks)
-                    }
+                    bridgeEventContinuation.yield(.bookmarks(bookmarks))
                 },
                 observer: observer,
                 diagnostics: diagnostics
@@ -571,6 +627,12 @@ public actor KollusPlayerAdapter:
         }
     }
 
+    /// H2/M13 — **test-only 경로**. `init(storage:)`/`internal init()`로만 진입하며 bridge/delegate를
+    /// 배선하지 않는다(SDK `prepareToPlayWithError` 완료 콜백을 받지 못함). 따라서 프로덕션
+    /// 완료-대기 계약을 의도적으로 지키지 않고 `prepareToPlay` 동기 호출 직후 `.readyToPlay`로 전이한다.
+    /// 이는 SDK 콜백 없이 동작하는 단위 테스트 스캐폴딩 전용이며, **프로덕션은 반드시 bootstrapped 경로**
+    /// (`init(bootstrapper:environment:)`)를 사용한다 — 그 경로는 `installPrepareContinuation` +
+    /// `prepareToPlayCompleted` delegate 완료까지 대기해 autoplay가 준비 완료 이후에만 play를 호출한다.
     private func prepareWithLegacyStorage(source: PlaybackSource) async throws {
         guard let storage = legacyStorage else {
             throw PlayerError.engineError("legacy storage 누락")
@@ -622,7 +684,7 @@ public actor KollusPlayerAdapter:
         switch signal {
         case .prepareToPlayCompleted(let error):
             if let error {
-                let pe = PlayerError.engineError("Kollus prepareToPlay 실패: \(error.localizedDescription)")
+                let pe = PlayerError.classify(error, engineContext: "Kollus prepareToPlay 실패")
                 transition(to: state.updating(status: .failed(pe), isBuffering: false))
                 if pendingPrepareContinuation != nil {
                     completePendingPrepare(with: .failure(pe))
@@ -637,21 +699,30 @@ public actor KollusPlayerAdapter:
 
         case .playStarted(_, let error):
             if let error {
-                handleFailure(.engineError("Kollus play 실패: \(error.localizedDescription)"))
+                handleFailure(PlayerError.classify(error, engineContext: "Kollus play 실패"))
                 return
             }
             transition(to: state.updating(status: .playing, isBuffering: false))
 
         case .pauseStarted(_, let error):
             if let error {
-                handleFailure(.engineError("Kollus pause 실패: \(error.localizedDescription)"))
+                handleFailure(PlayerError.classify(error, engineContext: "Kollus pause 실패"))
                 return
             }
             transition(to: state.updating(status: .paused, isBuffering: false))
 
         case .bufferingChanged(let buffering, _, let error):
             if let error {
-                handleFailure(.engineError("Kollus buffering 실패: \(error.localizedDescription)"))
+                handleFailure(PlayerError.classify(error, engineContext: "Kollus buffering 실패"))
+                return
+            }
+            // M3 — terminal 상태(.finished/.failed)는 늦은 buffering 이벤트로 되살리지 않는다.
+            if case .finished = state.status {
+                publish(event: .bufferingDidChange(isBuffering: buffering))
+                return
+            }
+            if case .failed = state.status {
+                publish(event: .bufferingDidChange(isBuffering: buffering))
                 return
             }
             let nextStatus: PlaybackState.Status
@@ -667,7 +738,7 @@ public actor KollusPlayerAdapter:
 
         case .stopStarted(let userInteraction, let error):
             if let error {
-                handleFailure(.engineError("Kollus stop 실패: \(error.localizedDescription)"))
+                handleFailure(PlayerError.classify(error, engineContext: "Kollus stop 실패"))
                 return
             }
             let nextStatus: PlaybackState.Status = userInteraction ? .idle : .finished
@@ -685,7 +756,7 @@ public actor KollusPlayerAdapter:
             await emitNextEpisodeIfNeeded(currentTime: time)
 
         case .unknownError(let error):
-            let pe = PlayerError.engineError("Kollus unknown error: \(error.localizedDescription)")
+            let pe = PlayerError.classify(error, engineContext: "Kollus unknown error")
             transition(to: state.updating(status: .failed(pe), isBuffering: false))
             publish(event: .didFail(pe))
 
@@ -942,13 +1013,6 @@ public actor KollusPlayerAdapter:
 
     private func publish(event: PlayerEvent) {
         eventContinuation.yield(event)
-    }
-
-    private func mapToPlayerError(_ error: Error) -> PlayerError {
-        if let playerError = error as? PlayerError {
-            return playerError
-        }
-        return .unknown((error as NSError).localizedDescription)
     }
 
     private static func scalingMode(mode: PlayerDisplayScaleMode) -> KollusPlayerContentMode {
