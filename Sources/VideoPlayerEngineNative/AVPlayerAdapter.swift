@@ -150,6 +150,9 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         )
         transition(to: nextState)
         // Core 권위 경로: prepared 스냅샷을 outputStream으로 발행 → Core reducer가 readyToPlay 생성.
+        #if DEBUG
+        NSLog("[Native.out] prepared duration=%.3f", duration)
+        #endif
         outputContinuation.yield(.stateInput(.prepared(
             PlaybackPreparedSnapshot(position: 0, duration: duration, isLive: false, liveDuration: nil)
         )))
@@ -437,6 +440,10 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         guard let output = AVPlayerSignalMapper.normalize(signal) else {
             return
         }
+        #if DEBUG
+        // device QA: AVPlayer observer 신호 → outputStream 발행 추적. (followup-spec §6)
+        NSLog("[Native.out] %@ -> %@", String(describing: signal), String(describing: output))
+        #endif
         outputContinuation.yield(output)
     }
 

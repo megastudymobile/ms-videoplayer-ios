@@ -260,13 +260,29 @@ public actor PlayerCore {
         switch engineOutput {
         case .stateInput(let input):
             // 상태를 움직이는 입력은 reducer가 유일하게 다음 상태를 만든다.
-            apply(stateReducer.reduce(input, state: currentState))
+            let reduced = stateReducer.reduce(input, state: currentState)
+            #if DEBUG
+            // device QA: stateInput이 어떤 상태 전이를 만드는지 추적. (followup-spec §6)
+            // 특히 `.prepared`가 source 전환 후 늦게 도착해 새 상태를 덮는지(stale, spec §3.4) 관찰.
+            NSLog("[PlayerCore.out] %@ | %@ -> %@ | source=%@",
+                  String(describing: input),
+                  String(describing: currentState.status),
+                  String(describing: reduced.next.status),
+                  String(describing: currentSource))
+            #endif
+            apply(reduced)
         case .event(.stateDidChange(let state)):
             // 전환기 bridge 경로: adapter가 만든 full-state 스냅샷을 그대로 적용한다.
             // (미전환 엔진은 prepared/play/pause 전이를 여전히 `.stateDidChange`로 보고한다.)
+            #if DEBUG
+            NSLog("[PlayerCore.out] bridge stateDidChange -> %@", String(describing: state.status))
+            #endif
             transition(to: state)
         case .event(let event):
             // 상태를 움직이지 않는 이벤트는 passthrough.
+            #if DEBUG
+            NSLog("[PlayerCore.out] event %@", String(describing: event))
+            #endif
             publish(event: event)
         }
     }
@@ -283,8 +299,16 @@ public actor PlayerCore {
     /// `.stateInput`이 상태를 만들므로 여기서 또 넣으면 이중 적용/경합이 된다. (설계 §5.2.1)
     private func applyCommandOriginIfNeeded(_ input: PlaybackStateInput) {
         guard !engineCapabilities.contains(.emitsObservedCommandState) else {
+            #if DEBUG
+            // device QA: 권위 콜백 엔진(Kollus)은 command-origin을 건너뛰고 outputStream을 신뢰한다.
+            NSLog("[PlayerCore.cmd] skip command-origin (engine emits observed state): %@",
+                  String(describing: input))
+            #endif
             return
         }
+        #if DEBUG
+        NSLog("[PlayerCore.cmd] command-origin %@", String(describing: input))
+        #endif
         apply(stateReducer.reduce(input, state: currentState))
     }
 

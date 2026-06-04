@@ -896,6 +896,10 @@ public actor KollusPlayerAdapter:
         ) else {
             return
         }
+        #if DEBUG
+        // device QA: Kollus 신호 → outputStream 발행 추적. (followup-spec §6)
+        NSLog("[Kollus.out] %@ -> %@", String(describing: signal), String(describing: output))
+        #endif
         outputContinuation.yield(output)
     }
 
