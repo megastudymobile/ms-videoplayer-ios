@@ -240,6 +240,34 @@
 
 ---
 
+## 8. 구현 상태 (2026-06-02, ROI 묶음 1~8)
+
+검토 권장 묶음을 순서대로 코드에 반영. 각 묶음 후 `VideoPlayerExample` 빌드 + `VideoPlayerModuleTests`(167) 검증 — 전부 green.
+
+| 묶음 | 항목 | 구현 | 파일 |
+|------|------|------|------|
+| 1 | H1 신호 직렬화 | ✅ 어댑터별 단일 `AsyncStream` FIFO consumer(`bridgeEventStream`/`observerEventStream`), 콜백은 동기 yield만 | KollusPlayerAdapter, AVPlayerAdapter |
+| 2 | H4·H5·H7 | ✅ `prepareGeneration` 토큰 — 취소 시 `.idle` 복원, stale 정리/실패 surfacing 차단 | PlayerCore.start |
+| 2 | H6 | ✅ 엔진 레벨 가드 — `seek`가 playerView nil이면 throw(가짜 timeDidChange 차단). PlayerCore execute-가드는 "상태 무관 라우터" 테스트 계약 보존 위해 생략 | KollusPlayerAdapter.seek |
+| 2 | M3·M4 | ✅ terminal(.finished/.failed) 상태 buffering 역전 방지, duration=0 덮어쓰기 방지 | PlayerCore.consume, Kollus handleSignal |
+| 3 | H3 | ✅ `PlayerError.classify`(NSURL→network/auth, AVFoundation→decoding) 신설, PlayerCore+Kollus 전 실패 경로 경유. dead `mapToPlayerError`(Kollus) 제거 | PlayerError+Classify(신규), PlayerCore, KollusPlayerAdapter |
+| 4 | H10·M1 | ✅ `dispose()` async화 + `engine.stop(.appLifecycle)` idempotent 선행(비정상 종료 시 세션/proxy 잔류·타이머 크래시 최종 방어). 호출부는 이미 `await` | PlayerCore.dispose |
+| 5 | H8 | ✅ 실배선 확인 — 팩토리가 `audioBackgroundPlayPolicy` 시 `.continuesWithoutSurface` OR-in하여 모순 없음(코드 변경 불요) | KollusPlayerModuleFactory(기존) |
+| 5 | H9 | ✅ PiP 정직화 — `isPiPRunning` 제거, `isPiPActive` 항상 false(거짓 활성 보고 제거), 통지 이벤트만 유지 | KollusPlayerAdapter |
+| 6 | H2·M13 | ✅ legacy prepare가 **test-only**(bridge/delegate 미배선)임을 명시 문서화. 프로덕션 bootstrapped 경로는 이미 delegate-await 정확 | KollusPlayerAdapter |
+| 7 | **M9** | **⏸ deferred** — `KollusEngineSignal`의 `Error` 페이로드 Sendable화 + `PlayerRenderSurface` @MainActor화는 strict concurrency를 켜는 실제 Swift6 마이그레이션에서 컴파일러 안내 하에 수행해야 함. 패키지가 Swift 5 모드라 현재 컴파일 이득 0이고, 3개 테스트 파일(NSError 왕복 단언) + actor 격리 모델 연쇄 변경을 blind로 하면 검증 불가·고위험. 묶음1에서 추가한 `BridgeEvent`/`ObserverEvent`는 Sendable-clean(악화 없음) | — |
+| 8 | M10 | ✅ `PlayerFeaturePolicy.maxPlaybackRate` Float→Double(경계 부동소수 오차 제거). host는 `Double()` 래핑이라 소스 호환 | PlayerFeaturePolicy, PlayerCore |
+| 8 | M5 | ✅ dead `KollusEnvironment.extraDrmParameters` 제거(사용처 0) | KollusEnvironment |
+| 8 | M7 | ✅ `playerType == .native`(매직넘버 `==1` 제거). `KollusPlayerType.native` Swift alias 도입(NS_ENUM prefix stripping 미작동). init 기본값은 access-level 제약으로 controlled force-unwrap 유지 | KollusPlayerAdapter |
+| 8 | M8 | ✅ `KollusSessionBootstrapper.invalidate()` 추가(만료/재인증 시 cachedStorage 폐기) | KollusSessionBootstrapper |
+| 8 | M12 | ✅ dead `isSubtitleVisible` 필드 제거(동작 유지) | KollusPlayerAdapter |
+| 8 | M11 | ➖ host가 강의목록 인덱스 구동으로 이미 보강(엔진 seek-skip 저영향) → 엔진 코드 변경 생략 | — |
+| — | M2·M6 | 미반영 — bind/unbind 순서(M2)는 H1 직렬화로 부분 완화, DRM 실패 surfacing(M6)은 host observer 계약 영역. 후속 검토 |
+
+**전부 빌드 green / 167 테스트 통과.** 변경은 videoplayer-ios-ms 엔진 패키지 한정(host 무변경 — `dispose`/`maxPlaybackRate`는 소스 호환).
+
+---
+
 ## 부록 — 참조 핵심 파일
 
 ```
