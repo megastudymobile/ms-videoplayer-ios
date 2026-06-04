@@ -15,6 +15,15 @@ public actor PlayerCore {
     private let engine: PlayerPlaybackEngine
     private let engineCapabilities: EngineCapabilities
     private let stateReducer = PlaybackStateReducer()
+    /// seek "chase" 정책 (Apple QA1820 패턴). 엔진 seek은 동시에 **1개만** in-flight.
+    /// - `chaseTime`: 아직 엔진에 보내지 않은 최신 목표(연타 시 여기에 누적).
+    /// - `seekInProgressValue`: 현재 엔진에 보낸 seek 목표(nil = in-flight 없음).
+    /// 진행 중 seek이 목표 근처에 도달(완료)하면, `chaseTime`이 있으면 그쪽으로 다시 seek(chase),
+    /// 없으면 완료 처리한다. 완료 전 들어오는 stale/echo positionChanged는 전부 무시한다.
+    /// (탭마다 엔진 seek을 쏟아부으면 SDK가 위치 콜백을 뒤섞어 진동/롤백이 생긴다.)
+    private var chaseTime: TimeInterval?
+    private var seekInProgressValue: TimeInterval?
+    private static let seekSettleThreshold: TimeInterval = 3.0
     private var pendingPrepareTask: Task<Void, Error>?
     /// H5/H7 — prepare 작업의 세대(generation). `start` 진입마다 증가하며, await 복귀 후
     /// `generation == prepareGeneration`인 경우에만 "내가 아직 최신 작업"이다.
@@ -119,6 +128,8 @@ public actor PlayerCore {
         let effectivePolicy = applyEffectivePolicy(policy)
         currentPolicy = effectivePolicy.policy
         currentSource = source
+        chaseTime = nil
+        seekInProgressValue = nil
 
         if let reason = effectivePolicy.reason {
             publish(event: .policyDowngraded(reason: reason))
@@ -185,16 +196,20 @@ public actor PlayerCore {
             }
             applyCommandOriginIfNeeded(.pauseStarted)
         case .seek(let time):
+            // 단순 seek은 직접 await해 에러를 caller에게 propagate한다.
+            // (.seekWithOrigin 연타는 chase 패턴으로 비차단 처리.)
+            chaseTime = nil
+            seekInProgressValue = nil
+            apply(stateReducer.reduce(.seeking(time: time), state: currentState))
             try await executeEngineCommand {
                 try await engine.seek(to: time)
             }
-            applyCommandOriginIfNeeded(.positionChanged(time: time, duration: nil))
         case .seekWithOrigin(let time, let origin):
-            let targetTime = seekTargetTime(for: time, origin: origin)
-            try await executeEngineCommand {
-                try await engine.seek(to: targetTime)
-            }
-            applyCommandOriginIfNeeded(.positionChanged(time: targetTime, duration: nil))
+            // 연타 skip은 chase 패턴(단일 in-flight)으로 처리한다. actor 재진입 때문에 await-per-tap으로는
+            // 직렬화되지 않아 SDK에 seek이 쏟아져 위치 콜백이 진동(롤백)한다. 최신 목표만 chaseTime에
+            // 누적하고 in-flight seek 완료 시 그쪽으로 chase한다. (Apple QA1820)
+            let base = chaseTime ?? seekInProgressValue ?? currentState.currentTime
+            requestSeek(to: seekTargetTime(for: time, origin: origin, base: base))
         case .setPlaybackRate(let rate):
             try await setPlaybackRate(rate)
         case .setSkipInterval(let interval):
@@ -230,6 +245,8 @@ public actor PlayerCore {
                 try await engine.stop(reason: .userClosed)
             }
             currentSource = nil
+            chaseTime = nil
+            seekInProgressValue = nil
             // stop은 양쪽 엔진 모두 command-origin으로 닫아도 안전(.idle은 멱등).
             apply(stateReducer.reduce(.stopped(.userClosed), state: currentState))
         }
@@ -259,6 +276,29 @@ public actor PlayerCore {
     private func consume(engineOutput: PlayerEngineOutput) {
         switch engineOutput {
         case .stateInput(let input):
+            // in-flight seek 정책: 정착 전(SDK가 목표 근처 도달 전) stale positionChanged는 버린다.
+            // 목표 근처에 도달하면 pending을 해제하고 통과시켜 로딩을 내린다.
+            if case .positionChanged(let time, _) = input, let inProgress = seekInProgressValue {
+                guard abs(time - inProgress) <= Self.seekSettleThreshold else {
+                    // 진행 중 seek이 아직 목표에 도달하지 않음 → stale/echo 위치 무시.
+                    #if DEBUG
+                    NSLog("[PlayerCore.out] drop stale position %.1f (seek in progress -> %.1f)", time, inProgress)
+                    #endif
+                    return
+                }
+                // 이 leg는 목표에 도달(완료). 더 새 목표(chaseTime)가 있으면 그쪽으로 다시 seek.
+                if let next = chaseTime {
+                    chaseTime = nil
+                    seekInProgressValue = next
+                    dispatchEngineSeek(to: next)
+                    return // 아직 chase 진행 중 — 이 위치는 반영하지 않음
+                }
+                seekInProgressValue = nil // 완전 정착 → 아래로 진행해 위치 반영 + 로딩 해제
+            } else if seekInProgressValue != nil {
+                // positionChanged가 아닌 권위 전이(play/pause/stopped/prepared/failed)는 chase를 끝낸다.
+                seekInProgressValue = nil
+                chaseTime = nil
+            }
             // 상태를 움직이는 입력은 reducer가 유일하게 다음 상태를 만든다.
             let reduced = stateReducer.reduce(input, state: currentState)
             #if DEBUG
@@ -310,6 +350,44 @@ public actor PlayerCore {
         NSLog("[PlayerCore.cmd] command-origin %@", String(describing: input))
         #endif
         apply(stateReducer.reduce(input, state: currentState))
+    }
+
+    /// seek 요청(chase 패턴). 목표를 즉시 UI에 반영(.seeking: 점프+로딩)하고, in-flight seek이 없으면
+    /// 엔진 seek을 1개 시작한다. in-flight 중이면 `chaseTime`만 갱신해 완료 시 chase한다.
+    private func requestSeek(to target: TimeInterval) {
+        chaseTime = target
+        // 즉시 점프 + 로딩 표시(레거시 parity). 완료 시 positionChanged가 로딩을 내린다.
+        apply(stateReducer.reduce(.seeking(time: target), state: currentState))
+        startChaseIfNeeded()
+    }
+
+    private func startChaseIfNeeded() {
+        guard seekInProgressValue == nil, let chase = chaseTime else {
+            return
+        }
+        chaseTime = nil
+        seekInProgressValue = chase
+        dispatchEngineSeek(to: chase)
+    }
+
+    /// 엔진 seek을 비차단으로 발행한다(완료는 positionChanged로 감지). 동시 1개만 보장됨.
+    private func dispatchEngineSeek(to target: TimeInterval) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.engine.seek(to: target)
+            } catch {
+                await self.handleSeekFailure(error)
+            }
+        }
+    }
+
+    private func handleSeekFailure(_ error: Error) {
+        seekInProgressValue = nil
+        chaseTime = nil
+        let playerError = mapToPlayerError(error)
+        apply(stateReducer.reduce(.failed(playerError), state: currentState))
+        publish(event: .didFail(playerError))
     }
 
     /// 미전환 엔진의 `PlayerEvent`를 `PlayerEngineOutput`으로 감싸는 비손실 bridge. (설계 §8 2단계)
@@ -507,15 +585,16 @@ public actor PlayerCore {
 
     private func seekTargetTime(
         for requestedTime: TimeInterval,
-        origin: PlayerSeekOrigin
+        origin: PlayerSeekOrigin,
+        base: TimeInterval
     ) -> TimeInterval {
         let rawTargetTime: TimeInterval
 
         switch origin {
         case .skipForward:
-            rawTargetTime = currentState.currentTime + currentPolicy.skipInterval
+            rawTargetTime = base + currentPolicy.skipInterval
         case .skipBackward:
-            rawTargetTime = currentState.currentTime - currentPolicy.skipInterval
+            rawTargetTime = base - currentPolicy.skipInterval
         default:
             rawTargetTime = requestedTime
         }

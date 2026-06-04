@@ -81,7 +81,11 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
         screenModeButton.addTarget(self, action: #selector(screenModeTap), for: .touchUpInside)
     }
 
-    @objc private func seekBegan() { isSeeking = true }
+    @objc private func seekBegan() {
+        isSeeking = true
+        // 레거시 parity: 스크러버를 잡는 순간 재생을 멈춘다(host가 pause).
+        onAction?(.seekBegan)
+    }
     @objc private func seekChanged() {
         let time = PlayerSkinState.previewTime(for: slider.value, duration: latestDuration)
         currentTimeLabel.text = PlayerSkinState.formatTime(time)

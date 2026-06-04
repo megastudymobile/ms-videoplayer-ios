@@ -11,6 +11,9 @@ import Foundation
 public enum PlayerSkinAction: Equatable {
     case closeRequested
     case togglePlayPause
+    /// 진행바 스크러버 잡기 시작(touchDown). 레거시 `willUpdatePlaybackProgress` parity —
+    /// host가 재생을 일시정지(freeze)해 사용자가 위치를 고르는 동안 화면을 멈춘다.
+    case seekBegan
     case seekPreviewChanged(TimeInterval)
     case seekEnded(TimeInterval)
     case skipBackward

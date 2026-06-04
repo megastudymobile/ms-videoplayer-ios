@@ -221,4 +221,31 @@ struct PlaybackStateReducerTests {
         let zeroOutput = reducer.reduce(.positionChanged(time: 50, duration: 0), state: state)
         #expect(zeroOutput.next.duration == 120)
     }
+
+    // MARK: - seeking (위치만, 로딩 없음 — YouTube 동작)
+
+    @Test("seeking은 목표 위치로 점프하되 상태/버퍼링은 바꾸지 않는다(로딩 없음)")
+    func seekingJumpsWithoutLoading() {
+        let output = reducer.reduce(.seeking(time: 90), state: makeState(status: .playing, currentTime: 10, duration: 120))
+
+        #expect(output.next.currentTime == 90)
+        #expect(output.next.status == .playing)
+        #expect(output.next.isBuffering == false)
+        #expect(output.events == [.timeDidChange(currentTime: 90, duration: 120)])
+    }
+
+    @Test("seeking은 paused 상태도 유지한다(로딩으로 바꾸지 않음)")
+    func seekingKeepsPaused() {
+        let output = reducer.reduce(.seeking(time: 50), state: makeState(status: .paused, currentTime: 10, duration: 120))
+
+        #expect(output.next.currentTime == 50)
+        #expect(output.next.status == .paused)
+    }
+
+    @Test("seeking은 finished를 되살리지 않는다")
+    func seekingIgnoredWhenFinished() {
+        let output = reducer.reduce(.seeking(time: 30), state: makeState(status: .finished))
+        #expect(output.next == makeState(status: .finished))
+        #expect(output.events.isEmpty)
+    }
 }

@@ -54,18 +54,23 @@ public struct PlaybackStateReducer: Sendable {
             return reduceStopped(reason, state: state)
 
         case .positionChanged(let time, let duration):
-            // M4 — 미확정 duration(0)이 이미 확정된 duration을 덮어쓰지 않도록 보호.
-            let resolvedDuration: TimeInterval
-            if let duration, duration > 0 {
-                resolvedDuration = duration
-            } else {
-                resolvedDuration = state.duration
+            return reducePositionChanged(time: time, duration: duration, state: state)
+
+        case .seeking(let time):
+            // seek: 목표 위치로 즉시 점프(위치만). 로딩 인디케이터/상태 변경 없음(YouTube 동작).
+            // 영상 정지/재개는 Shell의 scrubBegan→pause / release→play가 담당하고,
+            // 실제 버퍼링이 필요하면 SDK의 bufferingChanged가 로딩을 따로 구동한다.
+            // terminal(.finished/.failed)에서는 무시.
+            if case .finished = state.status {
+                return PlaybackStateReducerOutput(next: state, events: [])
             }
-            let next = state.updating(currentTime: time, duration: resolvedDuration)
-            // 상태는 갱신하되 stateDidChange가 아니라 timeDidChange만 발행(기존 consume과 동일).
+            if case .failed = state.status {
+                return PlaybackStateReducerOutput(next: state, events: [])
+            }
+            let next = state.updating(currentTime: time)
             return PlaybackStateReducerOutput(
                 next: next,
-                events: [.timeDidChange(currentTime: time, duration: resolvedDuration)]
+                events: [.timeDidChange(currentTime: time, duration: next.duration)]
             )
 
         case .failed(let error):
@@ -75,6 +80,27 @@ public struct PlaybackStateReducer: Sendable {
     }
 
     // MARK: - Private
+
+    private func reducePositionChanged(
+        time: TimeInterval,
+        duration: TimeInterval?,
+        state: PlaybackState
+    ) -> PlaybackStateReducerOutput {
+        // M4 — 미확정 duration(0)이 이미 확정된 duration을 덮어쓰지 않도록 보호.
+        let resolvedDuration: TimeInterval
+        if let duration, duration > 0 {
+            resolvedDuration = duration
+        } else {
+            resolvedDuration = state.duration
+        }
+        // 위치 갱신만 한다(상태/버퍼링 불변). seek의 stale 위치 무시는 PlayerCore chase가 처리하고,
+        // 실제 버퍼링 표시는 SDK의 bufferingChanged가 구동한다.
+        let next = state.updating(currentTime: time, duration: resolvedDuration)
+        return PlaybackStateReducerOutput(
+            next: next,
+            events: [.timeDidChange(currentTime: time, duration: resolvedDuration)]
+        )
+    }
 
     private func reduceBufferingChanged(
         _ buffering: Bool,

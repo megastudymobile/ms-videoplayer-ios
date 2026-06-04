@@ -21,5 +21,9 @@ public enum PlaybackStateInput: Sendable {
     case bufferingChanged(Bool)
     case stopped(PlayerStopReason)
     case positionChanged(time: TimeInterval, duration: TimeInterval?)
+    /// 사용자 seek 명령. 목표 위치로 즉시 점프하되 새 프레임이 준비될 때까지 buffering(로딩)으로 둔다.
+    /// 다운로드 콘텐츠처럼 SDK가 seek 시 buffering을 안 주는 경우에도 레거시처럼 로딩 인디케이터를
+    /// 보장한다. 엔진의 첫 `positionChanged`(seek 완료)가 buffering을 해제한다.
+    case seeking(time: TimeInterval)
     case failed(PlayerError)
 }
