@@ -266,10 +266,13 @@ public actor PlayerCore {
         do {
             try await operation()
         } catch {
-            let playerError = mapToPlayerError(error)
-            transition(to: currentState.updating(status: .failed(playerError), isBuffering: false))
-            publish(event: .didFail(playerError))
-            throw playerError
+            // play/pause/seek/stop 같은 런타임 명령의 실패는 일시적·복구 가능하다(빠른 스크럽/전환 중
+            // Kollus가 간헐적으로 _GenericObjCError를 throw). 이를 치명적 `.failed` 상태/alert로 만들면
+            // 한 번의 transient throw로 플레이어가 실패에 갇힌다. 따라서 상태를 바꾸지 않고 삼킨다.
+            // (영상 로드 자체의 실패는 prepare 경로 `start(...)`에서 별도로 치명적으로 처리된다.)
+            #if DEBUG
+            NSLog("[PlayerCore] transient engine command failure ignored: %@", String(describing: error))
+            #endif
         }
     }
 
@@ -383,11 +386,14 @@ public actor PlayerCore {
     }
 
     private func handleSeekFailure(_ error: Error) {
+        // seek 실패는 일시적이다(빠른 스크럽/프리뷰 중 Kollus가 간헐적으로 _GenericObjCError를 throw).
+        // 치명적 `.failed` 상태/alert로 승격하지 않는다 — in-flight만 정리하고, 대기 중인 최신 목표가
+        // 있으면 계속 chase한다. (한 번의 스크럽 throw로 플레이어 전체가 실패 상태에 갇히던 문제 수정.)
+        #if DEBUG
+        NSLog("[PlayerCore] transient seek failure ignored: %@", String(describing: error))
+        #endif
         seekInProgressValue = nil
-        chaseTime = nil
-        let playerError = mapToPlayerError(error)
-        apply(stateReducer.reduce(.failed(playerError), state: currentState))
-        publish(event: .didFail(playerError))
+        startChaseIfNeeded()
     }
 
     /// 미전환 엔진의 `PlayerEvent`를 `PlayerEngineOutput`으로 감싸는 비손실 bridge. (설계 §8 2단계)

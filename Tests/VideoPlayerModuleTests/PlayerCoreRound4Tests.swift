@@ -202,8 +202,8 @@ final class PlayerCoreRound4Tests {
         }
     }
 
-    @Test("play 명령 실패 시 failed로 전이하고 에러를 재전파한다")
-    func executePlayFailureTransitionsToFailedAndRethrows() async throws {
+    @Test("play 명령 실패는 일시적이라 throw하지 않고 didFail도 내지 않는다")
+    func executePlayFailureIsNonFatal() async throws {
         let engine = TestPlayerEngineAdapter()
         await engine.setPlayError(.engineError("play blocked"))
         let core = PlayerCore(
@@ -214,22 +214,16 @@ final class PlayerCoreRound4Tests {
 
         let eventRecorder = startRecording(core.eventStream)
 
-        do {
-            try await core.execute(command: .play)
-            Issue.record("Expected play command to throw")
-        } catch let error as PlayerError {
-            #expect(error == .engineError("play blocked"))
-        } catch {
-            Issue.record("Unexpected error: \(error)")
-        }
+        // 런타임 명령 실패는 복구 가능 — 예외를 던지지 않는다(throw 시 이 줄에서 테스트 실패).
+        try await core.execute(command: .play)
 
-        try await waitUntil {
-            await eventRecorder.failureError == .engineError("play blocked")
-        }
+        // 치명적 실패 이벤트(didFail)도 발행하지 않는다.
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(await eventRecorder.failureError == nil)
     }
 
-    @Test("seek 명령 실패 시 failed로 전이하고 에러를 재전파한다")
-    func executeSeekFailureTransitionsToFailedAndRethrows() async throws {
+    @Test("seek 명령 실패는 일시적이라 throw하지 않고 didFail도 내지 않는다")
+    func executeSeekFailureIsNonFatal() async throws {
         let engine = TestPlayerEngineAdapter()
         await engine.setSeekError(.engineError("seek denied"))
         let core = PlayerCore(
@@ -240,18 +234,10 @@ final class PlayerCoreRound4Tests {
 
         let eventRecorder = startRecording(core.eventStream)
 
-        do {
-            try await core.execute(command: .seek(to: 10))
-            Issue.record("Expected seek command to throw")
-        } catch let error as PlayerError {
-            #expect(error == .engineError("seek denied"))
-        } catch {
-            Issue.record("Unexpected error: \(error)")
-        }
+        try await core.execute(command: .seek(to: 10))
 
-        try await waitUntil {
-            await eventRecorder.failureError == .engineError("seek denied")
-        }
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(await eventRecorder.failureError == nil)
     }
 
     private func startRecording<Value: Sendable>(
