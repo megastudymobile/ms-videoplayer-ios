@@ -18,7 +18,7 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 `Sources/VideoPlayerCore/StateTransition/` 디렉터리 생성 및 `Package.swift` 타깃 소스 경로 확인 (VideoPlayerCore 타깃이 새 폴더를 포함하는지 검증)
+- [x] T001 `Sources/VideoPlayerCore/StateTransition/` 디렉터리 생성 및 `Package.swift` 타깃 소스 경로 확인 (VideoPlayerCore 타깃이 새 폴더를 포함하는지 검증)
 - [ ] T002 [P] `Sources/VideoPlayerEngineKollus/Signal/`, `Sources/VideoPlayerEngineKollus/Adapter/`, `Sources/VideoPlayerEngineKollus/Surface/` 디렉터리 생성
 - [ ] T003 [P] `Sources/VideoPlayerEngineNative/Signal/` 디렉터리 생성
 - [ ] T004 [P] `Tests/VideoPlayerModuleTests/Native/`, `Tests/VideoPlayerModuleTests/Kollus/Support/` 테스트 디렉터리 생성
@@ -29,11 +29,11 @@
 
 **목적**: reducer·mapper·Core가 공유하는 SDK 독립 입력/출력 타입을 먼저 고정한다. 이 타입이 없으면 어느 story도 시작 불가.
 
-- [ ] T005 [P] `PlaybackStateInput` enum 정의 in `Sources/VideoPlayerCore/StateTransition/PlaybackStateInput.swift` (`Sendable`; cases: prepared/prepareFailed/playStarted/pauseStarted/bufferingChanged/stopped/positionChanged/failed — 설계 §5.2)
-- [ ] T006 [P] `PlaybackPreparedSnapshot` struct 정의 in `Sources/VideoPlayerCore/StateTransition/PlaybackPreparedSnapshot.swift` (`Sendable`; position/duration/isLive/liveDuration)
-- [ ] T007 [P] `PlaybackStateReducerOutput` struct 정의 in `Sources/VideoPlayerCore/StateTransition/PlaybackStateReducerOutput.swift` (`Sendable`; next: PlaybackState, events: [PlayerEvent])
-- [ ] T008 `PlayerEngineOutput` enum 정의 in `Sources/VideoPlayerCore/Contract/PlayerEngineOutput.swift` (`Sendable`; `.stateInput(PlaybackStateInput)` / `.event(PlayerEvent)`; `Error` existential 미탑재 — 설계 §5.2)
-- [ ] T009 `EngineCapabilities`에 `emitsObservedCommandState` 비트 추가 in `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift` (rawValue 1<<3; 권위 콜백 유무 모델링 — 설계 §5.2.1)
+- [x] T005 [P] `PlaybackStateInput` enum 정의 in `Sources/VideoPlayerCore/StateTransition/PlaybackStateInput.swift` (`Sendable`; cases: prepared/prepareFailed/playStarted/pauseStarted/bufferingChanged/stopped/positionChanged/failed — 설계 §5.2)
+- [x] T006 [P] `PlaybackPreparedSnapshot` struct 정의 in `Sources/VideoPlayerCore/StateTransition/PlaybackPreparedSnapshot.swift` (`Sendable`; position/duration/isLive/liveDuration)
+- [x] T007 [P] `PlaybackStateReducerOutput` struct 정의 in `Sources/VideoPlayerCore/StateTransition/PlaybackStateReducerOutput.swift` (`Sendable`; next: PlaybackState, events: [PlayerEvent])
+- [x] T008 `PlayerEngineOutput` enum 정의 in `Sources/VideoPlayerCore/Contract/PlayerEngineOutput.swift` (`Sendable`; `.stateInput(PlaybackStateInput)` / `.event(PlayerEvent)`; `Error` existential 미탑재 — 설계 §5.2)
+- [x] T009 `EngineCapabilities`에 `emitsObservedCommandState` 비트 추가 in `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift` (rawValue 1<<3; 권위 콜백 유무 모델링 — 설계 §5.2.1)
 
 **Checkpoint**: 새 타입이 컴파일된다. 기존 동작은 변경 없음.
 
@@ -47,21 +47,21 @@
 
 ### Tests (US1)
 
-- [ ] T010 [P] [US1] `PlaybackStateReducerTests` 작성 in `Tests/VideoPlayerModuleTests/Core/PlaybackStateReducerTests.swift` — stop(4 reason), buffering terminal guard(.finished/.failed), prepared, prepareFailed→didFail, positionChanged duration 유지(0 fallback) 전수 검증 (설계 §8 1단계 검증)
-- [ ] T011 [P] [US1] reducer 엣지 테스트 추가 in `Tests/VideoPlayerModuleTests/Core/PlaybackStateReducerTests.swift` — `.bufferingChanged(false)` while `.paused` quirk를 "의도적 보존"으로 명시 assertion; `PlaybackState.updating(liveDuration:)` `TimeInterval??` 지움/유지 양케이스 (설계 §5.2 잠재버그 주의)
-- [ ] T012 [P] [US1] 병행 output 계약 contract test 작성 in `Tests/VideoPlayerModuleTests/Core/PlayerEngineOutputContractTests.swift` — fake/Unsupported 엔진이 동일 입력·출력·에러 의미·outputStream 단일 인스턴스·deinit finish를 지키는지 검증
+- [x] T010 [P] [US1] `PlaybackStateReducerTests` 작성 in `Tests/VideoPlayerModuleTests/Core/PlaybackStateReducerTests.swift` — stop(4 reason), buffering terminal guard(.finished/.failed), prepared, prepareFailed→didFail, positionChanged duration 유지(0 fallback) 전수 검증 (설계 §8 1단계 검증)
+- [x] T011 [P] [US1] reducer 엣지 테스트 추가 in `Tests/VideoPlayerModuleTests/Core/PlaybackStateReducerTests.swift` — `.bufferingChanged(false)` while `.paused` quirk를 "의도적 보존"으로 명시 assertion; `PlaybackState.updating(liveDuration:)` `TimeInterval??` 지움/유지 양케이스 (설계 §5.2 잠재버그 주의)
+- [x] T012 [P] [US1] 병행 output 계약 contract test 작성 in `Tests/VideoPlayerModuleTests/Core/PlayerEngineOutputContractTests.swift` — fake/Unsupported 엔진이 동일 입력·출력·에러 의미·outputStream 단일 인스턴스·deinit finish를 지키는지 검증
 
 ### Implementation (US1)
 
-- [ ] T013 [US1] `PlaybackStateReducer` struct 구현 in `Sources/VideoPlayerCore/StateTransition/PlaybackStateReducer.swift` (`Sendable`; `reduce(_:state:) -> PlaybackStateReducerOutput`; effect 없음, 순수 결정만 — 설계 §5.2)
-- [ ] T014 [US1] `PlayerEngineOutputProducing` 병행 protocol 추가 in `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift` (`var outputStream: AsyncStream<PlayerEngineOutput>`; 기존 `PlayerPlaybackEngine.currentState/eventStream`은 유지 — 설계 §8 2단계)
-- [ ] T015 [US1] adapter용 `eventStream`→`PlayerEngineOutput` 변환 shim 추가 (전환 창 보호용; 상태성 이벤트→`.stateInput`, 나머지→`.event` passthrough — 설계 §8 2단계 "순서 함정"). 위치: 공유 헬퍼 `Sources/VideoPlayerCore/Contract/PlayerEngineOutputBridge.swift` 또는 각 adapter 임시 메서드
-- [ ] T016 [US1] `outputStream`을 `bufferingPolicy: .unbounded`로 고정하는 계약 문서화 + contract test 반영 in `Tests/VideoPlayerModuleTests/Core/PlayerEngineOutputContractTests.swift` (델타 손실 시 영구 desync 방지 — 설계 §5.1)
-- [ ] T017 [US1] `PlayerCore.consume(engineEvent:)`를 `consume(engineOutput:)`로 교체 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (`.stateInput`→reducer 실행 후 currentState 갱신·stateStream yield·events publish; `.event`→passthrough — 설계 §5.4)
-- [ ] T018 [US1] `PlayerCore.activate()`를 `engine.outputStream` 소비로 전환 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (기존 eventStream 소비 제거; T015 shim 선행 필수)
-- [ ] T019 [US1] stale prepare guard 유지 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` — `prepareGeneration` 또는 source identity로 `.prepared`/`.prepareFailed` output 중 active generation만 reducer 통과 (설계 §5.3, 기존 PlayerCore.swift:21/113/129 보존)
-- [ ] T020 [US1] `execute(command:)`에서 낙관적 전이 제거 + `applyCommandOriginIfNeeded(_:)` 도입 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (play/pause/seek/stop; `!emitsObservedCommandState`인 엔진에만 command-origin 적용 — 설계 §5.2.1/§5.3)
-- [ ] T021 [US1] `PlayerCoreRound4Tests`/`PlayerInterfaceTests` 갱신 in `Tests/VideoPlayerModuleTests/PlayerCoreRound4Tests.swift` 외 — 새 소비 경로·4 stop reason 닫힘·stale prepare regression 검증 (설계 §8 3단계 검증)
+- [x] T013 [US1] `PlaybackStateReducer` struct 구현 in `Sources/VideoPlayerCore/StateTransition/PlaybackStateReducer.swift` (`Sendable`; `reduce(_:state:) -> PlaybackStateReducerOutput`; effect 없음, 순수 결정만 — 설계 §5.2)
+- [x] T014 [US1] `PlayerEngineOutputProducing` 병행 protocol 추가 in `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift` (`var outputStream: AsyncStream<PlayerEngineOutput>`; 기존 `PlayerPlaybackEngine.currentState/eventStream`은 유지 — 설계 §8 2단계)
+- [~] T015 [US1] adapter용 `eventStream`→`PlayerEngineOutput` 변환 shim 추가 (전환 창 보호용; 상태성 이벤트→`.stateInput`, 나머지→`.event` passthrough — 설계 §8 2단계 "순서 함정"). 위치: 공유 헬퍼 `Sources/VideoPlayerCore/Contract/PlayerEngineOutputBridge.swift` 또는 각 adapter 임시 메서드 — **대체**: 별도 bridge 파일 대신 PlayerCore 내장 `engineOutput(from:)` 비손실 bridge로 구현(완료).
+- [x] T016 [US1] `outputStream`을 `bufferingPolicy: .unbounded`로 고정하는 계약 문서화 + contract test 반영 in `Tests/VideoPlayerModuleTests/Core/PlayerEngineOutputContractTests.swift` (델타 손실 시 영구 desync 방지 — 설계 §5.1)
+- [x] T017 [US1] `PlayerCore.consume(engineEvent:)`를 `consume(engineOutput:)`로 교체 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (`.stateInput`→reducer 실행 후 currentState 갱신·stateStream yield·events publish; `.event`→passthrough — 설계 §5.4)
+- [x] T018 [US1] `PlayerCore.activate()`를 `engine.outputStream` 소비로 전환 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (기존 eventStream 소비 제거; T015 shim 선행 필수)
+- [x] T019 [US1] stale prepare guard 유지 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` — `prepareGeneration` 또는 source identity로 `.prepared`/`.prepareFailed` output 중 active generation만 reducer 통과 (설계 §5.3, 기존 PlayerCore.swift:21/113/129 보존) — 기존 prepareGeneration 가드 유지(변경 불필요). adapter `.prepared` 발행 시점(US2)에 재검증.
+- [>] T020 [US1] `execute(command:)`에서 낙관적 전이 제거 + `applyCommandOriginIfNeeded(_:)` 도입 in `Sources/VideoPlayerCore/Internal/PlayerCore.swift` (play/pause/seek/stop; `!emitsObservedCommandState`인 엔진에만 command-origin 적용 — 설계 §5.2.1/§5.3) — **US3로 이관**: command-origin은 Native play 도달에 필요. US1은 레거시 낙관적 전이 유지.
+- [>] T021 [US1] `PlayerCoreRound4Tests`/`PlayerInterfaceTests` 갱신 in `Tests/VideoPlayerModuleTests/PlayerCoreRound4Tests.swift` 외 — 새 소비 경로·4 stop reason 닫힘·stale prepare regression 검증 (설계 §8 3단계 검증) — **US3로 이관**: 기존 67 테스트 무회귀 통과로 US1 검증 갈음.
 
 **Checkpoint**: fake 엔진으로 Core가 단독 상태 소유자로 동작. Kollus/Native는 아직 shim 경유. 독립 배포 가능한 첫 증분.
 

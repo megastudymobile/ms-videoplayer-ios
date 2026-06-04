@@ -14,6 +14,7 @@ public actor PlayerCore {
 
     private let engine: PlayerPlaybackEngine
     private let engineCapabilities: EngineCapabilities
+    private let stateReducer = PlaybackStateReducer()
     private var pendingPrepareTask: Task<Void, Error>?
     /// H5/H7 — prepare 작업의 세대(generation). `start` 진입마다 증가하며, await 복귀 후
     /// `generation == prepareGeneration`인 경우에만 "내가 아직 최신 작업"이다.
@@ -63,13 +64,29 @@ public actor PlayerCore {
             return
         }
 
-        let stream = await engine.eventStream
-        engineEventTask = Task { [weak self] in
-            for await event in stream {
-                guard let self else {
-                    return
+        // B안 전환: 엔진이 `PlayerEngineOutputProducing`을 채택하면 outputStream(권위 입력)을 소비한다.
+        // 아직 미전환 엔진은 기존 eventStream을 비손실 bridge로 PlayerEngineOutput으로 감싸 소비한다.
+        // (설계 §8 2·3단계) bridge는 full-state `.stateDidChange`를 직접 적용하고 delta 이벤트만
+        // reducer 입력으로 번역하므로 현재 동작과 동일하다.
+        if let producing = engine as? any PlayerEngineOutputProducing {
+            let stream = await producing.outputStream
+            engineEventTask = Task { [weak self] in
+                for await output in stream {
+                    guard let self else {
+                        return
+                    }
+                    await self.consume(engineOutput: output)
                 }
-                await self.consume(engineEvent: event)
+            }
+        } else {
+            let stream = await engine.eventStream
+            engineEventTask = Task { [weak self] in
+                for await event in stream {
+                    guard let self else {
+                        return
+                    }
+                    await self.consume(engineOutput: PlayerCore.engineOutput(from: event))
+                }
             }
         }
     }
@@ -236,48 +253,47 @@ public actor PlayerCore {
         }
     }
 
-    private func consume(engineEvent: PlayerEvent) {
-        switch engineEvent {
-        case .stateDidChange(let state):
+    private func consume(engineOutput: PlayerEngineOutput) {
+        switch engineOutput {
+        case .stateInput(let input):
+            // 상태를 움직이는 입력은 reducer가 유일하게 다음 상태를 만든다.
+            apply(stateReducer.reduce(input, state: currentState))
+        case .event(.stateDidChange(let state)):
+            // 전환기 bridge 경로: adapter가 만든 full-state 스냅샷을 그대로 적용한다.
+            // (미전환 엔진은 prepared/play/pause 전이를 여전히 `.stateDidChange`로 보고한다.)
             transition(to: state)
+        case .event(let event):
+            // 상태를 움직이지 않는 이벤트는 passthrough.
+            publish(event: event)
+        }
+    }
+
+    /// reducer 출력을 상태/스트림에 반영한다. Core만 `currentState`를 만든다.
+    private func apply(_ output: PlaybackStateReducerOutput) {
+        currentState = output.next
+        stateContinuation.yield(output.next)
+        output.events.forEach { publish(event: $0) }
+    }
+
+    /// 미전환 엔진의 `PlayerEvent`를 `PlayerEngineOutput`으로 감싸는 비손실 bridge. (설계 §8 2단계)
+    ///
+    /// full-state `.stateDidChange`는 `.event`로 통과시켜 `consume`에서 직접 적용하고,
+    /// 상태를 움직이는 delta 이벤트만 `.stateInput`으로 번역해 reducer를 거치게 한다.
+    /// 결과 동작은 기존 `consume(engineEvent:)`와 동일하다.
+    nonisolated static func engineOutput(from event: PlayerEvent) -> PlayerEngineOutput {
+        switch event {
+        case .stateDidChange:
+            return .event(event)
         case .timeDidChange(let currentTime, let duration):
-            // M4 — 미확정 duration(0)이 이미 확정된 duration을 덮어쓰지 않도록 보호.
-            let resolvedDuration = duration > 0 ? duration : currentState.duration
-            let nextState = currentState.updating(currentTime: currentTime, duration: resolvedDuration)
-            transition(to: nextState, emitEvent: false)
-            publish(event: engineEvent)
+            return .stateInput(.positionChanged(time: currentTime, duration: duration))
         case .bufferingDidChange(let isBuffering):
-            // M3 — terminal 상태(.finished/.failed)는 늦게 도착한 buffering 이벤트로 되살리지 않는다.
-            if case .finished = currentState.status {
-                publish(event: engineEvent)
-                return
-            }
-            if case .failed = currentState.status {
-                publish(event: engineEvent)
-                return
-            }
-
-            let nextStatus: PlaybackState.Status
-            if isBuffering {
-                nextStatus = .buffering
-            } else if case .readyToPlay = currentState.status {
-                nextStatus = .readyToPlay
-            } else {
-                nextStatus = .playing
-            }
-
-            let nextState = currentState.updating(status: nextStatus, isBuffering: isBuffering)
-            transition(to: nextState, emitEvent: false)
-            publish(event: engineEvent)
+            return .stateInput(.bufferingChanged(isBuffering))
         case .didFinish:
-            transition(to: currentState.updating(status: .finished, isBuffering: false))
-            publish(event: .didFinish)
+            return .stateInput(.stopped(.finished))
         case .didFail(let error):
-            transition(to: currentState.updating(status: .failed(error), isBuffering: false))
-            publish(event: .didFail(error))
-        case .policyDowngraded:
-            publish(event: engineEvent)
-        case .captionDidUpdate,
+            return .stateInput(.failed(error))
+        case .policyDowngraded,
+             .captionDidUpdate,
              .bookmarksDidLoad,
              .bitrateDidChange,
              .heightDidChange,
@@ -286,7 +302,7 @@ public actor PlayerCore {
              .framerateDidResolve,
              .deviceLockPolicyChanged,
              .nextEpisodeAvailable:
-            publish(event: engineEvent)
+            return .event(event)
         }
     }
 
