@@ -15,6 +15,10 @@ public actor PlayerCore {
     private let engine: PlayerPlaybackEngine
     private let engineCapabilities: EngineCapabilities
     private var pendingPrepareTask: Task<Void, Error>?
+    /// H5/H7 — prepare 작업의 세대(generation). `start` 진입마다 증가하며, await 복귀 후
+    /// `generation == prepareGeneration`인 경우에만 "내가 아직 최신 작업"이다.
+    /// 더 새로운 `start`/`.stop`이 끼어들면 generation이 어긋나 stale 정리/실패 surfacing을 막는다.
+    private var prepareGeneration: Int = 0
     private var engineEventTask: Task<Void, Never>?
     private var currentState: PlaybackState
     private var currentPolicy: PlayerFeaturePolicy
@@ -70,10 +74,17 @@ public actor PlayerCore {
         }
     }
 
-    public func dispose() {
+    public func dispose() async {
         pendingPrepareTask?.cancel()
-        engineEventTask?.cancel()
         pendingPrepareTask = nil
+
+        // H10/M1 — teardown 시 engine.stop을 idempotent하게 선행한다.
+        // 정상 경로는 viewWillDisappear의 `.stop`이 이미 선행되지만(중복 stop은 무해),
+        // 비정상 종료(.stop 누락)에서는 이 호출이 playerView/proxy 세션 잔류와
+        // KollusProxyPlayerView 타이머 크래시를 막는 최종 방어선이다.
+        try? await engine.stop(reason: .appLifecycle)
+
+        engineEventTask?.cancel()
         engineEventTask = nil
         stateContinuation.finish()
         eventContinuation.finish()
@@ -91,6 +102,9 @@ public actor PlayerCore {
         pendingPrepareTask?.cancel()
         pendingPrepareTask = nil
 
+        prepareGeneration &+= 1
+        let generation = prepareGeneration
+
         transition(to: currentState.updating(status: .preparing, currentTime: 0, duration: 0, isBuffering: false))
 
         let task = Task { [weak self] in
@@ -103,18 +117,28 @@ public actor PlayerCore {
 
         do {
             try await task.value
-            if pendingPrepareTask?.isCancelled == false {
+            // H5 — 내가 최신 세대일 때만 pending 정리(진행 중인 새 작업을 nil化하지 않음).
+            if generation == prepareGeneration {
                 pendingPrepareTask = nil
             }
         } catch is CancellationError {
-            if pendingPrepareTask?.isCancelled == true {
+            // H4 — 취소로 끝났고 더 새로운 작업이 상태를 바꾸지 않았으면 .idle로 복원.
+            // `.stop`은 이미 .idle을 설정하므로 status가 .preparing일 때만 복원해 이중 전이를 피한다.
+            if generation == prepareGeneration {
                 pendingPrepareTask = nil
+                if case .preparing = currentState.status {
+                    transition(to: .idle)
+                }
             }
         } catch {
-            pendingPrepareTask = nil
             let playerError = mapToPlayerError(error)
-            transition(to: currentState.updating(status: .failed(playerError), isBuffering: false))
-            publish(event: .didFail(playerError))
+            // H7 — superseded(더 새로운 start로 교체됨) 실패는 상태/이벤트 스트림에 반영하지 않는다.
+            // 그래야 두 번째 load가 성공해도 첫 load의 실패가 UI에 깜빡이지 않는다.
+            if generation == prepareGeneration {
+                pendingPrepareTask = nil
+                transition(to: currentState.updating(status: .failed(playerError), isBuffering: false))
+                publish(event: .didFail(playerError))
+            }
             throw playerError
         }
     }
@@ -209,10 +233,22 @@ public actor PlayerCore {
         case .stateDidChange(let state):
             transition(to: state)
         case .timeDidChange(let currentTime, let duration):
-            let nextState = currentState.updating(currentTime: currentTime, duration: duration)
+            // M4 — 미확정 duration(0)이 이미 확정된 duration을 덮어쓰지 않도록 보호.
+            let resolvedDuration = duration > 0 ? duration : currentState.duration
+            let nextState = currentState.updating(currentTime: currentTime, duration: resolvedDuration)
             transition(to: nextState, emitEvent: false)
             publish(event: engineEvent)
         case .bufferingDidChange(let isBuffering):
+            // M3 — terminal 상태(.finished/.failed)는 늦게 도착한 buffering 이벤트로 되살리지 않는다.
+            if case .finished = currentState.status {
+                publish(event: engineEvent)
+                return
+            }
+            if case .failed = currentState.status {
+                publish(event: engineEvent)
+                return
+            }
+
             let nextStatus: PlaybackState.Status
             if isBuffering {
                 nextStatus = .buffering
@@ -285,7 +321,7 @@ public actor PlayerCore {
             throw PlayerError.engineError("Playback rate must be greater than 0. rate=\(rate)")
         }
 
-        guard rate <= Double(currentPolicy.maxPlaybackRate) else {
+        guard rate <= currentPolicy.maxPlaybackRate else {
             throw PlayerError.engineError("Playback rate \(rate)x exceeds max policy rate \(currentPolicy.maxPlaybackRate)x.")
         }
 
@@ -431,10 +467,7 @@ public actor PlayerCore {
     }
 
     private func mapToPlayerError(_ error: Error) -> PlayerError {
-        if let playerError = error as? PlayerError {
-            return playerError
-        }
-
-        return .unknown((error as NSError).localizedDescription)
+        // H3 — network/auth/decoding을 분류해 UI가 실패 원인을 구분할 수 있게 한다.
+        PlayerError.classify(error)
     }
 }

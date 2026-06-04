@@ -10,7 +10,9 @@ import Foundation
 
 public struct PlayerFeaturePolicy: Equatable, Sendable {
     public let allowsBackgroundPlayback: Bool
-    public let maxPlaybackRate: Float
+    /// M10 — `Double`로 통일. 과거 `Float`이라 `Double(Float(1.4))`의 이진 부동소수 오차로
+    /// 정책 상한 경계(1.4·1.6 등) 비교가 어긋날 수 있었다.
+    public let maxPlaybackRate: Double
     public let allowsAutoplay: Bool
     public let skipInterval: TimeInterval
     public let nextEpisodeButtonLeadTime: TimeInterval
@@ -25,7 +27,7 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
 
     public init(
         allowsBackgroundPlayback: Bool,
-        maxPlaybackRate: Float,
+        maxPlaybackRate: Double,
         allowsAutoplay: Bool,
         skipInterval: TimeInterval = 10,
         nextEpisodeButtonLeadTime: TimeInterval = 30
