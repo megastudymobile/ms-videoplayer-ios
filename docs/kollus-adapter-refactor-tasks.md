@@ -20,9 +20,21 @@
 - **US3** — `AVPlayerSignalMapper`(순수) + 단위 테스트.
 - **회귀** — iOS sim VideoPlayerModuleTests **208개 전부 통과(무회귀)**.
 
-**device QA 후속으로 분리 (`[>]`)** — 핵심 근거: **US1 bridge 덕분에 Kollus/Native는 현행 그대로 정상 동작**한다. 1085줄 Kollus adapter와 Native adapter의 hot-path를 outputStream 구조로 전환하는 것(T026~T031, T036~T038), command-origin `execute()` 변경(T020/T033), surface 도입(US4), 파일 이동(US5)은 실기기 + 실제 SDK 없이는 검증 불가하다. 순수 매퍼(US2/US3)가 그 전환의 reducer-등가 검증된 빌딩블록이다. 두 엔진을 **동시에** 전환하는 단일 후속 작업으로 진행한다.
+**A 작업 — adapter outputStream 전환 (완료, [kollus-adapter-refactor-followup-spec.md](kollus-adapter-refactor-followup-spec.md) 기반)**
+- **A-1 (T020/T033)** — Core `execute()` command-origin + `applyCommandOriginIfNeeded`. iOS sim 208 무회귀.
+- **A-2 (T036~T038)** — AVPlayerAdapter `PlayerEngineOutputProducing` 채택 + outputStream 발행(가산적). AVPlayerEngineContract 통과.
+- **A-3 (T027~T031)** — KollusPlayerAdapter 동일 전환 + `emitsObservedCommandState=true`. compile 통과(Kollus 테스트는 SDK 없어 sim skip).
+- 방식: **가산적**. Core는 두 엔진을 outputStream→reducer로 소비. `eventStream`/`currentState`/내부 state는 전환기 deprecated mirror로 유지(공유 `PlayerEngineContract` 호환). state 로직 완전 제거(T023/T028/T037 잔여)는 contract 마이그레이션 후속.
+
+**device QA / 잔여 (`[>]`/`[~]`)** — 실기기 + 실제 SDK 필요라 시뮬레이터 검증 불가:
+- **generation guard (T030)** — stale `.prepared`가 강의 연속전환 시 새 상태 덮을 위험. 실기기 검증 + 가드 추가 필요(spec §3.4).
+- **device QA 체크리스트** (spec §6) — Kollus 재생/seek/buffering/다음회차/DRM/재진입, Native 전 경로.
+- **T026 Sendable-clean** — `KollusEngineSignal` Error→`PlayerError` 조기 변환(Swift 6 prep, tools 5.9라 비긴급).
+- **state 로직 완전 제거 + 공유 contract outputStream 마이그레이션** (T023/T028/T037 잔여), **surface(US4)**, **파일 이동(US5)**.
 
 **결정 보류 (`[~]`)** — PiP capability 계약(T047, `.nativePiP` 모델링 권장), DRM surfacing(T048): 호출자 계약/product 확인 필요.
+
+> 롤백: 문제 시 해당 adapter의 `PlayerEngineOutputProducing` 채택만 제거 → Core가 자동으로 eventStream 비손실 bridge(US1)로 폴백. 엔진별 독립.
 
 ---
 
