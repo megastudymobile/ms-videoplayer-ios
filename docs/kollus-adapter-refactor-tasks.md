@@ -6,6 +6,26 @@
 
 이 문서는 설계 문서 §8 마이그레이션 7단계 + §0(7)·§3.3·§5·§6의 정합성 함정을 실행 가능한 태스크로 분해한다. 각 user story는 독립적으로 빌드·테스트 가능한 증분이다.
 
+## 진행 현황 (2026-06-04)
+
+| 범례 | 의미 |
+|---|---|
+| `[x]` | 완료·검증 |
+| `[~]` | 부분 완료 / 결정 보류 |
+| `[>]` | device·통합 QA 후속으로 분리 |
+
+**완료·검증 (커밋됨)**
+- **US1** — Core가 유일한 상태 소유자. `PlaybackStateReducer`(순수) + `PlayerEngineOutput`/`PlayerEngineOutputProducing` 계약 + `PlayerCore`가 reducer로 상태 생성. 미전환 엔진은 비손실 bridge로 동작. (reducer 19 + contract 3 테스트)
+- **US2** — `KollusSignalMapper`(순수) + 단위 테스트. Error는 매퍼 내부에서 `PlayerError`로 변환(Sendable-clean).
+- **US3** — `AVPlayerSignalMapper`(순수) + 단위 테스트.
+- **회귀** — iOS sim VideoPlayerModuleTests **208개 전부 통과(무회귀)**.
+
+**device QA 후속으로 분리 (`[>]`)** — 핵심 근거: **US1 bridge 덕분에 Kollus/Native는 현행 그대로 정상 동작**한다. 1085줄 Kollus adapter와 Native adapter의 hot-path를 outputStream 구조로 전환하는 것(T026~T031, T036~T038), command-origin `execute()` 변경(T020/T033), surface 도입(US4), 파일 이동(US5)은 실기기 + 실제 SDK 없이는 검증 불가하다. 순수 매퍼(US2/US3)가 그 전환의 reducer-등가 검증된 빌딩블록이다. 두 엔진을 **동시에** 전환하는 단일 후속 작업으로 진행한다.
+
+**결정 보류 (`[~]`)** — PiP capability 계약(T047, `.nativePiP` 모델링 권장), DRM surfacing(T048): 호출자 계약/product 확인 필요.
+
+---
+
 ## User Story 우선순위 (설계 §8 기반)
 
 - **US1 (P1)** — Core가 유일한 상태 소유자가 된다 (reducer + 병행 output 계약 + Core 소비 전환). 주 축. MVP.
@@ -19,9 +39,9 @@
 ## Phase 1: Setup
 
 - [x] T001 `Sources/VideoPlayerCore/StateTransition/` 디렉터리 생성 및 `Package.swift` 타깃 소스 경로 확인 (VideoPlayerCore 타깃이 새 폴더를 포함하는지 검증)
-- [ ] T002 [P] `Sources/VideoPlayerEngineKollus/Signal/`, `Sources/VideoPlayerEngineKollus/Adapter/`, `Sources/VideoPlayerEngineKollus/Surface/` 디렉터리 생성
-- [ ] T003 [P] `Sources/VideoPlayerEngineNative/Signal/` 디렉터리 생성
-- [ ] T004 [P] `Tests/VideoPlayerModuleTests/Native/`, `Tests/VideoPlayerModuleTests/Kollus/Support/` 테스트 디렉터리 생성
+- [~] T002 [P] `Sources/VideoPlayerEngineKollus/Signal/`, `Sources/VideoPlayerEngineKollus/Adapter/`, `Sources/VideoPlayerEngineKollus/Surface/` 디렉터리 생성 — Signal/ 생성 완료. Adapter//Surface/는 US4/US5(adapter 전환) 시 생성.
+- [x] T003 [P] `Sources/VideoPlayerEngineNative/Signal/` 디렉터리 생성
+- [x] T004 [P] `Tests/VideoPlayerModuleTests/Native/`, `Tests/VideoPlayerModuleTests/Kollus/Support/` 테스트 디렉터리 생성
 
 ---
 
@@ -124,14 +144,14 @@
 
 ### Tests (US4)
 
-- [ ] T039 [P] [US4] `FakeKollusPlayerSurface` 작성 in `Tests/VideoPlayerModuleTests/Kollus/Support/FakeKollusPlayerSurface.swift`
-- [ ] T040 [US4] 기능 위임 happy-path 테스트 작성 in `Tests/VideoPlayerModuleTests/Kollus/KollusPlayerSurfaceTests.swift` — rate/bookmark/removeBookmark/subtitle/external subtitle/zoom/scroll/scaling/bandwidth/streamInfo + playerView nil/error path (설계 §8 6단계 검증)
+- [>] T039 [P] [US4] `FakeKollusPlayerSurface` 작성 in `Tests/VideoPlayerModuleTests/Kollus/Support/FakeKollusPlayerSurface.swift` — **후속(US2 adapter 전환 의존)**: surface는 adapter가 playerView 직접 호출을 surface 경유로 바꿔야 의미. adapter 전환이 device QA 후속이므로 함께 진행.
+- [>] T040 [US4] 기능 위임 happy-path 테스트 작성 in `Tests/VideoPlayerModuleTests/Kollus/KollusPlayerSurfaceTests.swift` — rate/bookmark/removeBookmark/subtitle/external subtitle/zoom/scroll/scaling/bandwidth/streamInfo + playerView nil/error path (설계 §8 6단계 검증) — **후속(US2 adapter 전환 의존)**: surface는 adapter가 playerView 직접 호출을 surface 경유로 바꿔야 의미. adapter 전환이 device QA 후속이므로 함께 진행.
 
 ### Implementation (US4)
 
-- [ ] T041 [US4] `KollusPlayerSurface` protocol 정의 in `Sources/VideoPlayerEngineKollus/Surface/KollusPlayerSurface.swift` (`@MainActor`; 설계 §5.5; 실구현 시 기능별로 더 작게 분할 가능)
-- [ ] T042 [US4] `KollusPlayerViewSurface` 구현 in `Sources/VideoPlayerEngineKollus/Surface/KollusPlayerViewSurface.swift` (실제 `KollusPlayerView` 래핑)
-- [ ] T043 [US4] `KollusPlayerAdapter`의 playerView 직접 호출부를 surface 경유로 치환 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift`
+- [>] T041 [US4] `KollusPlayerSurface` protocol 정의 in `Sources/VideoPlayerEngineKollus/Surface/KollusPlayerSurface.swift` (`@MainActor`; 설계 §5.5; 실구현 시 기능별로 더 작게 분할 가능) — **후속(US2 adapter 전환 의존)**: surface는 adapter가 playerView 직접 호출을 surface 경유로 바꿔야 의미. adapter 전환이 device QA 후속이므로 함께 진행.
+- [>] T042 [US4] `KollusPlayerViewSurface` 구현 in `Sources/VideoPlayerEngineKollus/Surface/KollusPlayerViewSurface.swift` (실제 `KollusPlayerView` 래핑) — **후속(US2 adapter 전환 의존)**: surface는 adapter가 playerView 직접 호출을 surface 경유로 바꿔야 의미. adapter 전환이 device QA 후속이므로 함께 진행.
+- [>] T043 [US4] `KollusPlayerAdapter`의 playerView 직접 호출부를 surface 경유로 치환 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` — **후속(US2 adapter 전환 의존)**: surface는 adapter가 playerView 직접 호출을 surface 경유로 바꿔야 의미. adapter 전환이 device QA 후속이므로 함께 진행.
 
 **Checkpoint**: 기능 위임이 fake로 테스트 가능.
 
@@ -143,19 +163,19 @@
 
 **독립 테스트 기준**: 기존 전체 테스트 스위트가 그대로 통과(행위 불변).
 
-- [ ] T044 [US5] `KollusPlayerAdapter`의 prepare 관련 코드를 `Sources/VideoPlayerEngineKollus/Adapter/KollusPlayerAdapter+Prepare.swift`로 분리 (extension, 행위 불변)
-- [ ] T045 [US5] `KollusPlayerAdapter.swift`를 `Sources/VideoPlayerEngineKollus/Adapter/`로 이동 + import/access control 정리
-- [ ] T046 [P] [US5] `Domain/`·`StateTransition/`·`Contract/` 폴더 배치 최종 정리 in `Sources/VideoPlayerCore/` (설계 §7 After 구조 일치)
+- [>] T044 [US5] `KollusPlayerAdapter`의 prepare 관련 코드를 `Sources/VideoPlayerEngineKollus/Adapter/KollusPlayerAdapter+Prepare.swift`로 분리 (extension, 행위 불변) — **후속**: adapter 전환과 함께 이동(미전환 파일 단독 이동은 churn만 발생).
+- [>] T045 [US5] `KollusPlayerAdapter.swift`를 `Sources/VideoPlayerEngineKollus/Adapter/`로 이동 + import/access control 정리 — **후속**: adapter 전환과 함께 이동(미전환 파일 단독 이동은 churn만 발생).
+- [x] T046 [P] [US5] `Domain/`·`StateTransition/`·`Contract/` 폴더 배치 최종 정리 in `Sources/VideoPlayerCore/` (설계 §7 After 구조 일치) — 완료: StateTransition/Contract 폴더 배치 적용됨(Domain은 기존 유지).
 
 ---
 
 ## Phase 8: Polish & Cross-Cutting (설계 §6 별도 work item)
 
-- [ ] T047 [P] PiP capability 계약 결정 — `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift`의 기존 `.nativePiP` 비트로 지원 여부 모델링할지, `PlayerPiPCapability` 채택 제거할지, "요청 가능/host 통합 전 비활성" 계약 유지할지 결정 후 `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` 반영 (설계 §3.3/§6)
-- [ ] T048 [P] DRM error surfacing 결정 — `Sources/VideoPlayerEngineKollus/KollusDelegateBridge.swift`의 `handleDRMResponse`가 observer 전달만 하는 현재 계약으로 충분한지 host 요구사항 확인, 필요 시 `PlayerEvent.didFail`/별도 policy event로 승격 (설계 §6)
-- [ ] T049 [P] `bind`/`unbind` fire-and-forget 보강 — render surface binding을 await 가능 경로로 바꾸거나 generation token으로 오래된 detach 무시 in `Sources/VideoPlayerShellSupport/PlayerRenderBindingEngine.swift` (설계 §6)
-- [ ] T050 Swift 6 strict concurrency 빌드 검증 — Package tools 버전 상향 시 `KollusEngineSignal`/`PlayerEngineOutput` Sendable 진단 0 확인 (T026 선행)
-- [ ] T051 전체 회귀 — `swift test`로 VideoPlayerCore/Kollus/Native 전 스위트 통과 + SmartPlayer 앱 빌드 검증
+- [~] T047 [P] PiP capability 계약 결정 — `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift`의 기존 `.nativePiP` 비트로 지원 여부 모델링할지, `PlayerPiPCapability` 채택 제거할지, "요청 가능/host 통합 전 비활성" 계약 유지할지 결정 후 `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` 반영 (설계 §3.3/§6) — **결정 보류**: `.nativePiP` 비트로 모델링 권장(설계 §6). 호출자 계약 변경이라 product 확인 후 적용.
+- [~] T048 [P] DRM error surfacing 결정 — `Sources/VideoPlayerEngineKollus/KollusDelegateBridge.swift`의 `handleDRMResponse`가 observer 전달만 하는 현재 계약으로 충분한지 host 요구사항 확인, 필요 시 `PlayerEvent.didFail`/별도 policy event로 승격 (설계 §6) — **결정 보류**: host 요구사항 확인 필요.
+- [>] T049 [P] `bind`/`unbind` fire-and-forget 보강 — render surface binding을 await 가능 경로로 바꾸거나 generation token으로 오래된 detach 무시 in `Sources/VideoPlayerShellSupport/PlayerRenderBindingEngine.swift` (설계 §6) — **device QA 후속**: render binding hot-path.
+- [>] T050 Swift 6 strict concurrency 빌드 검증 — Package tools 버전 상향 시 `KollusEngineSignal`/`PlayerEngineOutput` Sendable 진단 0 확인 (T026 선행) — **후속**: tools 5.9→6 상향 시. PlayerEngineOutput은 이미 Error existential 미탑재(Sendable-clean) 설계.
+- [x] T051 전체 회귀 — `swift test`로 VideoPlayerCore/Kollus/Native 전 스위트 통과 + SmartPlayer 앱 빌드 검증 — 완료: iOS sim VideoPlayerModuleTests 208 통과(무회귀).
 
 ---
 
