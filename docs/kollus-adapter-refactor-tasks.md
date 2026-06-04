@@ -75,19 +75,19 @@
 
 ### Tests (US2)
 
-- [ ] T022 [P] [US2] `KollusSignalMapperTests` 작성 in `Tests/VideoPlayerModuleTests/Kollus/KollusSignalMapperTests.swift` — prepareToPlayCompleted 성공/실패, stopStarted(userInteraction true/false), bufferingChanged(false) 복귀, positionChanged(isSeeking guard), caption/hlsHeight/bitrate passthrough 검증 (설계 §8 4단계 검증)
-- [ ] T023 [P] [US2] 기존 `KollusPlayerAdapterSignalTests` 조정 in `Tests/VideoPlayerModuleTests/Kollus/KollusPlayerAdapterSignalTests.swift` — 상태 직접 assertion에서 output/reducer assertion으로 의도 보존 전환
-- [ ] T024 [P] [US2] Sendable-clean signal 테스트 추가 in `Tests/VideoPlayerModuleTests/Kollus/KollusSignalMapperTests.swift` — `Error` payload가 actor/stream 경계 전에 `PlayerError`로 변환됨을 검증
+- [x] T022 [P] [US2] `KollusSignalMapperTests` 작성 in `Tests/VideoPlayerModuleTests/Kollus/KollusSignalMapperTests.swift` — prepareToPlayCompleted 성공/실패, stopStarted(userInteraction true/false), bufferingChanged(false) 복귀, positionChanged(isSeeking guard), caption/hlsHeight/bitrate passthrough 검증 (설계 §8 4단계 검증)
+- [>] T023 [P] [US2] 기존 `KollusPlayerAdapterSignalTests` 조정 in `Tests/VideoPlayerModuleTests/Kollus/KollusPlayerAdapterSignalTests.swift` — 상태 직접 assertion에서 output/reducer assertion으로 의도 보존 전환 — **device QA 후속**: US1 bridge로 Kollus 현행 정상 동작. adapter hot-path 전환은 시뮬레이터 검증 불가(실기기 필요)로 분리.
+- [x] T024 [P] [US2] Sendable-clean signal 테스트 추가 in `Tests/VideoPlayerModuleTests/Kollus/KollusSignalMapperTests.swift` — `Error` payload가 actor/stream 경계 전에 `PlayerError`로 변환됨을 검증
 
 ### Implementation (US2)
 
-- [ ] T025 [US2] `KollusSignalMapper` enum 구현 in `Sources/VideoPlayerEngineKollus/Signal/KollusSignalMapper.swift` (`normalize(_:preparedSnapshot:mapError:) async -> PlayerEngineOutput?` — 설계 §5.3/§5.4)
-- [ ] T026 [US2] `KollusEngineSignal`의 `Error?` payload를 bridge event stream 통과 전 `PlayerError`로 조기 변환 in `Sources/VideoPlayerEngineKollus/KollusDelegateBridge.swift` (Swift 6 strict concurrency 차단요인 제거 — 설계 §5.2/§6)
-- [ ] T027 [US2] `KollusPlayerAdapter`에 `outputStream`/`outputContinuation` 추가 및 `PlayerEngineOutputProducing` 채택 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (adapter lifetime 단일 인스턴스, `.unbounded`, teardown/deinit finish)
-- [ ] T028 [US2] `KollusPlayerAdapter.handleSignal(_:)`를 mapper→`outputContinuation.yield`로 변경 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (polling 제어는 adapter 내부 유지; 내부 `state`/`transition(to:)` 의존 제거 또는 단계적 deprecated)
-- [ ] T029 [US2] `makePlaybackPreparedSnapshot()` helper 추출 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (기존 `readyStateSnapshot()`에서 `PlaybackState` 생성만 제거; position/duration/live/next-episode 캐시는 adapter 유지 — 설계 §5.3)
-- [ ] T030 [US2] prepare completion 경로 분리 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` — `handlePrepareCompleted`가 outputStream yield + `pendingPrepareContinuation` resume을 동시 처리, generation/source guard 통과 (설계 §5.3)
-- [ ] T031 [US2] `emitsObservedCommandState = true`로 Kollus capability 신고 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (play/pause/seek 권위 콜백 보유 — 설계 §5.2.1)
+- [x] T025 [US2] `KollusSignalMapper` enum 구현 in `Sources/VideoPlayerEngineKollus/Signal/KollusSignalMapper.swift` (`normalize(_:preparedSnapshot:mapError:) async -> PlayerEngineOutput?` — 설계 §5.3/§5.4)
+- [>] T026 [US2] `KollusEngineSignal`의 `Error?` payload를 bridge event stream 통과 전 `PlayerError`로 조기 변환 in `Sources/VideoPlayerEngineKollus/KollusDelegateBridge.swift` (Swift 6 strict concurrency 차단요인 제거 — 설계 §5.2/§6) — **device QA 후속**: US1 bridge로 Kollus 현행 정상 동작. adapter hot-path 전환은 시뮬레이터 검증 불가(실기기 필요)로 분리.
+- [>] T027 [US2] `KollusPlayerAdapter`에 `outputStream`/`outputContinuation` 추가 및 `PlayerEngineOutputProducing` 채택 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (adapter lifetime 단일 인스턴스, `.unbounded`, teardown/deinit finish) — **device QA 후속**: US1 bridge로 Kollus 현행 정상 동작. adapter hot-path 전환은 시뮬레이터 검증 불가(실기기 필요)로 분리.
+- [>] T028 [US2] `KollusPlayerAdapter.handleSignal(_:)`를 mapper→`outputContinuation.yield`로 변경 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (polling 제어는 adapter 내부 유지; 내부 `state`/`transition(to:)` 의존 제거 또는 단계적 deprecated) — **device QA 후속**: US1 bridge로 Kollus 현행 정상 동작. adapter hot-path 전환은 시뮬레이터 검증 불가(실기기 필요)로 분리.
+- [>] T029 [US2] `makePlaybackPreparedSnapshot()` helper 추출 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (기존 `readyStateSnapshot()`에서 `PlaybackState` 생성만 제거; position/duration/live/next-episode 캐시는 adapter 유지 — 설계 §5.3) — **device QA 후속**: US1 bridge로 Kollus 현행 정상 동작. adapter hot-path 전환은 시뮬레이터 검증 불가(실기기 필요)로 분리.
+- [>] T030 [US2] prepare completion 경로 분리 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` — `handlePrepareCompleted`가 outputStream yield + `pendingPrepareContinuation` resume을 동시 처리, generation/source guard 통과 (설계 §5.3) — **device QA 후속**: US1 bridge로 Kollus 현행 정상 동작. adapter hot-path 전환은 시뮬레이터 검증 불가(실기기 필요)로 분리.
+- [>] T031 [US2] `emitsObservedCommandState = true`로 Kollus capability 신고 in `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` (play/pause/seek 권위 콜백 보유 — 설계 §5.2.1) — **device QA 후속**: US1 bridge로 Kollus 현행 정상 동작. adapter hot-path 전환은 시뮬레이터 검증 불가(실기기 필요)로 분리.
 
 **Checkpoint**: Kollus 실엔진이 outputStream 구조로 동작. shim 제거 가능.
 
