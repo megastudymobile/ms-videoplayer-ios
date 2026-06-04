@@ -91,6 +91,14 @@ public actor PlayerCore {
     }
 
     public func start(source: PlaybackSource, policy: PlayerFeaturePolicy) async throws {
+        // 동일 source가 이미 준비 중이면 중복 .load를 coalesce(무시)한다 — defense-in-depth.
+        // 강의 종료 자동전환 + 다음강의 버튼 등으로 같은 source가 거의 동시에 두 번 load되면
+        // prepare가 cancel-restart되며 Kollus 다운로드가 충돌(ResCode 23/42)해 한쪽 prepare가 실패한다.
+        // 다른 source의 load는 기존 newest-wins(cancel-restart)를 그대로 유지한다.
+        if currentSource == source, pendingPrepareTask != nil, case .preparing = currentState.status {
+            return
+        }
+
         let effectivePolicy = applyEffectivePolicy(policy)
         currentPolicy = effectivePolicy.policy
         currentSource = source
