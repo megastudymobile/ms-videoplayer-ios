@@ -287,6 +287,16 @@ public actor KollusPlayerAdapter:
             }
             try playerView.addBookmark(time, value: title)
         }
+        // Kollus SDK 는 로컬 add 를 playerView.bookmarks 에 즉시 반영하지 않는다(서버 동기화 후 reload
+        // 시점에만 갱신). 따라서 SDK 재조회(currentBookmarks)는 직전 낙관적 추가분을 포함하지 못해 매번
+        // 첫 항목만 덮어쓴다. 누적이 유지되도록 마지막으로 발행한 목록(lastKnownBookmarks)을 base 로 쓴다.
+        // 다음 실제 reload 시 권위 목록으로 자연 수렴한다.
+        var updated = lastKnownBookmarks
+        if !updated.contains(where: { abs($0.position - time) < 0.5 }) {
+            updated.append(Bookmark(position: time, title: title, kind: .user))
+            updated.sort { $0.position < $1.position }
+        }
+        handleBookmarks(updated)
     }
 
     public func removeBookmark(at time: TimeInterval) async throws {
@@ -302,6 +312,10 @@ public actor KollusPlayerAdapter:
             }
             try playerView.removeBookmark(time)
         }
+        // add 와 동일 — 마지막 발행 목록에서 낙관적으로 제거해 재발행(SDK 즉시 미반영 대응).
+        var updated = lastKnownBookmarks
+        updated.removeAll { abs($0.position - time) < 0.5 }
+        handleBookmarks(updated)
     }
 
     public func currentBookmarks() async -> [Bookmark] {
