@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `videoplayer-ios-ms`는 영상 재생을 **공통 상태 머신 + 교체 가능한 재생 엔진**으로 다루는 Swift Package. host 앱(smartlearning-ios-ms)은 `PlaybackSource` / `PlaybackCommand` / `PlaybackState`만 다루고, 실제 재생은 `AVPlayerAdapter`(일반 URL/HLS)나 `KollusPlayerAdapter`(Kollus MCK + DRM + 다운로드)가 맡는다.
 
-PR 기본 base 브랜치: `003-player-module-kollus-runtime-migration`.
+PR 기본 base 브랜치: `main` (state-ownership 리팩터링이 main에 머지됨, 2026-06-05).
 
 ## 명령어
 
@@ -71,6 +71,7 @@ VideoPlayerCore  (의존 없음 — SDK/UIKit 모름)
 - SmartLearning 화면/라우팅/Remote Config/LMS 분석 코드는 이 패키지로 가져오지 않는다
 - 엔진 명령은 모두 `async throws` — 실패 가능성을 숨기지 않는다
 - 엔진은 actor로 격리해 상태 변경 순서를 보장
+- `PlayerModuleBoundaryTests`가 패키지 소스에 서비스 앱 용어("MegaStudy" 등) 포함을 금지 — 주석에도 금지어 사용 불가. 레거시 코드를 언급할 때는 "레거시 host 앱" 식으로 일반화해서 작성
 
 ## Kollus SDK packaging
 
@@ -87,4 +88,9 @@ VideoPlayerCore  (의존 없음 — SDK/UIKit 모름)
 
 ## 문서
 
-`docs/`에 설계·작업 문서 유지: `kollus-adapter-refactor-architecture.md`(현재 리팩터링 설계), `kollus-sdk-implementation-guide.md`, `kollus-ios-sdk-reference.md`. 참고: README의 "폴더 구조" 섹션은 구버전 레이아웃(`Sources/VideoPlayerModule/...`)을 보여주므로 실제 구조는 `Package.swift`를 기준으로 한다.
+`docs/`에 설계·작업 문서 유지:
+
+- `kollus-adapter-refactor-architecture.md` / `-followup-spec.md` / `-tasks.md` / `-qa-checklist.md` — state-ownership 리팩터링 설계·작업 상태·실기기 QA 체크리스트 (작업 진행 시 task 문서 상태 갱신)
+- `kollus-sdk-implementation-guide.md`, `kollus-ios-sdk-reference.md`, `kollus-sdk-packaging.md` — Kollus SDK 연동/레퍼런스/packaging 절차
+
+참고: README의 "폴더 구조" 섹션은 구버전 레이아웃(`Sources/VideoPlayerModule/...`)을 보여주므로 실제 구조는 `Package.swift`를 기준으로 한다.
