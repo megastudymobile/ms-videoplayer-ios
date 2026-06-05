@@ -317,13 +317,15 @@ struct PlayerInterfaceTests {
             engine: engine,
             engineCapabilities: SeekRecordingEngine.capabilities
         )
+        await core.activate()
         try await core.execute(command: .seek(to: 40))
         await engine.resetRecordedSeekTimes()
 
         try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipForward))
         try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipBackward))
 
-        let recordedSeekTimes = await engine.recordedSeekTimes
+        // chase는 비차단 — in-flight 완료(위치 통지) 후 다음 seek이 디스패치되므로 정착을 기다린다.
+        let recordedSeekTimes = try await waitForSeekTimes(engine, expectedCount: 2)
         #expect(recordedSeekTimes == [50, 40])
     }
 
@@ -334,13 +336,14 @@ struct PlayerInterfaceTests {
             engine: engine,
             engineCapabilities: SeekRecordingEngine.capabilities
         )
+        await core.activate()
         try await core.execute(command: .seek(to: 40))
         try await core.execute(command: .setSkipInterval(30))
         await engine.resetRecordedSeekTimes()
 
         try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipForward))
 
-        let recordedSeekTimes = await engine.recordedSeekTimes
+        let recordedSeekTimes = try await waitForSeekTimes(engine, expectedCount: 1)
         #expect(recordedSeekTimes == [70])
     }
 
@@ -377,13 +380,30 @@ struct PlayerInterfaceTests {
                 skipInterval: 30
             )
         )
+        await core.activate()
         try await core.execute(command: .seek(to: 5))
         await engine.resetRecordedSeekTimes()
 
         try await core.execute(command: .seekWithOrigin(to: 0, origin: .skipBackward))
 
-        let recordedSeekTimes = await engine.recordedSeekTimes
+        let recordedSeekTimes = try await waitForSeekTimes(engine, expectedCount: 1)
         #expect(recordedSeekTimes == [0])
+    }
+
+    /// chase 패턴은 비차단 — seek 디스패치가 in-flight 완료(위치 통지) 후 진행되므로,
+    /// 기대 개수에 도달할 때까지 cooperative하게 기다린다(테스트용, 짧은 타임아웃).
+    private func waitForSeekTimes(
+        _ engine: SeekRecordingEngine,
+        expectedCount: Int
+    ) async throws -> [TimeInterval] {
+        for _ in 0..<200 {
+            let times = await engine.recordedSeekTimes
+            if times.count >= expectedCount {
+                return times
+            }
+            try await Task.sleep(nanoseconds: 5_000_000) // 5ms
+        }
+        return await engine.recordedSeekTimes
     }
 }
 
@@ -570,6 +590,9 @@ private actor SeekRecordingEngine: PlayerPlaybackEngine {
     func seek(to time: TimeInterval) async throws {
         recordedSeekTimes.append(time)
         state = state.updating(currentTime: time)
+        // chase 패턴 완료 신호: 실 엔진처럼 seek 직후 도달 위치를 통지해
+        // PlayerCore가 in-flight seek 완료를 감지하고 다음 chase를 디스패치하게 한다.
+        eventContinuation.yield(.timeDidChange(currentTime: time, duration: state.duration))
     }
 
     func stop(reason: PlayerStopReason) async throws {}

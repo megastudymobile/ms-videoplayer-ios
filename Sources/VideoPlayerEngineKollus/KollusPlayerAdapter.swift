@@ -31,10 +31,15 @@ public actor KollusPlayerAdapter:
     PlayerExternalSubtitleEngine,
     PlayerDisplayScalingEngine,
     PlayerZoomEngine,
+    PlayerSynchronousZoomEngine,
     PlayerScrollEngine,
     PlayerAdaptiveStreamingEngine,
+    PlayerEngineOutputProducing,
     PlayerPiPCapability {
-    public nonisolated static let capabilities: EngineCapabilities = []
+    // emitsObservedCommandState: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
+    // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의
+    // .stateInput만 신뢰한다(이중 적용 방지). (설계 §5.2.1)
+    public nonisolated static let capabilities: EngineCapabilities = [.emitsObservedCommandState]
 
     public var currentState: PlaybackState {
         state
@@ -42,7 +47,12 @@ public actor KollusPlayerAdapter:
 
     public let eventStream: AsyncStream<PlayerEvent>
 
+    /// B안 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
+    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다. (설계 §8 4단계)
+    public let outputStream: AsyncStream<PlayerEngineOutput>
+
     private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
+    private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private let bootstrapper: KollusSessionBootstrapper?
     private let environment: KollusEnvironment?
     private let observer: KollusObserver?
@@ -55,6 +65,8 @@ public actor KollusPlayerAdapter:
     private var displayScaleMode: PlayerDisplayScaleMode = .aspectFit
     @MainActor private var playerView: KollusPlayerView?
     @MainActor private var bridge: KollusDelegateBridge?
+    /// PlayerTypeNative 백그라운드 오디오 keeper — playerView 생성 시 재생성, teardown 시 해제.
+    @MainActor private var backgroundKeeper: KollusBackgroundAudioKeeper?
     /// `setSubTitlePath`에 전달한 C-string의 backing storage.
     /// SDK가 path를 비동기 보관할 가능성에 대비해 NSString을 actor가 retain한다.
     /// utf8String 포인터는 NSString lifetime 동안 유효.
@@ -115,6 +127,11 @@ public actor KollusPlayerAdapter:
             bridgeContinuation = $0
         }
         self.bridgeEventContinuation = bridgeContinuation!
+        var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
+            outputContinuation = $0
+        }
+        self.outputContinuation = outputContinuation!
         self.bootstrapper = bootstrapper
         self.environment = environment
         self.observer = observer
@@ -150,6 +167,11 @@ public actor KollusPlayerAdapter:
             bridgeContinuation = $0
         }
         self.bridgeEventContinuation = bridgeContinuation!
+        var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
+            outputContinuation = $0
+        }
+        self.outputContinuation = outputContinuation!
         self.bootstrapper = nil
         self.environment = nil
         self.observer = nil
@@ -166,6 +188,7 @@ public actor KollusPlayerAdapter:
         positionPollTask?.cancel()
         bridgeEventContinuation.finish()
         eventContinuation.finish()
+        outputContinuation.finish()
     }
 
     /// H1 — bridge 신호를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
@@ -265,6 +288,16 @@ public actor KollusPlayerAdapter:
             }
             try playerView.addBookmark(time, value: title)
         }
+        // Kollus SDK 는 로컬 add 를 playerView.bookmarks 에 즉시 반영하지 않는다(서버 동기화 후 reload
+        // 시점에만 갱신). 따라서 SDK 재조회(currentBookmarks)는 직전 낙관적 추가분을 포함하지 못해 매번
+        // 첫 항목만 덮어쓴다. 누적이 유지되도록 마지막으로 발행한 목록(lastKnownBookmarks)을 base 로 쓴다.
+        // 다음 실제 reload 시 권위 목록으로 자연 수렴한다.
+        var updated = lastKnownBookmarks
+        if !updated.contains(where: { abs($0.position - time) < 0.5 }) {
+            updated.append(Bookmark(position: time, title: title, kind: .user))
+            updated.sort { $0.position < $1.position }
+        }
+        handleBookmarks(updated)
     }
 
     public func removeBookmark(at time: TimeInterval) async throws {
@@ -280,6 +313,10 @@ public actor KollusPlayerAdapter:
             }
             try playerView.removeBookmark(time)
         }
+        // add 와 동일 — 마지막 발행 목록에서 낙관적으로 제거해 재발행(SDK 즉시 미반영 대응).
+        var updated = lastKnownBookmarks
+        updated.removeAll { abs($0.position - time) < 0.5 }
+        handleBookmarks(updated)
     }
 
     public func currentBookmarks() async -> [Bookmark] {
@@ -358,6 +395,18 @@ public actor KollusPlayerAdapter:
             try playerView.zoom(recognizer)
         }
         currentZoom = recognizer.scale
+    }
+
+    // MARK: - PlayerSynchronousZoomEngine
+
+    /// 핀치 `.changed` 마다 main thread 에서 동기 적용 — actor async hop 없이 연속 추적.
+    /// dev `MegaKollusMoviePlayerController.zoomScreen:` → `playerView.zoom:recognizer` 동기 호출 parity.
+    /// host(shell)가 main thread 에서만 호출하므로 `MainActor.assumeIsolated` 로 @MainActor playerView 에
+    /// 동기 접근한다(actor 격리/init MainActor 전파 회피 위해 nonisolated).
+    public nonisolated func applyZoomGesture(_ recognizer: UIPinchGestureRecognizer) {
+        MainActor.assumeIsolated {
+            try? playerView?.zoom(recognizer)
+        }
     }
 
     public func setZoomOutDisabled(_ disabled: Bool) async {
@@ -609,6 +658,10 @@ public actor KollusPlayerAdapter:
 
             self.playerView = playerView
             self.bridge = bridge
+            self.backgroundKeeper = KollusBackgroundAudioKeeper(
+                playerView: playerView,
+                isEnabled: environment.audioBackgroundPlayPolicy
+            )
         }
 
         // 신규 path에서는 상태 전이를 SDK delegate(prepareToPlayCompleted)에 의존한다.
@@ -685,6 +738,10 @@ public actor KollusPlayerAdapter:
             try playerView.prepareToPlay(withMode: playerType)
 
             self.playerView = playerView
+            self.backgroundKeeper = KollusBackgroundAudioKeeper(
+                playerView: playerView,
+                isEnabled: environment?.audioBackgroundPlayPolicy ?? false
+            )
 
             return PlaybackState(
                 status: .readyToPlay,
@@ -732,10 +789,21 @@ public actor KollusPlayerAdapter:
         let nextState = state.updating(currentTime: polled)
         transition(to: nextState, emitStateEvent: false)
         publish(event: .timeDidChange(currentTime: polled, duration: nextState.duration))
+        // Core 권위 경로: polling 위치는 handleSignal 밖이라 별도로 outputStream에 발행해야
+        // Core(outputStream 소비)가 재생바를 갱신한다. (device QA B2에서 발견)
+        outputContinuation.yield(.stateInput(.positionChanged(time: polled, duration: nextState.duration)))
+        #if DEBUG
+        NSLog("[Kollus.out] poll positionChanged time=%.3f", polled)
+        #endif
         emitNextEpisodeIfNeeded(currentTime: polled)
     }
 
     func handleSignal(_ signal: KollusEngineSignal) async {
+        // B안 권위 경로: 신호를 매퍼로 정규화해 outputStream에 발행한다(Core가 reducer로 소비).
+        // 아래 switch는 전환기 mirror(eventStream/state) + 부수효과(polling/prepare continuation/
+        // next-episode)를 그대로 유지한다.
+        await emitOutput(signal)
+
         switch signal {
         case .prepareToPlayCompleted(let error):
             if let error {
@@ -747,6 +815,15 @@ public actor KollusPlayerAdapter:
                     publish(event: .didFail(pe))
                 }
             } else {
+                // 레거시 host 앱 MoviePlayerController `completePreparationToPlay` parity —
+                // Kollus SDK 는 prepare 완료 시점에 audioBackgroundPlay 를 내부 player 에 latch 한다.
+                // view-config(prepare 진입) 시점 1회 설정은 SDK 내부 player 준비 전이라 누락되어
+                // 백그라운드 진입 시 SDK 가 강제 pause(userInteraction:false) 를 낸다.
+                // 준비 완료 콜백에서 재적용해 백그라운드 오디오 재생을 유지한다.
+                let allowsBackgroundAudio = environment?.audioBackgroundPlayPolicy ?? false
+                await MainActor.run { [weak self] in
+                    self?.playerView?.audioBackgroundPlay = allowsBackgroundAudio
+                }
                 let snapshot = await readyStateSnapshot()
                 transition(to: snapshot)
                 completePendingPrepare(with: .success(()))
@@ -859,6 +936,40 @@ public actor KollusPlayerAdapter:
     private func handleBookmarks(_ bookmarks: [Bookmark]) {
         lastKnownBookmarks = bookmarks
         publish(event: .bookmarksDidLoad(bookmarks))
+        // Core 권위 경로 (handleSignal 밖 emit — bookmarks 로드).
+        outputContinuation.yield(.event(.bookmarksDidLoad(bookmarks)))
+    }
+
+    /// 신호를 매퍼로 정규화해 outputStream에 발행한다(Core 권위 경로).
+    /// 부수효과(polling/prepare continuation/next-episode)는 `handleSignal`의 switch가 담당한다.
+    private func emitOutput(_ signal: KollusEngineSignal) async {
+        guard let output = await KollusSignalMapper.normalize(
+            signal,
+            preparedSnapshot: { await self.makePlaybackPreparedSnapshot() },
+            mapError: { self.playerError(from: $0, operation: $1) }
+        ) else {
+            return
+        }
+        #if DEBUG
+        // device QA: Kollus 신호 → outputStream 발행 추적. (followup-spec §6)
+        NSLog("[Kollus.out] %@ -> %@", String(describing: signal), String(describing: output))
+        #endif
+        outputContinuation.yield(output)
+    }
+
+    /// prepare 완료 스냅샷 — SDK에서 position/duration/live만 조회한다(부수효과 없음).
+    /// next-episode 메타 캐시/`hasEmittedNextEpisode` 리셋은 `readyStateSnapshot`이 계속 담당한다.
+    private func makePlaybackPreparedSnapshot() async -> PlaybackPreparedSnapshot {
+        await MainActor.run {
+            let view = playerView
+            let liveDuration = view?.liveDuration ?? 0
+            return PlaybackPreparedSnapshot(
+                position: view?.content?.position ?? 0,
+                duration: view?.content?.duration ?? 0,
+                isLive: view?.isLive ?? false,
+                liveDuration: liveDuration > 0 ? liveDuration : nil
+            )
+        }
     }
 
     private func installPrepareContinuation(_ continuation: CheckedContinuation<Void, Error>) {
@@ -893,8 +1004,11 @@ public actor KollusPlayerAdapter:
         )
 #if DEBUG
         NSLog("[KollusNextEpisode] publish nextEpisodeAvailable showAt=%.3f", info.showAt)
+        NSLog("[Kollus.out] event nextEpisodeAvailable showAt=%.3f", info.showAt)
 #endif
         publish(event: .nextEpisodeAvailable(info))
+        // Core 권위 경로 (device QA B6에서 발견 — handleSignal 밖 emit).
+        outputContinuation.yield(.event(.nextEpisodeAvailable(info)))
     }
 
     private func readyStateSnapshot() async -> PlaybackState {
@@ -993,6 +1107,7 @@ public actor KollusPlayerAdapter:
             }
             self.playerView = nil
             self.bridge = nil
+            self.backgroundKeeper = nil
         }
     }
 

@@ -41,7 +41,7 @@ enum KollusContractFactory: PlayerEngineAdapterContractTestable {
     }
 
     static var expectedCapabilities: EngineCapabilities {
-        []
+        [.emitsObservedCommandState]
     }
 }
 
