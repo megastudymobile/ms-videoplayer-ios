@@ -105,6 +105,15 @@ public protocol PlayerZoomEngine: Actor {
     func zoomValue() async -> CGFloat
     var isZoomedIn: Bool { get async }
 }
+
+/// 핀치 줌을 actor 비동기 hop 없이 **동기** 적용한다.
+/// `PlayerZoomEngine.zoom`(async)을 pinch `.changed` 마다 Task 로 호출하면 hop 지연·배칭으로
+/// 연속 추적이 끊겨 "핀치 한 번에 한 단계"처럼 보인다. 제스처 추적은 매 이벤트 동기 적용이 필요하므로
+/// host(shell)는 main thread 에서 본 메서드로 즉시 적용한다(dev `playerView.zoom:recognizer` 동기 parity).
+/// 구현체는 반드시 main thread 에서 호출되는 것을 전제한다(내부에서 MainActor 단언).
+public protocol PlayerSynchronousZoomEngine {
+    func applyZoomGesture(_ recognizer: UIPinchGestureRecognizer)
+}
 #endif
 
 public protocol PlayerScrollEngine: Actor {

@@ -31,6 +31,7 @@ public actor KollusPlayerAdapter:
     PlayerExternalSubtitleEngine,
     PlayerDisplayScalingEngine,
     PlayerZoomEngine,
+    PlayerSynchronousZoomEngine,
     PlayerScrollEngine,
     PlayerAdaptiveStreamingEngine,
     PlayerEngineOutputProducing,
@@ -394,6 +395,18 @@ public actor KollusPlayerAdapter:
             try playerView.zoom(recognizer)
         }
         currentZoom = recognizer.scale
+    }
+
+    // MARK: - PlayerSynchronousZoomEngine
+
+    /// 핀치 `.changed` 마다 main thread 에서 동기 적용 — actor async hop 없이 연속 추적.
+    /// dev `MegaKollusMoviePlayerController.zoomScreen:` → `playerView.zoom:recognizer` 동기 호출 parity.
+    /// host(shell)가 main thread 에서만 호출하므로 `MainActor.assumeIsolated` 로 @MainActor playerView 에
+    /// 동기 접근한다(actor 격리/init MainActor 전파 회피 위해 nonisolated).
+    public nonisolated func applyZoomGesture(_ recognizer: UIPinchGestureRecognizer) {
+        MainActor.assumeIsolated {
+            try? playerView?.zoom(recognizer)
+        }
     }
 
     public func setZoomOutDisabled(_ disabled: Bool) async {
