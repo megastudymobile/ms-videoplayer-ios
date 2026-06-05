@@ -28,6 +28,13 @@ xcodebuild build \
     -scheme VideoPlayerExample \
     -configuration Debug \
     -destination 'platform=iOS Simulator,name=iPhone 15'
+
+# Example 단위 테스트 (VideoPlayerExampleTests — ViewModel/Resolver 순수 로직)
+xcodebuild test \
+    -workspace VideoPlayerExample.xcworkspace \
+    -scheme VideoPlayerExample \
+    -configuration Debug \
+    -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
 Kollus 실제 재생/DRM/다운로드는 시뮬레이터로 닫기 어려움 — 해당 변경은 실기기 검증 결과를 별도로 남긴다.
@@ -76,7 +83,7 @@ VideoPlayerCore  (의존 없음 — SDK/UIKit 모름)
 ## Kollus SDK packaging
 
 - `Vendor/` 원본 산출물은 직접 수정 금지. `Packaging/` + `scripts/`로 XCFramework 재현 가능해야 함
-- SDK 교체 시 checksum과 packaging 문서(`docs/kollus-sdk-packaging.md`) 함께 갱신
+- SDK 교체 시 checksum 갱신 및 packaging 절차 기록
 - 스크립트: `sync_*_vendor.sh` → `rebuild_*_xcframework.sh` → `verify_kollus_packaging.sh`
 
 ## 테스트
@@ -90,7 +97,6 @@ VideoPlayerCore  (의존 없음 — SDK/UIKit 모름)
 
 `docs/`에 설계·작업 문서 유지:
 
-- `kollus-adapter-refactor-architecture.md` / `-followup-spec.md` / `-tasks.md` / `-qa-checklist.md` — state-ownership 리팩터링 설계·작업 상태·실기기 QA 체크리스트 (작업 진행 시 task 문서 상태 갱신)
-- `kollus-sdk-implementation-guide.md`, `kollus-ios-sdk-reference.md`, `kollus-sdk-packaging.md` — Kollus SDK 연동/레퍼런스/packaging 절차
+- `example-app-rebuild-plan.md` — Example 앱(메인/플레이어/세팅 3화면, skin 조립) 설계·구현 상태·실기기 QA 체크리스트. Example 작업 시 이 문서 상태 갱신
 
 참고: README의 "폴더 구조" 섹션은 구버전 레이아웃(`Sources/VideoPlayerModule/...`)을 보여주므로 실제 구조는 `Package.swift`를 기준으로 한다.

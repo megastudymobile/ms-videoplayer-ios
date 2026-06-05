@@ -54,6 +54,18 @@ let project = Project(
                 .package(product: "VideoPlayerEngineKollus"),
                 .package(product: "VideoPlayerSkin")
             ]
+        ),
+        .target(
+            name: "VideoPlayerExampleTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "com.megastudyedu.videoplayer.example.tests",
+            deploymentTargets: .iOS("16.0"),
+            infoPlist: .default,
+            sources: ["Example/Tests/**"],
+            dependencies: [
+                .target(name: "VideoPlayerExample")
+            ]
         )
     ]
 )

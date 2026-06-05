@@ -2,8 +2,7 @@
 
 - 작성자: JunyoungJung
 - 작성일: 2026-06-05
-- 상태: 설계 확정 대기
-- 관련 문서: [kollus-adapter-refactor-architecture.md](./kollus-adapter-refactor-architecture.md), [kollus-sdk-implementation-guide.md](./kollus-sdk-implementation-guide.md)
+- 상태: **구현 완료** (2026-06-05, `feature/example-app-rebuild`) — 실기기 QA 대기 (§9 체크리스트)
 
 ---
 
@@ -1098,9 +1097,24 @@ xcodebuild build \
 swift test
 ```
 
-실기기 QA 항목(P7에서 체크리스트화):
-1. short URL → scheme_uri → 재생 성공
-2. DRM 콘텐츠 재생
-3. 백그라운드 오디오 유지 (설정 on/off)
-4. PiP 진입/복귀
-5. 회전 / 핀치줌 / 시크 정확도
+### 구현 검증 결과 (2026-06-05)
+
+- [x] 시뮬레이터(iPhone 15, iOS 18.x) 빌드 — BUILD SUCCEEDED
+- [x] 패키지 테스트 — `swift test` 70개 전부 통과 (경계 테스트 포함, 패키지 회귀 없음)
+- [x] Example 단위 테스트 — `VideoPlayerExampleTests` 11개 통과
+  - `PlayerStateViewModelTests` 8개 (상태/이벤트 변환, layoutMode, 잠금/구간반복/배속 유지)
+  - `ShortURLResolverTests` 3개 (scheme_uri 추출/디코드, 미검출/빈 입력)
+- [x] 시뮬레이터 스모크 — 앱 부팅 + 메인 화면 표시
+
+### 실기기 QA 체크리스트 (시뮬레이터 검증 불가 항목)
+
+- [ ] short URL → scheme_uri → 실제 재생 성공 (1순위 — `.url()` 서명 URL 수용 검증)
+- [ ] DRM 콘텐츠 재생
+- [ ] 백그라운드 오디오 유지 (세팅 on/off — environment 재생성 경로 포함)
+- [ ] 회전(세로↔가로 슬롯 전환) / 핀치줌 / 시크 정확도
+- [ ] 자막 수신(`captionDidUpdate`) + 자막 크기 세팅 반영
+- [ ] 북마크 추가/이동 (ExtraControl 시트)
+- [ ] 구간 반복 (shell 레벨 루프)
+- [ ] 배속 패널 (0.8x~2.0x)
+- [ ] 코덱 세팅 변경 → 다음 재생 반영
+- PIP — 어댑터 미구현 (토스트만 표시, 별도 작업)
