@@ -11,7 +11,7 @@ import UIKit
 
 /// `PlayerTypeNative`(AVPlayer 백엔드) 모드에서 백그라운드 오디오 재생을 유지하는 keeper.
 ///
-/// 레거시 `MegaStudyMoviePlayerController` + `MegaStudyBackgroundPlayerManager` 1:1 대응:
+/// 레거시 host 앱의 MoviePlayerController + BackgroundPlayerManager 동작 1:1 대응:
 /// AVPlayer 는 자신이 부착된 `AVPlayerLayer` 가 백그라운드된 뷰 계층에 있으면 iOS 가 강제로 일시정지한다
 /// (오디오 세션 권한과 무관한 iOS 기본 동작). 레거시는 `willResignActive` 에서 KollusPlayerView 내부
 /// `AVPlayerLayer` 를 찾아 `player` 를 분리(`layer.player = nil`)하고 AVPlayer 를 강하게 보관해 오디오를

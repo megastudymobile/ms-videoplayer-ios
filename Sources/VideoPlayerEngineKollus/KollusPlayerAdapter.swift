@@ -815,7 +815,7 @@ public actor KollusPlayerAdapter:
                     publish(event: .didFail(pe))
                 }
             } else {
-                // 레거시 `MegaStudyMoviePlayerController.completePreparationToPlay` parity —
+                // 레거시 host 앱 MoviePlayerController `completePreparationToPlay` parity —
                 // Kollus SDK 는 prepare 완료 시점에 audioBackgroundPlay 를 내부 player 에 latch 한다.
                 // view-config(prepare 진입) 시점 1회 설정은 SDK 내부 player 준비 전이라 누락되어
                 // 백그라운드 진입 시 SDK 가 강제 pause(userInteraction:false) 를 낸다.
