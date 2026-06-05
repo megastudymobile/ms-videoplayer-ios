@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import OSLog
 import UIKit
 
 @main
@@ -29,12 +30,14 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         )
     }
 
+    private static let logger = Logger(subsystem: "com.megastudyedu.videoplayer.example", category: "AppDelegate")
+
     /// 백그라운드 오디오 유지를 위한 카테고리 설정 (샘플 앱 부트스트랩 parity).
     private func configureAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback)
         } catch {
-            print("[AppDelegate] AVAudioSession 설정 실패: \(error)")
+            Self.logger.error("AVAudioSession 설정 실패: \(error, privacy: .public)")
         }
     }
 }

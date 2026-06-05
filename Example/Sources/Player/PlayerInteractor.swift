@@ -89,7 +89,7 @@ final class PlayerInteractor {
         zoomEngine = nil
         let module = playerModule
         playerModule = nil
-        Task {
+        Task { @MainActor in
             await module?.engine.unbindRenderSurface()
             await module?.core.dispose()
         }

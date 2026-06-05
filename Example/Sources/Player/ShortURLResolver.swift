@@ -13,6 +13,7 @@ import Foundation
 struct ShortURLResolver {
     enum ResolveError: LocalizedError {
         case invalidURL
+        case httpError(statusCode: Int)
         case htmlDecodingFailed
         case schemeURINotFound
 
@@ -20,6 +21,8 @@ struct ShortURLResolver {
             switch self {
             case .invalidURL:
                 return "short URL 형식이 올바르지 않습니다."
+            case .httpError(let statusCode):
+                return "short URL 요청 실패 (HTTP \(statusCode))."
             case .htmlDecodingFailed:
                 return "short URL 응답을 해석할 수 없습니다."
             case .schemeURINotFound:
@@ -41,7 +44,11 @@ struct ShortURLResolver {
         var request = URLRequest(url: shortURL)
         request.setValue("Mozilla/5.0 (iPhone)", forHTTPHeaderField: "User-Agent")
 
-        let (data, _) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request)
+        if let httpResponse = response as? HTTPURLResponse,
+           (200..<300).contains(httpResponse.statusCode) == false {
+            throw ResolveError.httpError(statusCode: httpResponse.statusCode)
+        }
         guard let html = String(data: data, encoding: .utf8) else {
             throw ResolveError.htmlDecodingFailed
         }

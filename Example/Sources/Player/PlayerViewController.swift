@@ -25,9 +25,10 @@ final class PlayerViewController: UIViewController {
     private let gestureHUD = PlayerGestureHUDView()
     private let toastLabel = UILabel()
 
-    private var hasStartedPlayback = false
     private var hasResolvedInitialLayout = false
     private var bookmarks: [Bookmark] = []
+    /// 팬 제스처 시작 시점의 좌/우 — 도중 중심선 통과로 밝기↔음량이 바뀌지 않도록 고정.
+    private var panIsLeftSide = false
 
     // MARK: - Init
 
@@ -70,23 +71,12 @@ final class PlayerViewController: UIViewController {
         ])
         captionView.applyFontSize(PreferenceManager.captionFontSize)
 
+        // setUp → start 연속 실행 — viewDidAppear 분리 시 setUp 완료 전
+        // start가 nil 모듈에 걸려 조용히 무재생되는 경쟁 조건이 생긴다 (리뷰 HIGH).
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 try await self.interactor.setUp(renderSurface: self.renderSurfaceView)
-            } catch {
-                self.presentErrorAndClose(error)
-            }
-        }
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        guard hasStartedPlayback == false else { return }
-        hasStartedPlayback = true
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
                 try await self.interactor.start()
                 // 세팅 반영 — 자막 크기는 재생 중 즉시 적용 가능 (문서 §6).
                 self.interactor.send(.setCaptionFontSize(PreferenceManager.captionFontSize))
@@ -193,12 +183,14 @@ final class PlayerViewController: UIViewController {
         guard viewModel.state.isLocked == false else { return }
         let translation = recognizer.translation(in: view)
         recognizer.setTranslation(.zero, in: view)
-        let isLeftSide = recognizer.location(in: view).x < view.bounds.midX
+        if recognizer.state == .began {
+            panIsLeftSide = recognizer.location(in: view).x < view.bounds.midX
+        }
         let delta = -translation.y / view.bounds.height
 
         switch recognizer.state {
         case .changed:
-            if isLeftSide {
+            if panIsLeftSide {
                 let value = deviceControl.adjustBrightness(by: delta)
                 gestureHUD.isHidden = false
                 gestureHUD.show(icon: "sun.max", title: "\(Int(value * 100))%")
@@ -368,7 +360,7 @@ final class PlayerViewController: UIViewController {
     private func showToast(_ message: String) {
         toastLabel.text = "  \(message)  "
         view.bringSubviewToFront(toastLabel)
-        UIView.animate(withDuration: 0.2) { self.toastLabel.alpha = 1 }
+        UIView.animate(withDuration: 0.2) { [weak self] in self?.toastLabel.alpha = 1 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             UIView.animate(withDuration: 0.3) { self?.toastLabel.alpha = 0 }
         }
