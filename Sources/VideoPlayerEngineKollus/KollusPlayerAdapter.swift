@@ -64,6 +64,8 @@ public actor KollusPlayerAdapter:
     private var displayScaleMode: PlayerDisplayScaleMode = .aspectFit
     @MainActor private var playerView: KollusPlayerView?
     @MainActor private var bridge: KollusDelegateBridge?
+    /// PlayerTypeNative 백그라운드 오디오 keeper — playerView 생성 시 재생성, teardown 시 해제.
+    @MainActor private var backgroundKeeper: KollusBackgroundAudioKeeper?
     /// `setSubTitlePath`에 전달한 C-string의 backing storage.
     /// SDK가 path를 비동기 보관할 가능성에 대비해 NSString을 actor가 retain한다.
     /// utf8String 포인터는 NSString lifetime 동안 유효.
@@ -629,6 +631,10 @@ public actor KollusPlayerAdapter:
 
             self.playerView = playerView
             self.bridge = bridge
+            self.backgroundKeeper = KollusBackgroundAudioKeeper(
+                playerView: playerView,
+                isEnabled: environment.audioBackgroundPlayPolicy
+            )
         }
 
         // 신규 path에서는 상태 전이를 SDK delegate(prepareToPlayCompleted)에 의존한다.
@@ -705,6 +711,10 @@ public actor KollusPlayerAdapter:
             try playerView.prepareToPlay(withMode: playerType)
 
             self.playerView = playerView
+            self.backgroundKeeper = KollusBackgroundAudioKeeper(
+                playerView: playerView,
+                isEnabled: environment?.audioBackgroundPlayPolicy ?? false
+            )
 
             return PlaybackState(
                 status: .readyToPlay,
@@ -778,6 +788,15 @@ public actor KollusPlayerAdapter:
                     publish(event: .didFail(pe))
                 }
             } else {
+                // 레거시 `MegaStudyMoviePlayerController.completePreparationToPlay` parity —
+                // Kollus SDK 는 prepare 완료 시점에 audioBackgroundPlay 를 내부 player 에 latch 한다.
+                // view-config(prepare 진입) 시점 1회 설정은 SDK 내부 player 준비 전이라 누락되어
+                // 백그라운드 진입 시 SDK 가 강제 pause(userInteraction:false) 를 낸다.
+                // 준비 완료 콜백에서 재적용해 백그라운드 오디오 재생을 유지한다.
+                let allowsBackgroundAudio = environment?.audioBackgroundPlayPolicy ?? false
+                await MainActor.run { [weak self] in
+                    self?.playerView?.audioBackgroundPlay = allowsBackgroundAudio
+                }
                 let snapshot = await readyStateSnapshot()
                 transition(to: snapshot)
                 completePendingPrepare(with: .success(()))
@@ -1061,6 +1080,7 @@ public actor KollusPlayerAdapter:
             }
             self.playerView = nil
             self.bridge = nil
+            self.backgroundKeeper = nil
         }
     }
 
