@@ -51,7 +51,8 @@ let project = Project(
                 .package(product: "VideoPlayerCore"),
                 .package(product: "VideoPlayerShellSupport"),
                 .package(product: "VideoPlayerEngineNative"),
-                .package(product: "VideoPlayerEngineKollus")
+                .package(product: "VideoPlayerEngineKollus"),
+                .package(product: "VideoPlayerSkin")
             ]
         )
     ]

@@ -2,7 +2,7 @@
 //  SceneDelegate.swift
 //  VideoPlayerExample
 //
-//  Created by 모바일팀_정준영 on 2026/05/17.
+//  Created by JunyoungJung on 2026/06/05.
 //
 
 import UIKit
@@ -20,10 +20,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
 
         let window = UIWindow(windowScene: windowScene)
-        let rootViewController = UINavigationController(
-            rootViewController: RootViewController()
+        window.rootViewController = UINavigationController(
+            rootViewController: MainViewController()
         )
-        window.rootViewController = rootViewController
         window.makeKeyAndVisible()
 
         self.window = window

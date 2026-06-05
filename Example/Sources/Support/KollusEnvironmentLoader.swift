@@ -28,7 +28,11 @@ enum KollusEnvironmentLoader {
         }
     }
 
-    static func loadFromBundle() throws -> DemoConfiguration {
+    /// plist 자격증명 + 호출 측(세팅) 동작 플래그를 합성해 environment를 만든다.
+    static func loadFromBundle(
+        hardwareDecoderPreferred: Bool = true,
+        audioBackgroundPlayPolicy: Bool = false
+    ) throws -> DemoConfiguration {
         guard let url = Bundle.main.url(forResource: "kollus.local", withExtension: "plist") else {
             throw LoadError.fileMissing
         }
@@ -57,6 +61,8 @@ enum KollusEnvironmentLoader {
             applicationKey: applicationKey,
             applicationBundleID: applicationBundleID,
             applicationExpireDate: applicationExpireDate,
+            hardwareDecoderPreferred: hardwareDecoderPreferred,
+            audioBackgroundPlayPolicy: audioBackgroundPlayPolicy,
             drm: drm,
             chat: chat
         )
