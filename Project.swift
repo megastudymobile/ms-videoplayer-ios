@@ -18,7 +18,7 @@ let project = Project(
             name: "VideoPlayerExample",
             destinations: .iOS,
             product: .app,
-            bundleId: "com.megastudyedu.videoplayer.example",
+            bundleId: "com.kollus.KollusPlayer",
             deploymentTargets: .iOS("15.0"),
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": [

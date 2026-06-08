@@ -61,6 +61,7 @@ enum KollusEnvironmentLoader {
             applicationKey: applicationKey,
             applicationBundleID: applicationBundleID,
             applicationExpireDate: applicationExpireDate,
+            storagePath: Self.makeStoragePath(),
             hardwareDecoderPreferred: hardwareDecoderPreferred,
             audioBackgroundPlayPolicy: audioBackgroundPlayPolicy,
             drm: drm,
@@ -68,6 +69,23 @@ enum KollusEnvironmentLoader {
         )
 
         return DemoConfiguration(environment: environment, mediaContentKey: mediaContentKey)
+    }
+
+    /// Kollus SDK storage(SQLite `player.db`) 전용 쓰기 디렉터리.
+    /// 미설정 시 SDK가 루트 `/player.db`를 열려다 실패해 BlockStorage DB 연결이 NULL이 된다.
+    /// `KollusEnvironment.validate()`가 "존재하는 디렉터리"를 요구하므로 미리 생성한다.
+    private static func makeStoragePath() -> URL? {
+        let fileManager = FileManager.default
+        guard let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let storageURL = documents.appendingPathComponent("KollusStorage", isDirectory: true)
+        do {
+            try fileManager.createDirectory(at: storageURL, withIntermediateDirectories: true)
+        } catch {
+            return nil
+        }
+        return storageURL
     }
 
     private static func makeDRMConfiguration(from dictionary: [String: Any]) -> KollusDRMConfiguration {

@@ -89,6 +89,10 @@
 @property (nonatomic, unsafe_unretained, readonly) NSInteger nRepeatStartTime;
 /// Repeat End Time
 @property (nonatomic, unsafe_unretained, readonly) NSInteger nRepeatEndTime;
+/// Playback Limit Duration
+@property (nonatomic, unsafe_unretained, readonly) NSInteger nPlaybackLimitDuration;
+/// Playback Limit Message
+@property (nonatomic, copy) NSString *strPlaybackLimitMessage;
 /// 백그라운드 오디오파일 재생
 @property (nonatomic, unsafe_unretained) BOOL audioBackgroundPlay;
 /// 다운로드 컨텐츠 lms off
@@ -134,6 +138,8 @@
 @property (nonatomic, unsafe_unretained, readonly) NSInteger nOfflineBookmarkDownload;
 /// 추가/삭제 사용 여부( 0:사용(기본값), 1: 사용 안함)
 @property (nonatomic, unsafe_unretained, readonly) NSInteger nOfflineBookmarkReadOnly;
+/// Chapter 정보 리스트
+@property (nonatomic, readonly) NSMutableDictionary* chapterInfo;
 
 /// 비디오 워터마크
 /// 비디오 워터마크 문자
@@ -171,6 +177,8 @@
 @property (nonatomic, copy, readonly) NSString *contentProviderName;
 /// 백그라운드 재생 가능 여부
 @property (nonatomic, unsafe_unretained, readonly) BOOL disableBackgroundAudio;
+/// Max playback Rate
+@property (nonatomic, unsafe_unretained, readonly) NSInteger maxPlaybackRate;
 
 /**
  컨텐트URL을 사용하여 플레이어를 생성

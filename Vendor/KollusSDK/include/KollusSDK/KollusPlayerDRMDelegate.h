@@ -8,8 +8,6 @@
 
 #import "KollusSDK.h"
 
-@class KollusPlayerView;
-
 @protocol KollusPlayerDRMDelegate <NSObject>
 
 /**
