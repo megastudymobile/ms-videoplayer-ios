@@ -61,6 +61,12 @@ let package = Package(
                 "VideoPlayerPallyConBinary"
             ],
             path: "Sources/VideoPlayerEngineKollus",
+            // KollusSDK(정적 lib xcframework)는 리소스를 실을 수 없어 SDK의 개인정보
+            // 매니페스트를 이 타겟 리소스로 동봉한다 → 앱 번들에 PrivacyInfo.xcprivacy 포함
+            // → Apple App Store 개인정보 보고서 집계 대상이 된다.
+            resources: [
+                .process("Resources/PrivacyInfo.xcprivacy")
+            ],
             linkerSettings: [
                 .linkedFramework("UIKit",               .when(platforms: [.iOS])),
                 .linkedFramework("AVFoundation",        .when(platforms: [.iOS])),

@@ -1,0 +1,25 @@
+개인정보 매니페스트 파일
+App Store 심사 제출시 2024년 5월 1일부터 개인정보 매니페스트 파일을 제출해야 됩니다.
+개인정보 보호 정책을 준수해야 됩니다.
+
+App Privacy Configuration
+	Privacy Accessed API Tyes
+		1. User Defaults : CA92.1: Access info from sampe app, per documentation
+		  - 앱 자체에서만 액세스할 수 있는 정보를 읽고 쓰는데 사용합니다.
+		2. File Timestamp : DDA9.1: Display to user on-device, per documentation
+		  - 앱을 사용하는 사용자에게 파일 시간 정보를 보여주려고 사용합니다.
+		3. Disk Space : E174.1: Write or delete file on-device, per documentation
+		  - 파일을 쓸 수 있는 디스크 공간이 충분한지 확인하거나, 디스크 공간이 부족할 때 앱이 파일을 삭제할 수 있도록 디스크 공간이 부족한지 확인하기 위해 사용합니다.
+		4. System Boot Time : 35F9.1: Measure time on-device, per documentation
+		  - 경과된 시간을 측정하는데 사용합니다.
+
+	Privacy Tracking Enabld : NO
+		콜러스 SDK에서는 개인 정보를 추적하지 않습니다.
+
+	Privacy Tracking Domains 
+		개인정보를 추적하는데 사용하는 도메인이 있으면 추가합니다.
+		콜러스 SDK에서는 개인정보를 추적하는데 사용하는 도메인은 없습니다.
+
+	Privacy Nutrition Label Types
+		1. User ID : App Functionality
+		  - FPS iOS SDK의 경우 라이선스 요청 시 전달 되는 Token에 UserID가 들어가서 사용합니다.
