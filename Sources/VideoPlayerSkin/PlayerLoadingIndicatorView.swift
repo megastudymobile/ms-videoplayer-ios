@@ -11,7 +11,7 @@ import UIKit
 ///
 /// dev 상수: diameter 50, ring width 4. ring 색은 host theme 의 `progressFill`(=primarySkyBlue) 주입.
 @MainActor
-final class PlayerLoadingIndicatorView: UIView {
+public final class PlayerLoadingIndicatorView: UIView {
     /// dev `MGPlayerLoadingViewMode` parity. clear=투명 배경, black=검은 overlay.
     enum Mode {
         case clear
@@ -26,13 +26,13 @@ final class PlayerLoadingIndicatorView: UIView {
     private let ringLayer = CAShapeLayer()
     private var isAnimating = false
 
-    override init(frame: CGRect) {
+    public override init(frame: CGRect) {
         super.init(frame: frame)
         configure()
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -60,7 +60,7 @@ final class PlayerLoadingIndicatorView: UIView {
         ringContainerView.layer.addSublayer(ringLayer)
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         let diameter = Self.indicatorDiameter
         let inset = Self.ringWidth / 2
@@ -101,5 +101,22 @@ final class PlayerLoadingIndicatorView: UIView {
         isAnimating = false
         ringContainerView.layer.removeAnimation(forKey: Self.rotationAnimationKey)
         isHidden = true
+    }
+}
+
+extension PlayerLoadingIndicatorView: PlayerSkinLoadingOverlay {
+    public var view: UIView { self }
+
+    public func configure(theme: PlayerSkinTheme) {
+        setRingColor(theme.color(.progressFill))
+    }
+
+    public func setLoading(_ isLoading: Bool) {
+        if isLoading {
+            setMode(.clear)
+            startAnimating()
+        } else {
+            stopAnimating()
+        }
     }
 }

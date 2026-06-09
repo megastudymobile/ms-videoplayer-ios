@@ -904,6 +904,9 @@ public actor KollusPlayerAdapter:
         case .naturalSizeResolved(let size):
             publish(event: .naturalSizeDidResolve(size))
 
+        case .contentFrameChanged(let frame):
+            publish(event: .videoFrameDidChange(frame))
+
         case .framerateResolved(let framerate):
             publish(event: .framerateDidResolve(framerate))
 
@@ -922,7 +925,6 @@ public actor KollusPlayerAdapter:
         case .scrollChanged,
              .zoomChanged,
              .contentModeChanged,
-             .contentFrameChanged,
              .playbackRateChanged,
              .repeatChanged,
              .thumbnailReady,

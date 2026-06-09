@@ -77,6 +77,9 @@ enum KollusSignalMapper {
         case .naturalSizeResolved(let size):
             return .event(.naturalSizeDidResolve(size))
 
+        case .contentFrameChanged(let frame):
+            return .event(.videoFrameDidChange(frame))
+
         case .framerateResolved(let framerate):
             return .event(.framerateDidResolve(framerate))
 
@@ -97,7 +100,6 @@ enum KollusSignalMapper {
         case .scrollChanged,
              .zoomChanged,
              .contentModeChanged,
-             .contentFrameChanged,
              .playbackRateChanged,
              .repeatChanged,
              .thumbnailReady,

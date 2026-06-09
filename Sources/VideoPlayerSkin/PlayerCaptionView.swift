@@ -70,6 +70,10 @@ public final class PlayerCaptionView: UIView {
     }
 }
 
+extension PlayerCaptionView: PlayerSkinCaptionOverlay {
+    public var view: UIView { self }
+}
+
 private extension PlayerCaptionView {
     func configureUI() {
         isUserInteractionEnabled = false
@@ -150,7 +154,17 @@ private extension PlayerCaptionView {
         }
         let range = NSRange(location: 0, length: attributedText.length)
         attributedText.addAttributes(captionAttributes(fontSize: fontSize), range: range)
+        trimTrailingWhitespaceAndNewlines(attributedText)
         return attributedText
+    }
+
+    func trimTrailingWhitespaceAndNewlines(_ attributedText: NSMutableAttributedString) {
+        var text = attributedText.string
+        while let lastScalar = text.unicodeScalars.last,
+              CharacterSet.whitespacesAndNewlines.contains(lastScalar) {
+            attributedText.deleteCharacters(in: NSRange(location: attributedText.length - 1, length: 1))
+            text = attributedText.string
+        }
     }
 
     func captionAttributes(fontSize: CGFloat) -> [NSAttributedString.Key: Any] {

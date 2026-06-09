@@ -16,17 +16,22 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private let theme: PlayerSkinTheme
     private let topBarBackground = UIView()
     private let bottomBarBackground = UIView()
-    // lecture-ui-parity 05 §4.9 — dev `MGPlayerLoadingView` ring parity. skin 소유라 모든 host 공통.
-    private let loadingIndicatorView = PlayerLoadingIndicatorView()
+    private let captionOverlay: PlayerSkinCaptionOverlay
+    private let loadingOverlay: PlayerSkinLoadingOverlay
+    private let gestureHUDOverlay: PlayerSkinGestureHUDOverlay
     private var slotContainers: [PlayerSkinSlot: UIStackView] = [:]
     private var blocks: [PlayerSkinBlock] = []
     private var latestState = PlayerSkinState.initial
     private var floatingBottomConstraint: NSLayoutConstraint?
+    private var captionBottomInset: CGFloat = 5
 
     public init(blueprint: PlayerSkinBlueprint = .default,
                 theme: PlayerSkinTheme = .default) {
         self.blueprint = blueprint
         self.theme = theme
+        self.captionOverlay = blueprint.overlays.makeCaptionOverlay()
+        self.loadingOverlay = blueprint.overlays.makeLoadingOverlay()
+        self.gestureHUDOverlay = blueprint.overlays.makeGestureHUDOverlay()
         super.init(frame: .zero)
         buildSkeleton()
         assembleBlocks()
@@ -55,11 +60,40 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         blocks.forEach { $0.render(state, theme: theme) }
         // lecture-ui-parity 05 §4.9 — preparing/buffering(state.isLoading) 시 중앙 ring 표시.
         if state.isLoading {
-            loadingIndicatorView.setMode(.clear)
-            loadingIndicatorView.startAnimating()
+            loadingOverlay.setLoading(true)
         } else {
-            loadingIndicatorView.stopAnimating()
+            loadingOverlay.setLoading(false)
         }
+    }
+    public func showGestureHUD(
+        icon: String,
+        title: String,
+        detail: String? = nil,
+        emphasized: Bool = false
+    ) {
+        gestureHUDOverlay.show(icon: icon, title: title, detail: detail, emphasized: emphasized)
+    }
+    public func presentRateGestureHUD(_ rate: Double) {
+        gestureHUDOverlay.presentRate(rate)
+    }
+    public func hideGestureHUD() {
+        gestureHUDOverlay.hide()
+    }
+    public func updateCaption(text: String, isSecondary: Bool) {
+        captionOverlay.update(text: text, isSecondary: isSecondary)
+    }
+    public func setCaptionFontSize(_ size: Int) {
+        captionOverlay.applyFontSize(size)
+    }
+    public func setCaptionVisible(_ visible: Bool) {
+        captionOverlay.setVisible(visible)
+    }
+    public func setCaptionBottomInset(_ inset: CGFloat) {
+        captionBottomInset = inset
+        applyCaptionBottomInset()
+    }
+    public func updateCaptionVideoFrame(_ frame: CGRect) {
+        applyCaptionBottomInset()
     }
 
     // MARK: 스켈레톤
@@ -68,11 +102,20 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         topBarBackground.translatesAutoresizingMaskIntoConstraints = false
         bottomBarBackground.translatesAutoresizingMaskIntoConstraints = false
         addSubview(topBarBackground); addSubview(bottomBarBackground)
+        let captionView = captionOverlay.view
+        captionView.translatesAutoresizingMaskIntoConstraints = false
+        insertSubview(captionView, at: 0)
         // lecture-ui-parity 05 §4.9 — 로딩 ring 은 배경 위·슬롯(컨트롤) 아래. non-interactive 라 tap 무영향.
-        loadingIndicatorView.translatesAutoresizingMaskIntoConstraints = false
-        loadingIndicatorView.setRingColor(theme.color(.progressFill))
-        addSubview(loadingIndicatorView)
+        let loadingView = loadingOverlay.view
+        loadingView.translatesAutoresizingMaskIntoConstraints = false
+        loadingOverlay.configure(theme: theme)
+        addSubview(loadingView)
         NSLayoutConstraint.activate([
+            captionView.topAnchor.constraint(equalTo: topAnchor),
+            captionView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            captionView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            captionView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
             topBarBackground.topAnchor.constraint(equalTo: topAnchor),
             topBarBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
             topBarBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -81,10 +124,10 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             bottomBarBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
             bottomBarBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
             bottomBarBackground.heightAnchor.constraint(equalToConstant: 50),
-            loadingIndicatorView.topAnchor.constraint(equalTo: topAnchor),
-            loadingIndicatorView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            loadingIndicatorView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            loadingIndicatorView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            loadingView.topAnchor.constraint(equalTo: topAnchor),
+            loadingView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
         PlayerSkinSlot.allCases.forEach { slot in
             let stack = UIStackView()
@@ -97,6 +140,15 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             addSubview(stack)
             positionSlot(slot, stack)
         }
+        let gestureHUDView = gestureHUDOverlay.view
+        gestureHUDView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(gestureHUDView)
+        NSLayoutConstraint.activate([
+            gestureHUDView.topAnchor.constraint(equalTo: topAnchor),
+            gestureHUDView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            gestureHUDView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            gestureHUDView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
     }
 
     private func positionSlot(_ slot: PlayerSkinSlot, _ stack: UIStackView) {
@@ -202,5 +254,10 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             container.isHidden = alpha == 0
             container.isUserInteractionEnabled = (alpha > 0)
         }
+    }
+
+    private func applyCaptionBottomInset() {
+        guard abs(captionOverlay.bottomInset - captionBottomInset) > 0.5 else { return }
+        captionOverlay.bottomInset = captionBottomInset
     }
 }

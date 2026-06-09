@@ -15,11 +15,16 @@ public struct PlayerSkinBlueprint {
     public var blocks: [PlayerSkinSlot: [PlayerSkinBlockFactory]]
     public var layouts: [PlayerSkinSlot: PlayerSkinSlotLayout]
     public var visibleSlots: [PlayerSkinLayoutMode: Set<PlayerSkinSlot>]
+    public var overlays: [PlayerSkinOverlaySlot: PlayerSkinOverlayFactory]
 
     public init(blocks: [PlayerSkinSlot: [PlayerSkinBlockFactory]],
                 layouts: [PlayerSkinSlot: PlayerSkinSlotLayout] = [:],
-                visibleSlots: [PlayerSkinLayoutMode: Set<PlayerSkinSlot>]) {
-        self.blocks = blocks; self.layouts = layouts; self.visibleSlots = visibleSlots
+                visibleSlots: [PlayerSkinLayoutMode: Set<PlayerSkinSlot>],
+                overlays: [PlayerSkinOverlaySlot: PlayerSkinOverlayFactory] = .default) {
+        self.blocks = blocks
+        self.layouts = layouts
+        self.visibleSlots = visibleSlots
+        self.overlays = overlays
     }
 }
 
@@ -74,6 +79,11 @@ public extension PlayerSkinBlueprint {
                     .floatingBottomTrailing
                 ],
                 .fullScreen: Set(PlayerSkinSlot.allCases)
+            ],
+            overlays: [
+                .caption: { PlayerCaptionView() },
+                .loading: { PlayerLoadingIndicatorView() },
+                .gestureHUD: { PlayerGestureHUDView() }
             ]
         )
     }

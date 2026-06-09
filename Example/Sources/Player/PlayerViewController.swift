@@ -21,9 +21,11 @@ final class PlayerViewController: UIViewController {
     // 전부 VideoPlayerSkin 기성품 — Example 자체 컨트롤 뷰 없음 (문서 §3).
     private let renderSurfaceView = PlayerRenderSurfaceView()
     private let skin = AssembledPlayerSkin(blueprint: .example)
-    private let captionView = PlayerCaptionView()
-    private let gestureHUD = PlayerGestureHUDView()
     private let toastLabel = UILabel()
+
+    private enum Metric {
+        static let captionBottomInset: CGFloat = 5
+    }
 
     private var hasResolvedInitialLayout = false
     private var bookmarks: [Bookmark] = []
@@ -85,7 +87,8 @@ final class PlayerViewController: UIViewController {
         skin.setExtraControls([
             ExtraControl(id: ExtraControlID.bookmark, iconName: "bookmark", title: "북마크", placement: .topMenu)
         ])
-        captionView.applyFontSize(PreferenceManager.captionFontSize)
+        skin.setCaptionBottomInset(Metric.captionBottomInset)
+        skin.setCaptionFontSize(PreferenceManager.captionFontSize)
 
         // setUp → start 연속 실행 — viewDidAppear 분리 시 setUp 완료 전
         // start가 nil 모듈에 걸려 조용히 무재생되는 경쟁 조건이 생긴다 (리뷰 HIGH).
@@ -145,14 +148,11 @@ final class PlayerViewController: UIViewController {
     // MARK: - 뷰 계층
 
     private func configureHierarchy() {
-        // 아래→위: 렌더 서피스 → 자막 → skin(컨트롤 오버레이) → 제스처 HUD → 토스트
-        for subview in [renderSurfaceView, captionView, skin, gestureHUD, toastLabel] {
+        // 아래→위: 렌더 서피스 → skin(컨트롤/자막/HUD 오버레이) → 토스트
+        for subview in [renderSurfaceView, skin, toastLabel] {
             subview.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(subview)
         }
-        captionView.isUserInteractionEnabled = false
-        gestureHUD.isUserInteractionEnabled = false
-        gestureHUD.isHidden = true
 
         toastLabel.textColor = .white
         toastLabel.font = .systemFont(ofSize: 14, weight: .medium)
@@ -168,17 +168,10 @@ final class PlayerViewController: UIViewController {
             renderSurfaceView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             renderSurfaceView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            captionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            captionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            captionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -60),
-
             skin.topAnchor.constraint(equalTo: view.topAnchor),
             skin.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             skin.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             skin.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            gestureHUD.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            gestureHUD.centerYAnchor.constraint(equalTo: view.centerYAnchor),
 
             toastLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             toastLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -100),
@@ -224,15 +217,13 @@ final class PlayerViewController: UIViewController {
         case .changed:
             if panIsLeftSide {
                 let value = deviceControl.adjustBrightness(by: delta)
-                gestureHUD.isHidden = false
-                gestureHUD.show(icon: "sun.max", title: "\(Int(value * 100))%")
+                skin.showGestureHUD(icon: "sun.max", title: "\(Int(value * 100))%")
             } else {
                 let value = deviceControl.adjustVolume(by: Float(delta))
-                gestureHUD.isHidden = false
-                gestureHUD.show(icon: "speaker.wave.2", title: "\(Int(value * 100))%")
+                skin.showGestureHUD(icon: "speaker.wave.2", title: "\(Int(value * 100))%")
             }
         case .ended, .cancelled, .failed:
-            gestureHUD.hide()
+            skin.hideGestureHUD()
         default:
             break
         }
@@ -364,7 +355,9 @@ final class PlayerViewController: UIViewController {
         onPlayerEvent?(event)   // 콘솔 pane fan-out (북마크/자막) — VC 자체 처리와 병행.
         switch event {
         case .captionDidUpdate(let text, let isSecondary):
-            captionView.update(text: text, isSecondary: isSecondary)
+            skin.updateCaption(text: text, isSecondary: isSecondary)
+        case .videoFrameDidChange(let frame):
+            skin.updateCaptionVideoFrame(frame)
         case .bookmarksDidLoad(let loaded):
             bookmarks = loaded.sorted { $0.position < $1.position }
         case .didFail(let error):
@@ -437,11 +430,11 @@ extension PlayerViewController: PlayerControlChannel {
 
     func setCaptionFontSize(_ size: Int) {
         interactor.send(.setCaptionFontSize(size))
-        captionView.applyFontSize(size)
+        skin.setCaptionFontSize(size)
     }
 
     func setCaptionHidden(_ hidden: Bool) {
-        captionView.setVisible(hidden == false)
+        skin.setCaptionVisible(hidden == false)
     }
 }
 

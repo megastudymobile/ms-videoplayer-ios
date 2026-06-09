@@ -420,6 +420,7 @@ public actor PlayerCore {
              .heightDidChange,
              .externalOutputDidChange,
              .naturalSizeDidResolve,
+             .videoFrameDidChange,
              .framerateDidResolve,
              .deviceLockPolicyChanged,
              .nextEpisodeAvailable:

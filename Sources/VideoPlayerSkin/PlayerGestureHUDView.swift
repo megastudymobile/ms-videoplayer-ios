@@ -83,8 +83,13 @@ public final class PlayerGestureHUDView: UIView {
     }
 }
 
+extension PlayerGestureHUDView: PlayerSkinGestureHUDOverlay {
+    public var view: UIView { self }
+}
+
 private extension PlayerGestureHUDView {
     func configureUI() {
+        accessibilityIdentifier = "lecturePlayer.gestureHUDView"
         isHidden = true
         alpha = 0
         isUserInteractionEnabled = false

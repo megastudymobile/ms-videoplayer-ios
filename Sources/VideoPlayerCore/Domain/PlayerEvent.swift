@@ -27,6 +27,7 @@ public enum PlayerEvent: Equatable, Sendable {
     case heightDidChange(Int)
     case externalOutputDidChange(enabled: Bool)
     case naturalSizeDidResolve(CGSize)
+    case videoFrameDidChange(CGRect)
     case framerateDidResolve(Int)
     case deviceLockPolicyChanged(locked: Bool)
     case nextEpisodeAvailable(NextEpisodeInfo)

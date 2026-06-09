@@ -166,6 +166,17 @@ struct KollusSignalMapperTests {
         }
     }
 
+    @Test("contentFrameChanged는 videoFrameDidChange 이벤트로 passthrough된다")
+    func contentFramePassthrough() async {
+        let frame = CGRect(x: 10, y: 20, width: 320, height: 180)
+        let output = await normalize(.contentFrameChanged(frame: frame))
+        guard case .event(.videoFrameDidChange(let mappedFrame)) = output else {
+            Issue.record("got \(String(describing: output))")
+            return
+        }
+        #expect(mappedFrame == frame)
+    }
+
     // MARK: - 무시 신호
 
     @Test("scroll/zoom/playbackRate 등은 nil로 무시된다")
