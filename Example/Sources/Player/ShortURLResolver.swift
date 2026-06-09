@@ -52,10 +52,14 @@ struct ShortURLResolver {
         guard let html = String(data: data, encoding: .utf8) else {
             throw ResolveError.htmlDecodingFailed
         }
-        guard let streamingURL = Self.extractSchemeURI(from: html) else {
+        guard let streamingURL = Self.extractPlaybackURL(from: html) else {
             throw ResolveError.schemeURINotFound
         }
         return streamingURL
+    }
+
+    static func extractPlaybackURL(from html: String) -> URL? {
+        extractSchemeURI(from: html) ?? extractLauncherPlaybackURL(from: html)
     }
 
     /// HTML 내 JSON의 "scheme_uri" 값(HTML 엔티티 인코딩)을 추출·디코드해 반환.
@@ -73,5 +77,25 @@ struct ShortURLResolver {
         value = value.replacingOccurrences(of: "\\/", with: "/")
         value = value.replacingOccurrences(of: "&amp;", with: "&")
         return URL(string: value)
+    }
+
+    /// `/s?jwt=...` 페이지의 launcher scheme에서 SDK가 사용할 `/si?...` 재생 URL을 추출한다.
+    static func extractLauncherPlaybackURL(from html: String) -> URL? {
+        let decodedHTML = html
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "\\/", with: "/")
+            .replacingOccurrences(of: "&amp;", with: "&")
+
+        guard let regex = try? NSRegularExpression(pattern: ##"kollus://path\?url=([^"#]+)"##) else {
+            return nil
+        }
+        let range = NSRange(decodedHTML.startIndex..., in: decodedHTML)
+        guard let match = regex.firstMatch(in: decodedHTML, options: [], range: range),
+              let valueRange = Range(match.range(at: 1), in: decodedHTML) else {
+            return nil
+        }
+
+        let encodedURLString = String(decodedHTML[valueRange])
+        return encodedURLString.removingPercentEncoding.flatMap(URL.init(string:))
     }
 }

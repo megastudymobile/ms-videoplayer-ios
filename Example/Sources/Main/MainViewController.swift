@@ -13,8 +13,19 @@ import VideoPlayerCore
 
 @MainActor
 final class MainViewController: UIViewController {
+    private static let defaultShortURLString = "https://v.kr.kollus.com/YmJybQjF"
+    private static let defaultJWTPlaybackURLString = [
+        "https://v.kr.kollus.com/s?",
+        "jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.",
+        "eyJjdWlkIjoiY2F0ZW5vaWQtc2FtcGxlIiwiZXhwdCI6MjA5NjAwMDI2NiwibWMiOlt7Im1ja2V5IjoiWVRtMTNQQ0EifV19.",
+        "fOzQlsg-jPCieTQ7KwE_dkSwM_NLg1gXzRfB-yhrlcU",
+        "&custom_key=54081a54c0bb13fa49e3a24ad725bef1"
+    ].joined()
+
     private let urlField = UITextField()
     private let playerButton = UIButton(configuration: .filled())
+    private let jwtURLField = UITextField()
+    private let jwtPlayerButton = UIButton(configuration: .filled())
     private let resolver = ShortURLResolver()
 
     override func viewDidLoad() {
@@ -25,20 +36,34 @@ final class MainViewController: UIViewController {
     }
 
     private func configureLayout() {
-        urlField.borderStyle = .roundedRect
-        urlField.autocapitalizationType = .none
-        urlField.autocorrectionType = .no
-        urlField.keyboardType = .URL
-        urlField.clearButtonMode = .whileEditing
-        urlField.placeholder = "Kollus short URL"
-        urlField.text = "https://v.kr.kollus.com/YmJybQjF"   // 샘플 앱 기본 URL
-        urlField.accessibilityIdentifier = "main.urlField"
+        configureURLField(
+            urlField,
+            placeholder: "Kollus short URL",
+            text: Self.defaultShortURLString,
+            accessibilityIdentifier: "main.urlField"
+        )
 
         playerButton.configuration?.title = "플레이어"
         playerButton.accessibilityIdentifier = "main.playerButton"
         playerButton.addTarget(self, action: #selector(didTapPlayer), for: .touchUpInside)
 
-        let stack = UIStackView(arrangedSubviews: [urlField, playerButton])
+        configureURLField(
+            jwtURLField,
+            placeholder: "Kollus JWT URL",
+            text: Self.defaultJWTPlaybackURLString,
+            accessibilityIdentifier: "main.jwtURLField"
+        )
+
+        jwtPlayerButton.configuration?.title = "JWT 플레이어"
+        jwtPlayerButton.accessibilityIdentifier = "main.jwtPlayerButton"
+        jwtPlayerButton.addTarget(self, action: #selector(didTapJWTPlayer), for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [
+            urlField,
+            playerButton,
+            jwtURLField,
+            jwtPlayerButton
+        ])
         stack.axis = .vertical
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -49,6 +74,22 @@ final class MainViewController: UIViewController {
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
+    }
+
+    private func configureURLField(
+        _ field: UITextField,
+        placeholder: String,
+        text: String,
+        accessibilityIdentifier: String
+    ) {
+        field.borderStyle = .roundedRect
+        field.autocapitalizationType = .none
+        field.autocorrectionType = .no
+        field.keyboardType = .URL
+        field.clearButtonMode = .whileEditing
+        field.placeholder = placeholder
+        field.text = text
+        field.accessibilityIdentifier = accessibilityIdentifier
     }
 
     // MARK: - Actions
@@ -74,6 +115,30 @@ final class MainViewController: UIViewController {
                 self.navigationController?.pushViewController(container, animated: true)
             } catch {
                 self.presentAlert(message: "재생 준비 실패: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc private func didTapJWTPlayer() {
+        guard let urlString = jwtURLField.text, urlString.isEmpty == false else {
+            presentAlert(message: "JWT URL을 입력하세요.")
+            return
+        }
+        guard navigationController?.topViewController === self else { return }
+        jwtPlayerButton.isEnabled = false
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.jwtPlayerButton.isEnabled = true }
+            do {
+                let playbackURL = try await self.resolver.resolve(urlString)
+                guard self.navigationController?.topViewController === self else { return }
+                let container = PlayerTestConsoleContainerViewController(
+                    source: .url(playbackURL),
+                    moduleProvider: PlayerModuleProvider.shared
+                )
+                self.navigationController?.pushViewController(container, animated: true)
+            } catch {
+                self.presentAlert(message: "JWT 재생 준비 실패: \(error.localizedDescription)")
             }
         }
     }

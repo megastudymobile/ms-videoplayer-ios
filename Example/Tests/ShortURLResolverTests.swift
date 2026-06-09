@@ -8,7 +8,7 @@
 import Testing
 @testable import VideoPlayerExample
 
-@Suite("ShortURLResolver scheme_uri 추출")
+@Suite("ShortURLResolver 재생 URL 추출")
 struct ShortURLResolverTests {
     @Test("HTML 엔티티 인코딩된 scheme_uri 추출 + 디코드")
     func extractsAndDecodesSchemeURI() {
@@ -28,8 +28,35 @@ struct ShortURLResolverTests {
         #expect(ShortURLResolver.extractSchemeURI(from: html) == nil)
     }
 
+    @Test("Kollus launcher scheme에서 실제 /si 재생 URL 추출")
+    func extractsPlaybackURLFromLauncherScheme() {
+        let html = #"""
+        <kollus-player-launcher :player-policy="{&quot;mobile&quot;:{&quot;scheme&quot;:{&quot;general&quot;:&quot;kollus:\/\/path?url=https%3A%2F%2Fv.kr.kollus.com%2Fsi%3Fjwt%3Dabc%26custom_key%3Dxyz%26normalized_hash%3DAF%25252F4D%25253D%25253D%26expire_time%3D30&quot;}}}}"></kollus-player-launcher>
+        """#
+
+        let url = ShortURLResolver.extractPlaybackURL(from: html)
+
+        #expect(
+            url?.absoluteString ==
+                "https://v.kr.kollus.com/si?jwt=abc&custom_key=xyz&normalized_hash=AF%252F4D%253D%253D&expire_time=30"
+        )
+    }
+
+    @Test("scheme_uri가 있으면 launcher scheme보다 우선 사용")
+    func prefersSchemeURIWhenMultipleCandidatesExist() {
+        let html = #"""
+        {"scheme_uri&quot;:&quot;https:\/\/v.kr.kollus.com\/s?jwt=primary&amp;custom_key=one&quot;}
+        <kollus-player-launcher :player-policy="{&quot;mobile&quot;:{&quot;scheme&quot;:{&quot;general&quot;:&quot;kollus:\/\/path?url=https%3A%2F%2Fv.kr.kollus.com%2Fsi%3Fjwt%3Dsecondary%26custom_key%3Dtwo&quot;}}}}"></kollus-player-launcher>
+        """#
+
+        let url = ShortURLResolver.extractPlaybackURL(from: html)
+
+        #expect(url?.absoluteString == "https://v.kr.kollus.com/s?jwt=primary&custom_key=one")
+    }
+
     @Test("빈 문자열 → nil")
     func returnsNilForEmpty() {
         #expect(ShortURLResolver.extractSchemeURI(from: "") == nil)
+        #expect(ShortURLResolver.extractPlaybackURL(from: "") == nil)
     }
 }
