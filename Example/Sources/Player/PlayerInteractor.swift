@@ -28,6 +28,9 @@ final class PlayerInteractor {
     private var playerModule: PlayerModule?
     private let binder = PlayerStateBinder()
     private var lifecycleCoordinator: PlayerLifecycleCoordinator?
+    /// tearDown 이 setUp(async) 완료 전에 호출된 경우 — 뒤늦게 만들어진 모듈이
+    /// 미해제로 누수되지 않도록 차단한다 (push 후 즉시 back 레이스).
+    private var isDisposed = false
 
     // capability protocol 캐스트 — 시뮬레이터(UnsupportedEnvironmentEngine)에서는 nil.
     private var zoomEngine: PlayerSynchronousZoomEngine?
@@ -56,6 +59,11 @@ final class PlayerInteractor {
 
     func setUp(renderSurface: PlayerRenderSurface) async throws {
         let module = try await moduleProvider.makeModule()
+        // makeModule await 동안 tearDown 이 선행됐으면 — 이 모듈은 즉시 폐기하고 중단.
+        guard isDisposed == false else {
+            await module.core.dispose()
+            return
+        }
         playerModule = module
         zoomEngine = module.engine as? PlayerSynchronousZoomEngine
 
@@ -78,11 +86,12 @@ final class PlayerInteractor {
     }
 
     func start() async throws {
-        guard let module = playerModule else { return }
+        guard isDisposed == false, let module = playerModule else { return }
         try await module.startPlaybackUseCase.execute(source: source, policy: featurePolicy)
     }
 
     func tearDown() {
+        isDisposed = true
         lifecycleCoordinator?.stop()
         lifecycleCoordinator = nil
         binder.unbind()

@@ -30,6 +30,22 @@ final class PlayerViewController: UIViewController {
     /// 팬 제스처 시작 시점의 좌/우 — 도중 중심선 통과로 밝기↔음량이 바뀌지 않도록 고정.
     private var panIsLeftSide = false
 
+    // MARK: - Embed seam (split 컨테이너 호스팅용)
+
+    /// split 컨테이너에 child 로 embed 될 때 true. 자체 회전 기반 skin 모드 resolve 를 끄고,
+    /// 컨테이너가 applySkinLayoutMode(_:) 로 모드를 명시 주입한다 (16:9 프레임은 항상 가로라
+    /// 자체 bounds 로 판단하면 fullScreen 로 오인됨).
+    var isEmbeddedInSplit = false
+
+    /// 닫기 동작 주입 — nil 이면 modal dismiss, push embed 시 컨테이너가 pop 으로 주입.
+    var onClose: (() -> Void)?
+
+    /// skin 상태 변경 fan-out — 콘솔 메타데이터/활성 pane 갱신용.
+    var onSkinStateChanged: ((PlayerSkinState) -> Void)?
+
+    /// skin 무관 이벤트 fan-out — 콘솔 북마크/자막 pane 갱신용 (handle(event:) 와 병행).
+    var onPlayerEvent: ((PlayerEvent) -> Void)?
+
     // MARK: - Init
 
     init(source: PlaybackSource, moduleProvider: PlayerModuleProviding) {
@@ -46,7 +62,7 @@ final class PlayerViewController: UIViewController {
             onEvent: { eventSink($0) }
         )
         super.init(nibName: nil, bundle: nil)
-        renderSink = { [weak self] state in self?.skin.render(state) }
+        renderSink = { [weak self] state in self?.emitRender(state) }
         eventSink = { [weak self] event in self?.handle(event: event) }
     }
 
@@ -95,19 +111,35 @@ final class PlayerViewController: UIViewController {
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
+        // embed 시 skin 모드는 컨테이너가 applySkinLayoutMode(_:) 로 주입한다 (16:9 프레임 오인 방지).
+        guard isEmbeddedInSplit == false else { return }
         guard hasResolvedInitialLayout == false else { return }
         hasResolvedInitialLayout = true
-        skin.render(viewModel.resolveLayoutMode(layoutMode(for: view.bounds.size)))
+        emitRender(viewModel.resolveLayoutMode(layoutMode(for: view.bounds.size)))
     }
 
     /// 세로/가로 — layoutMode resolve 후 skin이 슬롯 가시성 자동 전환 (문서 §2.2.1).
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
-        skin.render(viewModel.resolveLayoutMode(layoutMode(for: size)))
+        guard isEmbeddedInSplit == false else { return }
+        emitRender(viewModel.resolveLayoutMode(layoutMode(for: size)))
     }
 
     private func layoutMode(for size: CGSize) -> PlayerSkinLayoutMode {
         size.width > size.height ? .fullScreen : .verticalSplit
+    }
+
+    /// 컨테이너가 split/fullscreen 레이아웃 전환 시 호출 — skin 모드 명시 주입.
+    func applySkinLayoutMode(_ mode: PlayerSkinLayoutMode) {
+        emitRender(viewModel.resolveLayoutMode(mode))
+    }
+
+    // MARK: - 렌더 fan-out
+
+    /// skin 렌더 단일 통로 — skin 갱신 + 콘솔 fan-out 을 한곳에서 보장.
+    private func emitRender(_ state: PlayerSkinState) {
+        skin.render(state)
+        onSkinStateChanged?(state)
     }
 
     // MARK: - 뷰 계층
@@ -171,7 +203,7 @@ final class PlayerViewController: UIViewController {
     }
 
     @objc private func didTapSurface() {
-        skin.render(viewModel.toggleControlsVisible())
+        emitRender(viewModel.toggleControlsVisible())
     }
 
     @objc private func didPinch(_ recognizer: UIPinchGestureRecognizer) {
@@ -236,7 +268,7 @@ final class PlayerViewController: UIViewController {
         case .toggleScreenMode:
             toggleScreenMode()
         case .holdToggleRequested:
-            skin.render(viewModel.toggleLock())
+            emitRender(viewModel.toggleLock())
         case .sectionRepeatToggleRequested, .sectionRepeatStartRequested, .sectionRepeatEndRequested:
             interactor.handleSectionRepeat(action)
         case .extraControlTapped(let id):
@@ -244,13 +276,18 @@ final class PlayerViewController: UIViewController {
         case .settingRequested, .moreRequested:
             showToast("데모 미구현 항목")
         case .closeRequested:
-            dismiss(animated: false)   // 정리는 viewDidDisappear → interactor.tearDown()
+            // push embed 시 컨테이너 pop, modal 시 dismiss. 정리는 viewDidDisappear → interactor.tearDown()
+            if let onClose {
+                onClose()
+            } else {
+                dismiss(animated: false)
+            }
         }
     }
 
     private func applyPlaybackRate(_ rate: Double) {
         interactor.send(.setPlaybackRate(rate))
-        skin.render(viewModel.setPlaybackRate(rate))
+        emitRender(viewModel.setPlaybackRate(rate))
     }
 
     /// 화면 모드 버튼 — 세로/가로 전환 요청 (iOS 16+: 지오메트리 요청, 이하: 시스템 회전 유도).
@@ -268,7 +305,7 @@ final class PlayerViewController: UIViewController {
     // MARK: - 배속 패널
 
     private func presentRatePanel() {
-        skin.render(viewModel.setRatePanelPresented(true))
+        emitRender(viewModel.setRatePanelPresented(true))
         let panel = PlayerPlaybackRatePanelViewController(
             initialRate: viewModel.state.playbackRate,
             mode: .standard,
@@ -324,6 +361,7 @@ final class PlayerViewController: UIViewController {
     // MARK: - PlayerEvent (skin 상태 무관 이벤트)
 
     private func handle(event: PlayerEvent) {
+        onPlayerEvent?(event)   // 콘솔 pane fan-out (북마크/자막) — VC 자체 처리와 병행.
         switch event {
         case .captionDidUpdate(let text, let isSecondary):
             captionView.update(text: text, isSecondary: isSecondary)
@@ -364,6 +402,46 @@ final class PlayerViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             UIView.animate(withDuration: 0.3) { self?.toastLabel.alpha = 0 }
         }
+    }
+}
+
+// MARK: - PlayerControlChannel (하단 콘솔 pane 제어 채널)
+
+extension PlayerViewController: PlayerControlChannel {
+    var currentSkinState: PlayerSkinState { viewModel.state }
+    var loadedBookmarks: [Bookmark] { bookmarks }
+
+    func togglePlayPause() {
+        interactor.togglePlayPause()
+    }
+
+    func skip(by delta: TimeInterval) {
+        interactor.seekBy(delta)
+    }
+
+    func seek(to time: TimeInterval) {
+        interactor.send(.seek(to: time))
+    }
+
+    func setPlaybackRate(_ rate: Double) {
+        applyPlaybackRate(rate)
+    }
+
+    func addBookmarkAtCurrentTime() {
+        interactor.send(.addBookmark(at: viewModel.state.currentTime))
+    }
+
+    func removeBookmark(at position: TimeInterval) {
+        interactor.send(.removeBookmark(at: position))
+    }
+
+    func setCaptionFontSize(_ size: Int) {
+        interactor.send(.setCaptionFontSize(size))
+        captionView.applyFontSize(size)
+    }
+
+    func setCaptionHidden(_ hidden: Bool) {
+        captionView.setVisible(hidden == false)
     }
 }
 

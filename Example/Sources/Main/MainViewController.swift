@@ -4,7 +4,7 @@
 //
 //  Created by JunyoungJung on 2026/06/05.
 //
-//  진입 화면 — short URL 입력 후 플레이어 진입, 세팅 화면 이동.
+//  진입 화면 — short URL 입력 후 플레이어 + 테스트 콘솔 화면으로 진입.
 //  컴포지션 루트: PlayerModuleProviding 구체(PlayerModuleProvider)를 여기서 주입한다.
 //
 
@@ -15,7 +15,6 @@ import VideoPlayerCore
 final class MainViewController: UIViewController {
     private let urlField = UITextField()
     private let playerButton = UIButton(configuration: .filled())
-    private let settingsButton = UIButton(configuration: .tinted())
     private let resolver = ShortURLResolver()
 
     override func viewDidLoad() {
@@ -39,11 +38,7 @@ final class MainViewController: UIViewController {
         playerButton.accessibilityIdentifier = "main.playerButton"
         playerButton.addTarget(self, action: #selector(didTapPlayer), for: .touchUpInside)
 
-        settingsButton.configuration?.title = "세팅"
-        settingsButton.accessibilityIdentifier = "main.settingsButton"
-        settingsButton.addTarget(self, action: #selector(didTapSettings), for: .touchUpInside)
-
-        let stack = UIStackView(arrangedSubviews: [urlField, playerButton, settingsButton])
+        let stack = UIStackView(arrangedSubviews: [urlField, playerButton])
         stack.axis = .vertical
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -63,26 +58,24 @@ final class MainViewController: UIViewController {
             presentAlert(message: "short URL을 입력하세요.")
             return
         }
+        // 빠른 더블탭으로 컨테이너가 두 번 push 되는 것을 차단.
+        guard navigationController?.topViewController === self else { return }
         playerButton.isEnabled = false
         Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.playerButton.isEnabled = true }
             do {
                 let streamingURL = try await self.resolver.resolve(shortURL)
-                let player = PlayerViewController(
+                guard self.navigationController?.topViewController === self else { return }
+                let container = PlayerTestConsoleContainerViewController(
                     source: .url(streamingURL),
                     moduleProvider: PlayerModuleProvider.shared
                 )
-                player.modalPresentationStyle = .fullScreen
-                self.present(player, animated: false)   // 샘플과 동일: 풀스크린 present
+                self.navigationController?.pushViewController(container, animated: true)
             } catch {
                 self.presentAlert(message: "재생 준비 실패: \(error.localizedDescription)")
             }
         }
-    }
-
-    @objc private func didTapSettings() {
-        navigationController?.pushViewController(SettingViewController(), animated: true)
     }
 
     private func presentAlert(message: String) {
