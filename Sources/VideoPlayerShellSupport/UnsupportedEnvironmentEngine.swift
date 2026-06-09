@@ -25,6 +25,9 @@ public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
     private let message: String
     private var state: PlaybackState = .idle
     private weak var renderSurface: PlayerRenderSurface?
+    /// 시뮬레이터에서도 북마크 UI 흐름(추가/목록/삭제)을 테스트할 수 있도록 in-memory 로 보관.
+    /// 실재생이 없으므로 영속화하지 않는다.
+    private var bookmarks: [Bookmark] = []
 
     public init(message: String) {
         self.message = message
@@ -61,4 +64,32 @@ public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
     public func pause() async throws {}
     public func seek(to time: TimeInterval) async throws {}
     public func stop(reason: PlayerStopReason) async throws {}
+}
+
+// MARK: - PlayerTitledBookmarkEngine (시뮬레이터 in-memory 북마크 — 콘솔 테스트용)
+
+extension UnsupportedEnvironmentEngine: PlayerTitledBookmarkEngine {
+    public func addBookmark(at time: TimeInterval) async throws {
+        try await addBookmark(at: time, title: "")
+    }
+
+    public func addBookmark(at time: TimeInterval, title: String) async throws {
+        let bookmark = Bookmark(position: time, title: title, kind: .user, createdAt: Date())
+        bookmarks.append(bookmark)
+        bookmarks.sort { $0.position < $1.position }
+        emitBookmarks()
+    }
+
+    public func removeBookmark(at time: TimeInterval) async throws {
+        bookmarks.removeAll { $0.position == time }
+        emitBookmarks()
+    }
+
+    public func currentBookmarks() async -> [Bookmark] {
+        bookmarks
+    }
+
+    private func emitBookmarks() {
+        eventContinuation.yield(.bookmarksDidLoad(bookmarks))
+    }
 }
