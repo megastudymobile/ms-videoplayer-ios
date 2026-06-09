@@ -25,6 +25,8 @@ final class PlayerTestConsoleContainerViewController: UIViewController {
 
     private let playerViewController: PlayerViewController
     private let consoleViewController: PlayerConsoleViewController
+    /// 콘솔 전용 nav 스택 — pane 의 push 가 컨테이너(앱) nav 가 아닌 하단 콘솔 영역 안에서 동작하도록 격리.
+    private let consoleNavigationController: UINavigationController
     private let divider: UIView = {
         let view = UIView()
         view.backgroundColor = .separator
@@ -39,10 +41,14 @@ final class PlayerTestConsoleContainerViewController: UIViewController {
     init(source: PlaybackSource, moduleProvider: PlayerModuleProviding) {
         let player = PlayerViewController(source: source, moduleProvider: moduleProvider)
         self.playerViewController = player
-        self.consoleViewController = PlayerConsoleViewController(
+        let console = PlayerConsoleViewController(
             channel: player,
             sourceDescription: Self.describe(source)
         )
+        self.consoleViewController = console
+        let consoleNav = UINavigationController(rootViewController: console)
+        consoleNav.setNavigationBarHidden(true, animated: false)
+        self.consoleNavigationController = consoleNav
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -60,7 +66,8 @@ final class PlayerTestConsoleContainerViewController: UIViewController {
         configurePlayerWiring()
         embed(playerViewController)
         view.addSubview(divider)
-        embed(consoleViewController)
+        consoleNavigationController.delegate = self
+        embed(consoleNavigationController)
         divider.translatesAutoresizingMaskIntoConstraints = false
 
         applyLayout(resolveMode(for: view.bounds.size))
@@ -122,7 +129,7 @@ final class PlayerTestConsoleContainerViewController: UIViewController {
         layoutConstraints.removeAll()
 
         let playerView = playerViewController.view!
-        let consoleView = consoleViewController.view!
+        let consoleView = consoleNavigationController.view!
         let safeArea = view.safeAreaLayoutGuide
 
         switch mode {
@@ -177,5 +184,21 @@ final class PlayerTestConsoleContainerViewController: UIViewController {
         case .kollus(let mediaContentKey):
             return "kollus: \(mediaContentKey)"
         }
+    }
+}
+
+// MARK: - UINavigationControllerDelegate
+
+extension PlayerTestConsoleContainerViewController: UINavigationControllerDelegate {
+    /// 콘솔 루트(커스텀 tabBar 보유)에서는 nav bar 를 숨기고, push 된 상세 화면에서만 back 버튼용 nav bar 노출.
+    func navigationController(
+        _ navigationController: UINavigationController,
+        willShow viewController: UIViewController,
+        animated: Bool
+    ) {
+        // animated 토글은 바를 push 와 동시에 세로 슬라이드시켜 "위→아래로 내려오는" 잔상을 만든다.
+        // embed nav 는 화면 상단에 닿지 않아 슬라이드 모션만 거슬리므로 즉시(non-animated) 전환.
+        let isConsoleRoot = viewController === consoleViewController
+        navigationController.setNavigationBarHidden(isConsoleRoot, animated: false)
     }
 }
