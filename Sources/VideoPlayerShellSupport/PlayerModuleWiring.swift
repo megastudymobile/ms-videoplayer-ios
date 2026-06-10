@@ -13,9 +13,6 @@ public struct PlayerModule {
     public let core: PlayerCore
     public let engine: PlayerEngineAdapter
     public let engineCapabilities: EngineCapabilities
-    public let startPlaybackUseCase: StartPlaybackUseCaseProtocol
-    public let controlPlaybackUseCase: ControlPlaybackUseCaseProtocol
-    public let observePlaybackStateUseCase: ObservePlaybackStateUseCaseProtocol
 
     /// 엔진 가용 기능 — host/Skin이 init 직후 버튼 노출을 사전 결정한다.
     public var availableFeatures: PlayerFeatureAvailability {
@@ -25,17 +22,11 @@ public struct PlayerModule {
     public init(
         core: PlayerCore,
         engine: PlayerEngineAdapter,
-        engineCapabilities: EngineCapabilities,
-        startPlaybackUseCase: StartPlaybackUseCaseProtocol,
-        controlPlaybackUseCase: ControlPlaybackUseCaseProtocol,
-        observePlaybackStateUseCase: ObservePlaybackStateUseCaseProtocol
+        engineCapabilities: EngineCapabilities
     ) {
         self.core = core
         self.engine = engine
         self.engineCapabilities = engineCapabilities
-        self.startPlaybackUseCase = startPlaybackUseCase
-        self.controlPlaybackUseCase = controlPlaybackUseCase
-        self.observePlaybackStateUseCase = observePlaybackStateUseCase
     }
 }
 
@@ -55,21 +46,10 @@ public enum PlayerModuleWiring {
             await core.activate()
         }
 
-        let useCases = await MainActor.run {
-            (
-                DefaultStartPlaybackUseCase(core: core),
-                DefaultControlPlaybackUseCase(core: core),
-                DefaultObservePlaybackStateUseCase(core: core)
-            )
-        }
-
         return PlayerModule(
             core: core,
             engine: engine,
-            engineCapabilities: engineCapabilities,
-            startPlaybackUseCase: useCases.0,
-            controlPlaybackUseCase: useCases.1,
-            observePlaybackStateUseCase: useCases.2
+            engineCapabilities: engineCapabilities
         )
     }
 }

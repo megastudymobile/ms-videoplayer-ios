@@ -12,7 +12,9 @@ import VideoPlayerCore
 
 @MainActor
 public final class PlayerLifecycleCoordinator {
-    private let controlUseCase: ControlPlaybackUseCaseProtocol
+    public typealias SendCommand = @MainActor (PlaybackCommand) async throws -> Void
+
+    private let sendCommand: SendCommand
     private let policy: PlayerFeaturePolicy
     private let engineCapabilities: EngineCapabilities
     private let onEvent: ((PlayerEvent) -> Void)?
@@ -20,17 +22,34 @@ public final class PlayerLifecycleCoordinator {
     private var observers: [NSObjectProtocol] = []
 
     public init(
-        controlUseCase: ControlPlaybackUseCaseProtocol,
+        sendCommand: @escaping SendCommand,
         policy: PlayerFeaturePolicy,
         engineCapabilities: EngineCapabilities,
         notificationCenter: NotificationCenter = .default,
         onEvent: ((PlayerEvent) -> Void)? = nil
     ) {
-        self.controlUseCase = controlUseCase
+        self.sendCommand = sendCommand
         self.policy = policy
         self.engineCapabilities = engineCapabilities
         self.notificationCenter = notificationCenter
         self.onEvent = onEvent
+    }
+
+    /// PlayerCore에 직접 명령을 위임하는 편의 생성자.
+    public convenience init(
+        core: PlayerCore,
+        policy: PlayerFeaturePolicy,
+        engineCapabilities: EngineCapabilities,
+        notificationCenter: NotificationCenter = .default,
+        onEvent: ((PlayerEvent) -> Void)? = nil
+    ) {
+        self.init(
+            sendCommand: { try await core.execute(command: $0) },
+            policy: policy,
+            engineCapabilities: engineCapabilities,
+            notificationCenter: notificationCenter,
+            onEvent: onEvent
+        )
     }
 
     public func start() {
@@ -101,8 +120,8 @@ public final class PlayerLifecycleCoordinator {
     }
 
     private func pauseForLifecycleTransition() {
-        Task { @MainActor [controlUseCase] in
-            try? await controlUseCase.execute(command: .pause)
+        Task { @MainActor [sendCommand] in
+            try? await sendCommand(.pause)
         }
     }
 }

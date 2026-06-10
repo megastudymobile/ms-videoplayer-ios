@@ -28,7 +28,6 @@ public struct KollusEnvironment: Sendable {
     public let audioBackgroundPlayPolicy: Bool
 
     public let drm: KollusDRMConfiguration
-    public let chat: KollusLiveChatProfile?
 
     public let observer: KollusObserver?
     public let diagnostics: KollusDiagnosticsSink?
@@ -50,7 +49,6 @@ public struct KollusEnvironment: Sendable {
         pauseOnForeground: Bool = false,
         audioBackgroundPlayPolicy: Bool = false,
         drm: KollusDRMConfiguration = KollusDRMConfiguration(),
-        chat: KollusLiveChatProfile? = nil,
         observer: KollusObserver? = nil,
         diagnostics: KollusDiagnosticsSink? = nil
     ) {
@@ -70,7 +68,6 @@ public struct KollusEnvironment: Sendable {
         self.pauseOnForeground = pauseOnForeground
         self.audioBackgroundPlayPolicy = audioBackgroundPlayPolicy
         self.drm = drm
-        self.chat = chat
         self.observer = observer
         self.diagnostics = diagnostics
     }

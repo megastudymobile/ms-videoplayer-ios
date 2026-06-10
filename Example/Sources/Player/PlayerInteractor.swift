@@ -68,7 +68,7 @@ final class PlayerInteractor {
         zoomEngine = module.engine as? PlayerSynchronousZoomEngine
 
         let coordinator = PlayerLifecycleCoordinator(
-            controlUseCase: module.controlPlaybackUseCase,
+            core: module.core,
             policy: featurePolicy,
             engineCapabilities: module.engineCapabilities,
             onEvent: { [weak self] event in self?.consume(event: event) }
@@ -77,7 +77,7 @@ final class PlayerInteractor {
         coordinator.start()
 
         binder.bind(
-            observeUseCase: module.observePlaybackStateUseCase,
+            core: module.core,
             onState: { [weak self] state in self?.consume(playbackState: state) },
             onEvent: { [weak self] event in self?.consume(event: event) }
         )
@@ -87,7 +87,7 @@ final class PlayerInteractor {
 
     func start() async throws {
         guard isDisposed == false, let module = playerModule else { return }
-        try await module.startPlaybackUseCase.execute(source: source, policy: featurePolicy)
+        try await module.core.start(source: source, policy: featurePolicy)
     }
 
     func tearDown() {
@@ -109,7 +109,7 @@ final class PlayerInteractor {
     func send(_ command: PlaybackCommand) {
         Task { @MainActor [weak self] in
             guard let module = self?.playerModule else { return }
-            try? await module.controlPlaybackUseCase.execute(command: command)
+            try? await module.core.execute(command: command)
         }
     }
 
@@ -117,7 +117,7 @@ final class PlayerInteractor {
         Task { @MainActor [weak self] in
             guard let self, let module = self.playerModule else { return }
             let isPlaying = await module.engine.currentState.status == .playing
-            try? await module.controlPlaybackUseCase.execute(command: isPlaying ? .pause : .play)
+            try? await module.core.execute(command: isPlaying ? .pause : .play)
         }
     }
 
@@ -126,7 +126,7 @@ final class PlayerInteractor {
             guard let self, let module = self.playerModule else { return }
             let snapshot = await module.engine.currentState
             let target = min(max(0, snapshot.currentTime + delta), max(0, snapshot.duration))
-            try? await module.controlPlaybackUseCase.execute(command: .seek(to: target))
+            try? await module.core.execute(command: .seek(to: target))
         }
     }
 

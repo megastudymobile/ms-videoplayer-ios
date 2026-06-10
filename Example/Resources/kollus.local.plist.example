@@ -15,14 +15,5 @@
 	<string></string>
 	<key>fpsDRMURL</key>
 	<string></string>
-	<!-- Stage 4: 선택 — Live chat profile (모든 필드 채워야 활성) -->
-	<key>liveChatRoomId</key>
-	<string></string>
-	<key>liveChatServer</key>
-	<string></string>
-	<key>liveChatUserId</key>
-	<string></string>
-	<key>liveChatNickName</key>
-	<string></string>
 </dict>
 </plist>

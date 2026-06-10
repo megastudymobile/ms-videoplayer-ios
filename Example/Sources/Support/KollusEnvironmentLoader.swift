@@ -55,7 +55,6 @@ enum KollusEnvironmentLoader {
         }
         let mediaContentKey = (dictionary["mediaContentKey"] as? String) ?? ""
         let drm = Self.makeDRMConfiguration(from: dictionary)
-        let chat = Self.makeLiveChatProfile(from: dictionary)
 
         let environment = KollusEnvironment(
             applicationKey: applicationKey,
@@ -64,8 +63,7 @@ enum KollusEnvironmentLoader {
             storagePath: Self.makeStoragePath(),
             hardwareDecoderPreferred: hardwareDecoderPreferred,
             audioBackgroundPlayPolicy: audioBackgroundPlayPolicy,
-            drm: drm,
-            chat: chat
+            drm: drm
         )
 
         return DemoConfiguration(environment: environment, mediaContentKey: mediaContentKey)
@@ -99,21 +97,4 @@ enum KollusEnvironmentLoader {
         )
     }
 
-    private static func makeLiveChatProfile(from dictionary: [String: Any]) -> KollusLiveChatProfile? {
-        guard
-            let roomId = dictionary["liveChatRoomId"] as? String, !roomId.isEmpty,
-            let serverString = dictionary["liveChatServer"] as? String, !serverString.isEmpty,
-            let server = URL(string: serverString),
-            let userId = dictionary["liveChatUserId"] as? String, !userId.isEmpty,
-            let nickName = dictionary["liveChatNickName"] as? String, !nickName.isEmpty
-        else {
-            return nil
-        }
-        return KollusLiveChatProfile(
-            roomId: roomId,
-            chattingServer: server,
-            userId: userId,
-            nickName: nickName
-        )
-    }
 }

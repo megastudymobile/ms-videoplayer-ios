@@ -8,8 +8,8 @@ import Testing
 
 @Suite("Kollus player module factory 검증")
 struct KollusPlayerModuleFactoryTests {
-    @Test("Factory가 주입된 engine을 use case에 연결")
-    func makeModuleWiresInjectedEngineToUseCases() async throws {
+    @Test("Factory가 주입된 engine을 core에 연결")
+    func makeModuleWiresInjectedEngineToCore() async throws {
         let engine = FactoryTestEngineAdapter()
         let factory = KollusPlayerModuleFactory(
             engineFactory: { engine },
@@ -22,7 +22,7 @@ struct KollusPlayerModuleFactoryTests {
 
         #expect(module.engineCapabilities == [.continuesWithoutSurface])
 
-        try await module.controlPlaybackUseCase.execute(command: .stop)
+        try await module.core.execute(command: .stop)
 
         let stopCount = await engine.stopCount
         #expect(stopCount == 1)

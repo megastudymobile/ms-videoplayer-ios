@@ -17,20 +17,20 @@ public final class PlayerStateBinder {
     public init() {}
 
     public func bind(
-        observeUseCase: ObservePlaybackStateUseCaseProtocol,
+        core: PlayerCore,
         onState: @escaping (PlaybackState) -> Void,
         onEvent: @escaping (PlayerEvent) -> Void
     ) {
         unbind()
 
         stateTask = Task { @MainActor in
-            for await state in observeUseCase.stateStream {
+            for await state in core.stateStream {
                 onState(state)
             }
         }
 
         eventTask = Task { @MainActor in
-            for await event in observeUseCase.eventStream {
+            for await event in core.eventStream {
                 onEvent(event)
             }
         }

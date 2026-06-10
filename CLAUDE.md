@@ -41,7 +41,7 @@ Kollus 실제 재생/DRM/다운로드는 시뮬레이터로 닫기 어려움 —
 
 ## 아키텍처
 
-명령 흐름: Shell/UseCase → `PlayerCore`(actor) → `PlayerPlaybackEngine` 구현체 → `PlayerEngineOutput` → `PlaybackStateReducer` → `PlaybackState` 스트림 → 화면.
+명령 흐름: Shell → `PlayerCore`(actor) → `PlayerPlaybackEngine` 구현체 → `PlayerEngineOutput` → `PlaybackStateReducer` → `PlaybackState` 스트림 → 화면.
 
 ### 모듈 의존 그래프 (Package.swift)
 
@@ -59,7 +59,6 @@ VideoPlayerCore  (의존 없음 — SDK/UIKit 모름)
 - `Contract/` — `PlayerEngineAdapter`(모든 엔진의 계약, 전 명령 `async throws`), `PlayerEngineOutput`(엔진→코어 단방향 출력)
 - `StateTransition/` — `PlaybackStateReducer`: 순수 함수 상태 머신. 엔진 출력(`PlaybackStateInput`)을 받아 상태 전이 결정. 상태 소유권은 코어에 있고 엔진은 신호만 발행
 - `Internal/PlayerCore.swift` — actor. 정책·capability 협상 후 엔진에 명령 위임
-- `UseCase/` — start / control / observe
 
 ### 엔진 측 패턴
 
