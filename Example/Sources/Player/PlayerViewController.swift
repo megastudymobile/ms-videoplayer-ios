@@ -221,6 +221,7 @@ final class PlayerViewController: UIViewController {
     private func configureGestures() {
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(didDoubleTapSurface))
         doubleTap.numberOfTapsRequired = 2
+        doubleTap.cancelsTouchesInView = true
         doubleTap.delegate = self
         doubleTapRecognizer = doubleTap
         view.addGestureRecognizer(doubleTap)
@@ -256,7 +257,12 @@ final class PlayerViewController: UIViewController {
                 title: "\(isForward ? "+" : "-")\(PreferenceManager.seekRangeSeconds)초"
             )
         } else {
+            let willPause = viewModel.state.isPlaying
             interactor.togglePlayPause()
+            skin.showGestureHUD(
+                icon: willPause ? "pause.fill" : "play.fill",
+                title: willPause ? "일시정지" : "재생"
+            )
         }
     }
 
@@ -632,6 +638,16 @@ extension PlayerViewController: UIGestureRecognizerDelegate {
 
     /// 블록 버튼(UIControl) 터치는 토글/팬 제스처에서 제외 — 컨트롤 조작이 우선.
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        (touch.view is UIControl) == false
+        if gestureRecognizer === doubleTapRecognizer {
+            return true
+        }
+        return (touch.view?.hasControlAncestor ?? false) == false
+    }
+}
+
+private extension UIView {
+    var hasControlAncestor: Bool {
+        if self is UIControl { return true }
+        return superview?.hasControlAncestor ?? false
     }
 }
