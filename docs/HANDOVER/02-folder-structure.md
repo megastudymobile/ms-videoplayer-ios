@@ -77,7 +77,7 @@ videoplayer-ios-ms/
 │       ├── Blocks/                #    ProgressBar, PlayButton 등 UI 조각 20여 종
 │       ├── Theme/                 #    색/폰트/아이콘 role 시스템
 │       ├── Resources/             #    PlayerSkin.xcassets
-│       └── (루트)                 #    PlayerSkinAction/State, 자막/제스처/시킹 프리뷰 오버레이
+│       └── (루트)                 #    PlayerSkinAction/State, 자막/제스처/시킹 프리뷰 오버레이, 화면 캡처 보호
 │
 ├── Tests/VideoPlayerModuleTests/
 │   ├── Core/                      # Reducer 등 순수 로직 테스트 (macOS에서도 실행)

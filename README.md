@@ -256,6 +256,27 @@ let skin = AssembledPlayerSkin(blueprint: blueprint)
 
 엔진이 지원하지 않는 기능의 버튼은 `module.availableFeatures`(`PlayerFeatureAvailability`)를 보고 숨기세요. 자세한 조립 모델은 [HANDOVER 8편](docs/HANDOVER/08-skin.md)에 있습니다.
 
+### 화면 캡처 보호
+
+녹화 대응과 스크린샷 보호를 따로 제공합니다.
+
+```swift
+// 1) 화면 녹화/미러링 감지 — 캡처 중 차단막으로 가리고, 재생 정책은 host가 결정
+skin.setScreenCaptureProtectionEnabled(true)
+skin.onScreenCaptureChanged = { [weak self] captured in
+    if captured { /* 예: pause 명령 + 안내 토스트 */ }
+}
+
+// 2) 스크린샷 보호 — 영상 영역만 secure 캔버스에 넣어 캡처 결과물에서 제외
+//    (skin은 밖에 둬 캡처에 컨트롤은 남는다)
+let secureContainer = PlayerSecureDisplayContainerView()
+view.addSubview(secureContainer)
+secureContainer.embed(renderSurfaceView)
+view.addSubview(skin)
+```
+
+스크린샷은 iOS가 사전 차단 API를 제공하지 않아 secure 캔버스(`UITextField.isSecureTextEntry` 레이어) 방식을 씁니다. 문서화되지 않은 뷰 구조에 의존하므로 추출 실패 시 일반 컨테이너로 강등되며 `isSecureRenderingActive`로 감지할 수 있습니다. Kollus SDK 자체의 캡처 감지(재생 중단 오류)는 콘텐츠/채널의 서버 정책이라 앱에서 끌 수 없습니다.
+
 ## 정책과 기능 협상
 
 앱이 허용하는 것(`PlayerFeaturePolicy`)과 엔진이 지원하는 것(`EngineCapabilities`)은 `PlayerCore`가 협상합니다.
