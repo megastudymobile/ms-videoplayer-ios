@@ -106,6 +106,24 @@ public actor KollusDownloadCenter {
         return await storage.applicationDeviceID
     }
 
+    /// 다운로드된 컨텐츠 총 용량(byte). 저장 용량/캐시 화면 표시용.
+    public func storageSize() async throws -> Int64 {
+        let storage = try await ensureStorage()
+        return await storage.storageSize
+    }
+
+    /// 스트리밍 재생 시 누적된 캐시 용량(byte).
+    public func cacheDataSize() async throws -> Int64 {
+        let storage = try await ensureStorage()
+        return await storage.cacheDataSize
+    }
+
+    /// Kollus SDK 버전 문자열.
+    public func playerVersion() async throws -> String? {
+        let storage = try await ensureStorage()
+        return await storage.applicationVersion
+    }
+
     // MARK: - Snapshot
 
     public func currentSnapshots() async throws -> [KollusContentSnapshot] {

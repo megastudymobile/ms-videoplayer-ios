@@ -56,6 +56,18 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
         storage.applicationDeviceID
     }
 
+    var storageSize: Int64 {
+        Int64(storage.storageSize)
+    }
+
+    var cacheDataSize: Int64 {
+        Int64(storage.cacheDataSize)
+    }
+
+    var applicationVersion: String? {
+        storage.applicationVersion
+    }
+
     var serverPort: Int? {
         get { storage.serverPort }
         set { storage.serverPort = newValue ?? 0 }

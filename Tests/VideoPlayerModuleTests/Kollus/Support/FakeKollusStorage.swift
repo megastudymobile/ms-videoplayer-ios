@@ -20,6 +20,10 @@ final class FakeKollusStorage: KollusStorageProtocol {
     var applicationDeviceID: String?
     var serverPort: Int?
 
+    var storageSize: Int64 = 0
+    var cacheDataSize: Int64 = 0
+    var applicationVersion: String?
+
     var kollusPath: String?
     var cacheSizeMB: Int?
     var backgroundDownload: Bool = false

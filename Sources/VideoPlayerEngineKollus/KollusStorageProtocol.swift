@@ -34,6 +34,13 @@ protocol KollusStorageProtocol: AnyObject {
     var applicationDeviceID: String? { get }
     var serverPort: Int? { get set }
 
+    /// 다운로드된 컨텐츠 총 용량(byte). 저장 용량/캐시 화면 표시용.
+    var storageSize: Int64 { get }
+    /// 스트리밍 재생 시 누적된 캐시 용량(byte).
+    var cacheDataSize: Int64 { get }
+    /// Kollus SDK 버전 문자열.
+    var applicationVersion: String? { get }
+
     func setKollusPath(_ path: String)
     func setCacheSize(megabytes: Int)
     func setBackgroundDownload(_ enabled: Bool)
