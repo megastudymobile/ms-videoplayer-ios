@@ -68,7 +68,7 @@ public final class PlayerGestureHUDView: UIView {
         rateBadgeView.layer.removeAllAnimations()
 
         rateBadgeLabel.attributedText = NSAttributedString(
-            string: "\(Int(rate))배속",
+            string: rate.rateBadgeText,
             attributes: [
                 .font: UIFont(name: "AppleSDGothicNeo-Regular", size: UIDevice.current.userInterfaceIdiom == .pad ? 16 : 14)
                     ?? .systemFont(ofSize: UIDevice.current.userInterfaceIdiom == .pad ? 16 : 14, weight: .regular),
@@ -112,6 +112,16 @@ public final class PlayerGestureHUDView: UIView {
     public override func layoutSubviews() {
         super.layoutSubviews()
         rateBadgeView.layer.cornerRadius = rateBadgeView.bounds.height * 0.5
+    }
+}
+
+private extension Double {
+    var rateBadgeText: String {
+        let rounded = self.rounded()
+        if abs(self - rounded) < 0.001 {
+            return "\(Int(rounded))배속"
+        }
+        return String(format: "%.1f배속", self)
     }
 }
 

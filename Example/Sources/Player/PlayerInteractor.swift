@@ -42,6 +42,7 @@ final class PlayerInteractor {
     private var pendingScrollDistance = CGPoint.zero
     private var shouldStopScroll = false
     private var scrollTask: Task<Void, Never>?
+    private var scrollTaskGeneration = 0
     private(set) var isZoomedIn = false
 
     init(
@@ -112,6 +113,7 @@ final class PlayerInteractor {
         scrollEngine = nil
         pendingScrollDistance = .zero
         shouldStopScroll = false
+        scrollTaskGeneration += 1
         scrollTask?.cancel()
         scrollTask = nil
         isZoomedIn = false
@@ -174,6 +176,7 @@ final class PlayerInteractor {
 
     func scroll(by distance: CGPoint) {
         guard let scrollEngine else { return }
+        shouldStopScroll = false
         pendingScrollDistance.x += distance.x
         pendingScrollDistance.y += distance.y
         drainScrollQueue(using: scrollEngine)
@@ -188,8 +191,14 @@ final class PlayerInteractor {
 
     private func drainScrollQueue(using scrollEngine: PlayerScrollEngine) {
         guard scrollTask == nil else { return }
+        scrollTaskGeneration += 1
+        let taskGeneration = scrollTaskGeneration
         scrollTask = Task { @MainActor [weak self] in
-            defer { self?.scrollTask = nil }
+            defer {
+                if self?.scrollTaskGeneration == taskGeneration {
+                    self?.scrollTask = nil
+                }
+            }
             guard let self else { return }
 
             while Task.isCancelled == false {

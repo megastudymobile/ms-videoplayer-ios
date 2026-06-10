@@ -36,13 +36,13 @@
 - 레거시 근거: `MGPlayerViewController.m:40-62` (제스처 이미지 상수)
 - 조치: 레거시 에셋 4종 복사
 
-### 2.2 더블탭 제스처 케이스 부재
+### 2.2 더블탭 제스처 정책 차이
 
-`PlayerGestureAction`(`Sources/VideoPlayerSkin/PlayerGestureAction.swift`)에 더블탭 케이스 없음.
+`PlayerGestureAction`(`Sources/VideoPlayerSkin/PlayerGestureAction.swift`)과 Example host는 더블탭을 좌/우 10초 이동 전용으로 제공한다.
 
-레거시는 더블탭 재생/일시정지가 기본 ON (`usePlayDoubleTapGesture=YES`, `MGPlayerViewController.m:1292-1336`). 설정에 따라 좌/우 더블탭 ±10초 모드도 지원. 호스트가 직접 인식기 달아도 스킨 계약에 표현할 케이스 없음.
+레거시는 더블탭 재생/일시정지가 기본 ON (`usePlayDoubleTapGesture=YES`, `MGPlayerViewController.m:1292-1336`). 설정에 따라 좌/우 더블탭 ±10초 모드도 지원한다.
 
-- 조치: enum 케이스 추가 (예: `doubleTapTogglePlayPause`, `doubleTapSkip(forward: Bool)`)
+- 현재 결정: Example은 더블탭 재생/일시정지 모드를 제거하고 `doubleTapSkip(forward:)` 기반 10초 이동만 허용한다. 파리티 관점에서는 레거시 기본값과 다르므로 host 제품 정책으로 유지 여부를 관리한다.
 
 ### 2.3 줌 상태 화면 이동(pan move) 스킨 액션 부재
 
@@ -93,7 +93,7 @@ host가 `captionFontSizes` 주입으로 맞출 수 있으나 default 불일치.
 ## 5. 권장 조치 순서
 
 1. 제스처 HUD 에셋 4종 복사 (§2.1) — 단순 에셋 추가
-2. 더블탭 제스처 액션 추가 (§2.2) — enum 케이스 + 테스트
+2. 더블탭 제스처 정책 확인 (§2.2) — 현재 Example은 10초 이동 전용
 3. 줌-팬 이동 스킨 액션 추가 (§2.3) — 액션 + 엔진 라우팅
 4. 자막 크기 default 정책 결정 (§2.4)
 5. HUD 표시 시간 2.0초로 조정 여부 결정 (§2.5)

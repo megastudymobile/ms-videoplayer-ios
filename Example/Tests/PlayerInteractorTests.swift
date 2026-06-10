@@ -77,6 +77,36 @@ struct PlayerInteractorTests {
         #expect(prepareCount == 0)
     }
 
+    @Test("새 scroll 입력은 보류된 stopScroll을 취소한다")
+    func scrollAfterPendingStop_discardsStopScroll() async throws {
+        let engine = ScrollTestEngine()
+        let provider = FakeModuleProvider(engine: engine)
+        let interactor = makeInteractor(provider: provider)
+
+        try await interactor.setUp(renderSurface: FakeRenderSurface())
+        interactor.scroll(by: CGPoint(x: 1, y: 0))
+        interactor.stopScroll()
+        interactor.scroll(by: CGPoint(x: 2, y: 0))
+
+        try await waitUntilAsync { await engine.events.isEmpty == false }
+        let events = await engine.events
+        #expect(events == ["scroll:2.0:0.0"])
+        interactor.tearDown()
+    }
+
+    private func waitUntilAsync(
+        timeout: TimeInterval = 1.0,
+        sourceLocation: SourceLocation = #_sourceLocation,
+        condition: @escaping () async -> Bool
+    ) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if await condition() { return }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        Issue.record("조건을 만족하지 못했습니다.", sourceLocation: sourceLocation)
+    }
+
     private func waitUntil(
         timeout: TimeInterval = 1.0,
         sourceLocation: SourceLocation = #_sourceLocation,
@@ -96,9 +126,14 @@ struct PlayerInteractorTests {
 @MainActor
 private final class FakeModuleProvider: PlayerModuleProviding {
     private(set) var madeModules: [PlayerModule] = []
+    private let engine: PlayerEngineAdapter
     private let makeDelayNanoseconds: UInt64
 
-    init(makeDelayNanoseconds: UInt64 = 0) {
+    init(
+        engine: PlayerEngineAdapter = BareTestEngine(),
+        makeDelayNanoseconds: UInt64 = 0
+    ) {
+        self.engine = engine
         self.makeDelayNanoseconds = makeDelayNanoseconds
     }
 
@@ -107,7 +142,7 @@ private final class FakeModuleProvider: PlayerModuleProviding {
             try await Task.sleep(nanoseconds: makeDelayNanoseconds)
         }
         let module = await PlayerModuleWiring.makeModule(
-            engine: BareTestEngine(),
+            engine: engine,
             engineCapabilities: []
         )
         madeModules.append(module)
@@ -130,9 +165,37 @@ private actor BareTestEngine: PlayerEngineAdapter {
     func unbindRenderSurface() {}
 }
 
-@MainActor
+private actor ScrollTestEngine: PlayerEngineAdapter, PlayerScrollEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+    var currentState: PlaybackState { .idle }
+    let eventStream: AsyncStream<PlayerEvent> = AsyncStream { $0.finish() }
+    private(set) var events: [String] = []
+
+    func prepare(source: PlaybackSource) async throws {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
+    func bind(renderSurface: PlayerRenderSurface) {}
+    func unbindRenderSurface() {}
+
+    func scroll(by distance: CGPoint) async throws {
+        events.append("scroll:\(distance.x):\(distance.y)")
+    }
+
+    func stopScroll() async throws {
+        events.append("stop")
+    }
+}
+
 private final class FakeRenderSurface: PlayerRenderSurface {
-    let containerView = UIView()
+    let containerView: UIView
+
+    @MainActor
+    init() {
+        self.containerView = UIView()
+    }
+
     func engineDidAttach() {}
     func engineDidDetach() {}
     func showUnsupportedEnvironment(message: String) {}

@@ -47,5 +47,14 @@ struct PlayerGestureHUDViewTests {
         hud.show(icon: "PlayerBrightnessNormal", title: "50%")
         #expect(badge?.isHidden == true)
     }
+
+    @Test("비정수 배속 HUD는 소수 첫째 자리까지 표시한다")
+    func presentRateFormatsFractionalRate() {
+        let hud = PlayerGestureHUDView()
+        hud.presentRate(1.5)
+
+        let label = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeLabel") as? UILabel
+        #expect(label?.attributedText?.string == "1.5배속")
+    }
 }
 #endif

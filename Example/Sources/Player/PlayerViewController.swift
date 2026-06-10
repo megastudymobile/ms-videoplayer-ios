@@ -242,7 +242,7 @@ final class PlayerViewController: UIViewController {
         view.addGestureRecognizer(pan)
 
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(didLongPressSurface))
-        longPress.minimumPressDuration = 0.35
+        longPress.minimumPressDuration = PlayerGesturePolicy.longPressMinimumDuration
         longPress.cancelsTouchesInView = true
         longPress.delegate = self
         longPressRecognizer = longPress
@@ -669,7 +669,7 @@ extension PlayerViewController: UIGestureRecognizerDelegate {
     /// 블록 버튼(UIControl) 터치는 토글/팬 제스처에서 제외 — 컨트롤 조작이 우선.
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         if gestureRecognizer === doubleTapRecognizer || gestureRecognizer === longPressRecognizer {
-            return true
+            return PlayerGesturePolicy.allowsDiscreteSurfaceGesture(from: touch.view)
         }
         return (touch.view?.hasControlAncestor ?? false) == false
     }
