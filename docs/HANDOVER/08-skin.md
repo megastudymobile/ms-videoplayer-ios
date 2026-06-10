@@ -191,7 +191,8 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
 - `PlayerCaptionView` — 자막 표시. `skin.setCaptionFontSize(_:)`, `setCaptionBottomInset(_:)`
 - `PlayerGestureHUDView` — 더블탭/롱프레스 제스처 피드백. `skin.showGestureHUD(icon:title:)` (2초 자동 숨김)
 - `PlayerLoadingIndicatorView` — `state.isLoading` 기반 로딩 표시
-- `PlayerNowPlayingCenter` — 잠금화면/제어센터 Now Playing 정보 갱신
+
+잠금화면/제어센터 NowPlaying은 Skin이 아니라 ShellSupport의 `PlayerNowPlayingCoordinator`가 담당합니다 ([7편](07-shell-support.md)).
 
 ## host 쪽 와이어링 (요약)
 

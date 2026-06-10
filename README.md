@@ -296,6 +296,27 @@ coordinator.stop()
 try PlayerAudioSessionManager.shared.release()
 ```
 
+### 잠금화면/제어센터 (NowPlaying)
+
+`PlayerNowPlayingCoordinator`를 연결하면 잠금화면 메타데이터·remote command·재생 상태 동기화를 모듈이 자체 처리합니다. 제목/artwork는 엔진이 `PlayerContentMetadataEngine`을 지원하면 자동 조회됩니다.
+
+```swift
+let nowPlaying = PlayerNowPlayingCoordinator(
+    core: module.core,
+    metadataProvider: module.engine as? PlayerContentMetadataEngine,
+    skipInterval: policy.skipInterval,
+    fallbackTitle: "재생 중"
+)
+nowPlaying.start()
+
+binder.bind(core: module.core, nowPlaying: nowPlaying, onState: …, onEvent: …)
+
+// 화면 퇴장 시 — 잠금화면 플레이어 제거
+nowPlaying.stop()
+```
+
+백그라운드 오디오까지 쓰려면 host 앱 Info.plist에 `UIBackgroundModes: ["audio"]`가 필요합니다.
+
 ## 에러 처리
 
 모든 엔진 명령은 `async throws`이며, 실패는 벤더 중립 `PlayerError`로 옵니다. 받는 경로가 두 가지라는 점을 기억하세요.

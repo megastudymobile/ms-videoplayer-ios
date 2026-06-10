@@ -229,6 +229,8 @@ public struct DownloadedContent: Sendable, Hashable, Identifiable {
 
     public let id: String        // 그대로 PlaybackSource.mediaKey(id)로 재생 가능
     public let title: String
+    public let thumbnailPath: String?   // 시크 프리뷰용 — 스프라이트 시트일 수 있음
+    public let snapshotPath: String?    // 단일 프레임 — NowPlaying artwork 등에 사용
     public let duration: TimeInterval
     public let lastPosition: TimeInterval
     public let download: DownloadStatus

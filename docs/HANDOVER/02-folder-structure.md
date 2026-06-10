@@ -51,6 +51,7 @@ videoplayer-ios-ms/
 │   ├── VideoPlayerShellSupport/   # ❷ 앱과 코어를 잇는 접착제
 │   │   │                          #    PlayerModuleWiring(조립), PlayerRenderSurface(화면 부착),
 │   │   │                          #    PlayerLifecycleCoordinator, PlayerAudioSessionManager,
+│   │   │                          #    PlayerNowPlayingCoordinator(잠금화면/제어센터),
 │   │   │                          #    UnsupportedEnvironmentEngine(시뮬레이터 대체 엔진)
 │   │
 │   ├── VideoPlayerEngineNative/   # ❸ AVPlayer 엔진
@@ -76,7 +77,7 @@ videoplayer-ios-ms/
 │       ├── Blocks/                #    ProgressBar, PlayButton 등 UI 조각 20여 종
 │       ├── Theme/                 #    색/폰트/아이콘 role 시스템
 │       ├── Resources/             #    PlayerSkin.xcassets
-│       └── (루트)                 #    PlayerSkinAction/State, 자막/제스처/NowPlaying
+│       └── (루트)                 #    PlayerSkinAction/State, 자막/제스처 오버레이
 │
 ├── Tests/VideoPlayerModuleTests/
 │   ├── Core/                      # Reducer 등 순수 로직 테스트 (macOS에서도 실행)

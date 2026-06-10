@@ -88,14 +88,18 @@ bind 시점에 `renderSurface.showUnsupportedEnvironment(message:)`를 호출해
 `stateStream`/`eventStream` 구독 Task의 생성·취소를 관리하는 `@MainActor` 헬퍼입니다. ViewController가 직접 Task를 들고 있다가 deinit에서 까먹고 취소 안 하는 사고를 막습니다.
 
 ```swift
-let binder = PlayerStateBinder(core: module.core)
+let binder = PlayerStateBinder()
 binder.bind(
+    core: module.core,
+    nowPlaying: nowPlayingCoordinator,   // 옵션 — 잠금화면 동기화 fan-out ([7절](#7-playernowplayingcoordinator--잠금화면제어센터))
     onState: { [weak self] state in self?.render(state) },
     onEvent: { [weak self] event in self?.handle(event) }
 )
 // 화면 종료 시
 binder.unbind()
 ```
+
+`stateStream`은 단일 consumer라 모듈 내부 관찰자(NowPlaying 등)도 binder가 같은 구독 안에서 fan-out합니다.
 
 ## 5. PlayerLifecycleCoordinator — 백그라운드와 전화의 처리
 
@@ -165,6 +169,30 @@ public final class PlayerAudioSessionManager {
     }
 }
 ```
+
+## 7. PlayerNowPlayingCoordinator — 잠금화면/제어센터
+
+잠금화면·제어센터의 시스템 플레이어(NowPlaying)를 모듈이 자체 처리합니다. remote command(재생/일시정지/±skip)는 `core.execute`로 라우팅되고, 제목/artwork는 엔진의 `PlayerContentMetadataEngine`(capability protocol)에서 직접 조회합니다.
+
+```swift
+// 백그라운드 재생 정책이 켜진 경우에만 노출하는 식으로 host가 결정
+let nowPlaying = PlayerNowPlayingCoordinator(
+    core: module.core,
+    metadataProvider: module.engine as? PlayerContentMetadataEngine,
+    skipInterval: policy.skipInterval,
+    fallbackTitle: "재생 중"          // 엔진이 메타데이터를 못 주면 이것만 표시
+)
+nowPlaying.start()
+binder.bind(core: module.core, nowPlaying: nowPlaying, onState: …, onEvent: …)
+
+// 화면 종료 시 — 잠금화면 플레이어 제거
+nowPlaying.stop()
+```
+
+주의 두 가지:
+
+- artwork는 `DownloadedContent.snapshotPath`(단일 프레임)를 씁니다. `thumbnailPath`는 벤더에 따라 시크 프리뷰용 **스프라이트 시트**(전 프레임 타일)라 잠금화면에 쓰면 모자이크로 보입니다.
+- `PlayerEvent`에 배속 이벤트가 없어 배속 변경 시 `setPlaybackRate(_:)`를 명령 경로에서 직접 알려줘야 시스템 진행 표시가 맞습니다.
 
 ## 화면 하나의 생애주기 종합
 

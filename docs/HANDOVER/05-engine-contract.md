@@ -53,7 +53,8 @@ public protocol PlayerBookmarkEngine: Actor {
     func addBookmark(at time: TimeInterval) async throws
 }
 // PlayerTitledBookmarkEngine, PlayerDisplayEngine, PlayerZoomEngine,
-// PlayerScrollEngine, PlayerAdaptiveStreamingEngine, PlayerPiPCapability …
+// PlayerScrollEngine, PlayerAdaptiveStreamingEngine, PlayerPiPCapability,
+// PlayerContentMetadataEngine(제목/썸네일 조회 — NowPlaying 등 부가 UI용) …
 ```
 
 `PlayerCore`는 `engine as? PlayerSubtitleEngine` 캐스팅으로 위임하고, 채택 여부는 `PlayerFeatureAvailability.probe(engine)`가 init 시점에 한 번 조사해 화면에 알려줍니다(버튼 노출 게이팅).
