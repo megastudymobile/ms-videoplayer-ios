@@ -110,4 +110,12 @@ final class PlayerStateViewModel {
     static func isLandscape(_ size: CGSize) -> Bool {
         size.width > size.height
     }
+
+    static func shouldAutoHideControls(in state: PlayerSkinState) -> Bool {
+        state.isPlaying
+            && state.isLoading == false
+            && state.controlsVisible
+            && state.isLocked == false
+            && state.isRatePanelPresented == false
+    }
 }

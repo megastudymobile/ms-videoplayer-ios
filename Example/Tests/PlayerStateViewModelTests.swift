@@ -107,4 +107,19 @@ struct PlayerStateViewModelTests {
 
         #expect(next.playbackRate == 1.5)
     }
+
+    @Test("재생 중이고 컨트롤이 표시된 상태만 자동 숨김 대상")
+    func autoHideEligibility() {
+        let viewModel = PlayerStateViewModel()
+        let playing = viewModel.apply(playbackState: PlaybackState(
+            status: .playing, currentTime: 0, duration: 60, isBuffering: false
+        ))
+
+        #expect(PlayerStateViewModel.shouldAutoHideControls(in: playing))
+        #expect(PlayerStateViewModel.shouldAutoHideControls(in: playing.updating(controlsVisible: false)) == false)
+        #expect(PlayerStateViewModel.shouldAutoHideControls(in: playing.updating(isLoading: true)) == false)
+        #expect(PlayerStateViewModel.shouldAutoHideControls(in: playing.updating(isLocked: true)) == false)
+        #expect(PlayerStateViewModel.shouldAutoHideControls(in: playing.updating(isRatePanelPresented: true)) == false)
+        #expect(PlayerStateViewModel.shouldAutoHideControls(in: playing.updating(isPlaying: false)) == false)
+    }
 }

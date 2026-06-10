@@ -25,14 +25,26 @@ final class PlayerViewController: UIViewController {
 
     private enum Metric {
         static let captionBottomInset: CGFloat = 5
+        static let controlsAutoHideDelayNanoseconds: UInt64 = 3_000_000_000
+        static let horizontalSeekPointsPerSecond: CGFloat = 15
+    }
+
+    private enum PanGestureMode {
+        case none
+        case move
+        case horizontalSeek
+        case verticalDeviceControl
     }
 
     private var hasResolvedInitialLayout = false
     private var bookmarks: [Bookmark] = []
     private var toastDismissTask: Task<Void, Never>?
+    private var controlsAutoHideTask: Task<Void, Never>?
     /// 팬 제스처 시작 시점의 좌/우 — 도중 중심선 통과로 밝기↔음량이 바뀌지 않도록 고정.
     private var panIsLeftSide = false
-    private var panIsMoveMode = false
+    private var panGestureMode: PanGestureMode = .none
+    private var panSeekStartTime: TimeInterval = 0
+    private var panSeekTargetTime: TimeInterval = 0
     private weak var doubleTapRecognizer: UITapGestureRecognizer?
 
     // MARK: - Embed seam (split 컨테이너 호스팅용)
@@ -116,6 +128,7 @@ final class PlayerViewController: UIViewController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        cancelControlsAutoHideTimer()
         if isBeingDismissed || isMovingFromParent {
             interactor.tearDown()
         }
@@ -165,6 +178,7 @@ final class PlayerViewController: UIViewController {
     private func emitRender(_ state: PlayerSkinState) {
         skin.render(state)
         onSkinStateChanged?(state)
+        updateControlsAutoHideTimer(for: state)
     }
 
     // MARK: - 뷰 계층
@@ -231,6 +245,7 @@ final class PlayerViewController: UIViewController {
     @objc private func didDoubleTapSurface(_ recognizer: UITapGestureRecognizer) {
         guard PreferenceManager.useGesture else { return }
         guard viewModel.state.isLocked == false else { return }
+        resetControlsAutoHideTimer()
 
         if PreferenceManager.useDoubleTapSkip {
             let isForward = recognizer.location(in: view).x >= view.bounds.midX
@@ -247,50 +262,72 @@ final class PlayerViewController: UIViewController {
 
     @objc private func didPinch(_ recognizer: UIPinchGestureRecognizer) {
         guard PreferenceManager.useGesture else { return }
+        resetControlsAutoHideTimer()
         interactor.applyZoom(recognizer)
         if recognizer.state == .ended || recognizer.state == .cancelled {
             interactor.refreshZoomState()
         }
     }
 
-    /// 좌측 팬 = 밝기, 우측 팬 = 음량 (샘플 제스처 parity).
+    /// 수평 팬 = 시킹, 수직 팬 = 좌측 밝기/우측 음량, 확대 상태 팬 = 화면 이동.
     @objc private func didPan(_ recognizer: UIPanGestureRecognizer) {
         guard PreferenceManager.useGesture else { return }
         guard viewModel.state.isLocked == false else { return }
         let translation = recognizer.translation(in: view)
-        recognizer.setTranslation(.zero, in: view)
         if recognizer.state == .began {
-            panIsMoveMode = interactor.isZoomedIn
-            panIsLeftSide = recognizer.location(in: view).x < view.bounds.midX
+            resetControlsAutoHideTimer()
+            configurePanMode(recognizer, initialTranslation: translation)
         }
+        recognizer.setTranslation(.zero, in: view)
 
-        if panIsMoveMode {
+        switch panGestureMode {
+        case .move:
             switch recognizer.state {
             case .changed:
                 interactor.scroll(by: translation)
             case .ended, .cancelled, .failed:
                 interactor.stopScroll()
-                panIsMoveMode = false
+                panGestureMode = .none
+                resetControlsAutoHideTimer()
             default:
                 break
             }
             return
-        }
-
-        let delta = -translation.y / view.bounds.height
-
-        switch recognizer.state {
-        case .changed:
-            if panIsLeftSide {
-                let value = deviceControl.adjustBrightness(by: delta)
-                skin.showGestureHUD(icon: "PlayerBrightnessNormal", title: "\(Int(value * 100))%")
-            } else {
-                let value = deviceControl.adjustVolume(by: Float(delta))
-                skin.showGestureHUD(icon: "PlayerVolumeNormal", title: "\(Int(value * 100))%")
+        case .horizontalSeek:
+            switch recognizer.state {
+            case .changed:
+                updateHorizontalSeekPreview(translation: translation)
+            case .ended:
+                updateHorizontalSeekPreview(translation: translation)
+                interactor.send(.seek(to: panSeekTargetTime))
+                panGestureMode = .none
+                resetControlsAutoHideTimer()
+            case .cancelled, .failed:
+                skin.hideGestureHUD()
+                panGestureMode = .none
+                resetControlsAutoHideTimer()
+            default:
+                break
             }
-        case .ended, .cancelled, .failed:
-            skin.hideGestureHUD()
-        default:
+        case .verticalDeviceControl:
+            let delta = -translation.y / view.bounds.height
+            switch recognizer.state {
+            case .changed:
+                if panIsLeftSide {
+                    let value = deviceControl.adjustBrightness(by: delta)
+                    skin.showGestureHUD(icon: "PlayerBrightnessNormal", title: "\(Int(value * 100))%")
+                } else {
+                    let value = deviceControl.adjustVolume(by: Float(delta))
+                    skin.showGestureHUD(icon: "PlayerVolumeNormal", title: "\(Int(value * 100))%")
+                }
+            case .ended, .cancelled, .failed:
+                skin.hideGestureHUD()
+                panGestureMode = .none
+                resetControlsAutoHideTimer()
+            default:
+                break
+            }
+        case .none:
             break
         }
     }
@@ -298,6 +335,7 @@ final class PlayerViewController: UIViewController {
     // MARK: - PlayerSkinAction 라우팅 (유일한 컨트롤 입력 채널)
 
     private func route(_ action: PlayerSkinAction) {
+        resetControlsAutoHideTimer()
         switch action {
         case .togglePlayPause:
             interactor.togglePlayPause()
@@ -373,13 +411,13 @@ final class PlayerViewController: UIViewController {
             self.applyPlaybackRate(rate)
             if shouldDismiss {
                 panel?.dismiss(animated: true)
-                self.skin.render(self.viewModel.setRatePanelPresented(false))
+                self.emitRender(self.viewModel.setRatePanelPresented(false))
             }
         }
         panel.onDismiss = { [weak self, weak panel] in
             panel?.dismiss(animated: true)
             guard let self else { return }
-            self.skin.render(self.viewModel.setRatePanelPresented(false))
+            self.emitRender(self.viewModel.setRatePanelPresented(false))
         }
         present(panel, animated: true)
     }
@@ -469,6 +507,75 @@ final class PlayerViewController: UIViewController {
             guard Task.isCancelled == false else { return }
             UIView.animate(withDuration: 0.3) { self?.toastLabel.alpha = 0 }
         }
+    }
+
+    private func configurePanMode(_ recognizer: UIPanGestureRecognizer, initialTranslation: CGPoint) {
+        if interactor.isZoomedIn {
+            panGestureMode = .move
+            return
+        }
+
+        let velocity = recognizer.velocity(in: view)
+        let horizontal = max(abs(velocity.x), abs(initialTranslation.x))
+        let vertical = max(abs(velocity.y), abs(initialTranslation.y))
+
+        if horizontal > vertical {
+            guard viewModel.state.isSeekEnabled else {
+                panGestureMode = .none
+                return
+            }
+            panGestureMode = .horizontalSeek
+            panSeekStartTime = viewModel.state.currentTime
+            panSeekTargetTime = viewModel.state.currentTime
+        } else {
+            panGestureMode = .verticalDeviceControl
+            panIsLeftSide = recognizer.location(in: view).x < view.bounds.midX
+        }
+    }
+
+    private func updateHorizontalSeekPreview(translation: CGPoint) {
+        guard viewModel.state.duration > 0 else { return }
+        let delta = TimeInterval(translation.x / Metric.horizontalSeekPointsPerSecond)
+        guard delta != 0 else { return }
+
+        panSeekTargetTime = min(max(0, panSeekTargetTime + delta), viewModel.state.duration)
+        let accumulatedDelta = panSeekTargetTime - panSeekStartTime
+        let isForward = accumulatedDelta >= 0
+        let seconds = Int(abs(accumulatedDelta).rounded())
+        skin.showGestureHUD(
+            icon: isForward ? "PlayerForwardGestureNormal" : "PlayerBackwardGestureNormal",
+            title: "\(isForward ? "+" : "-")\(seconds)초",
+            detail: PlayerSkinState.formatTime(panSeekTargetTime)
+        )
+    }
+
+    private func updateControlsAutoHideTimer(for state: PlayerSkinState) {
+        if PlayerStateViewModel.shouldAutoHideControls(in: state) {
+            scheduleControlsAutoHideTimerIfNeeded()
+        } else {
+            cancelControlsAutoHideTimer()
+        }
+    }
+
+    private func resetControlsAutoHideTimer() {
+        cancelControlsAutoHideTimer()
+        updateControlsAutoHideTimer(for: viewModel.state)
+    }
+
+    private func scheduleControlsAutoHideTimerIfNeeded() {
+        guard controlsAutoHideTask == nil else { return }
+        controlsAutoHideTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: Metric.controlsAutoHideDelayNanoseconds)
+            guard Task.isCancelled == false, let self else { return }
+            self.controlsAutoHideTask = nil
+            guard PlayerStateViewModel.shouldAutoHideControls(in: self.viewModel.state) else { return }
+            self.emitRender(self.viewModel.setControlsVisible(false))
+        }
+    }
+
+    private func cancelControlsAutoHideTimer() {
+        controlsAutoHideTask?.cancel()
+        controlsAutoHideTask = nil
     }
 }
 
