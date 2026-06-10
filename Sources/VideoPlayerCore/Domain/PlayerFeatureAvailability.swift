@@ -28,6 +28,7 @@ public struct PlayerFeatureAvailability: OptionSet, Sendable, Equatable {
     public static let pictureInPicture  = PlayerFeatureAvailability(rawValue: 1 << 8)
     public static let displayScaling    = PlayerFeatureAvailability(rawValue: 1 << 9)
     public static let displayLock       = PlayerFeatureAvailability(rawValue: 1 << 10)
+    public static let seekPreview       = PlayerFeatureAvailability(rawValue: 1 << 11)
 }
 
 public extension PlayerFeatureAvailability {
@@ -47,6 +48,7 @@ public extension PlayerFeatureAvailability {
         if engine is any PlayerDisplayLockEngine { features.insert(.displayLock) }
         #if canImport(UIKit)
         if engine is any PlayerZoomEngine { features.insert(.zoom) }
+        if engine is any PlayerSeekPreviewEngine { features.insert(.seekPreview) }
         #endif
         return features
     }

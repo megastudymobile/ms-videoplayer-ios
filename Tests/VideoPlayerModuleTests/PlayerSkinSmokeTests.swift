@@ -239,6 +239,50 @@ struct PlayerSkinSmokeTests {
         #expect(caption?.bottomInset == 5)
     }
 
+    @Test("시킹 프리뷰는 placeholder로 시작, 실패 확정 시 컴팩트 축소, 이미지 후 nil은 무시")
+    func seekPreviewViewSwitchesContentMode() {
+        let view = PlayerSeekPreviewView()
+
+        // 공급자 없음 — 컴팩트 시작.
+        view.beginSession(showsPlaceholder: false)
+        #expect(view.mode == .compact)
+        let compact = view.contentSize
+
+        // 공급자 있음 — placeholder 시작(이미지 크기), 첫 nil = 실패 확정 → 컴팩트 축소.
+        view.beginSession(showsPlaceholder: true)
+        #expect(view.mode == .placeholder)
+        let expanded = view.contentSize
+        #expect(compact.height < expanded.height)
+        view.setImage(nil)
+        #expect(view.mode == .compact)
+
+        // 이미지 도착 후의 단발 nil은 무시 — 직전 프레임 유지(깜빡임 방지).
+        view.beginSession(showsPlaceholder: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 16, height: 9)).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 16, height: 9))
+        }
+        view.setImage(image)
+        #expect(view.mode == .image)
+        #expect(view.contentSize == expanded)
+        view.setImage(nil)
+        #expect(view.mode == .image)
+    }
+
+    @Test("시킹 프리뷰 presenter는 비활성화 상태에서 begin을 무시")
+    func seekPreviewPresenterIgnoresBeginWhenDisabled() {
+        let presenter = PlayerSeekPreviewPresenter()
+        presenter.isEnabled = false
+        presenter.begin()
+        #expect(presenter.isActive == false)
+
+        presenter.isEnabled = true
+        presenter.begin()
+        #expect(presenter.isActive)
+        presenter.end()
+        #expect(presenter.isActive == false)
+    }
+
     @Test("HTML 자막의 끝 BR은 빈 줄 높이를 만들지 않는다")
     func captionTrimsTrailingHTMLLineBreak() {
         let caption = PlayerCaptionView()

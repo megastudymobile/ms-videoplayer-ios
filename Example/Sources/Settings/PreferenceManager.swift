@@ -179,6 +179,11 @@ enum PreferenceManager {
     @UserDefault("useGesture", defaultValue: true)
     static var useGesture: Bool
 
+    /// 시킹 프리뷰 썸네일 — 실연동(플레이어 생성 시 PlayerFeaturePolicy.allowsSeekPreview 주입,
+    /// 다음 재생부터 반영).
+    @UserDefault("useSeekPreview", defaultValue: true)
+    static var useSeekPreview: Bool
+
     // MARK: 파생 값 (패키지 적용 지점 — 문서 §6 세팅 매핑)
 
     /// 코덱 설정 → KollusEnvironment.hardwareDecoderPreferred

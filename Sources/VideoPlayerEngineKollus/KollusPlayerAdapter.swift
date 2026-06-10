@@ -34,6 +34,7 @@ public actor KollusPlayerAdapter:
     PlayerScrollEngine,
     PlayerAdaptiveStreamingEngine,
     PlayerContentMetadataEngine,
+    PlayerSeekPreviewEngine,
     PlayerEngineOutputProducing {
     // emitsObservedCommandState: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
     // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의
@@ -71,6 +72,9 @@ public actor KollusPlayerAdapter:
     /// utf8String 포인터는 NSString lifetime 동안 유효.
     @MainActor private var subtitlePathBuffer: NSString?
     private var bookmarkStore = KollusBookmarkStore()
+    private var seekPreviewSource: KollusSeekPreviewSource?
+    /// 스크럽 hot path에서 SDK 조회를 피하기 위한 (스프라이트 경로, duration) 캐시.
+    private var seekPreviewSnapshot: (path: String, duration: TimeInterval)?
     private var currentZoom: CGFloat = 0
     private var nextEpisodeEmitter = KollusNextEpisodeEmitter()
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
@@ -193,6 +197,8 @@ public actor KollusPlayerAdapter:
     // MARK: - PlayerEngineAdapter
 
     public func prepare(source: PlaybackSource) async throws {
+        seekPreviewSource = nil
+        seekPreviewSnapshot = nil
         if bootstrapper != nil {
             try await prepareWithBootstrappedStorage(source: source)
         } else if legacyStorage != nil {
@@ -223,6 +229,44 @@ public actor KollusPlayerAdapter:
         let nextState = state.updating(currentTime: clampedTime)
         transition(to: nextState, emitStateEvent: false)
         publish(event: .timeDidChange(currentTime: clampedTime, duration: nextState.duration))
+    }
+
+    // MARK: - PlayerSeekPreviewEngine
+
+    public func seekPreviewImage(at time: TimeInterval) async -> UIImage? {
+        // 스크럽 hot path — SDK 조회(MainActor 왕복)는 warm-up이 캐시한 스냅샷으로 대체한다.
+        // 캐시가 없을 때(워밍업 전 드래그)만 1회 조회한다.
+        if seekPreviewSnapshot == nil {
+            seekPreviewSnapshot = await resolveSeekPreviewSnapshot()
+        }
+        guard let snapshot = seekPreviewSnapshot, snapshot.duration > 0 else { return nil }
+        if seekPreviewSource?.path != snapshot.path {
+            seekPreviewSource = KollusSeekPreviewSource(thumbnailPath: snapshot.path)
+        }
+        return await seekPreviewSource?.previewImage(at: time, duration: snapshot.duration)
+    }
+
+    private func resolveSeekPreviewSnapshot() async -> (path: String, duration: TimeInterval)? {
+        await MainActor.run { () -> (path: String, duration: TimeInterval)? in
+            guard let view = playerView,
+                  view.isThumbnailEnable,
+                  let path = view.content?.thumbnail as String?,
+                  path.isEmpty == false else {
+                return nil
+            }
+            return (path, view.content?.duration ?? 0)
+        }
+    }
+
+    /// 스프라이트를 스크럽 전에 미리 디코드한다 — 첫 드래그가 디코드 지연으로
+    /// 라벨-only로 머무는 시간을 없앤다. 실패해도 스크럽 경로가 다시 시도한다.
+    private func warmUpSeekPreview() async {
+        seekPreviewSnapshot = await resolveSeekPreviewSnapshot()
+        guard let snapshot = seekPreviewSnapshot else { return }
+        if seekPreviewSource?.path != snapshot.path {
+            seekPreviewSource = KollusSeekPreviewSource(thumbnailPath: snapshot.path)
+        }
+        await seekPreviewSource?.warmUp()
     }
 
     public func stop(reason: PlayerStopReason) async throws {
@@ -772,6 +816,7 @@ public actor KollusPlayerAdapter:
                 let snapshot = await readyStateSnapshot()
                 transition(to: snapshot)
                 completePendingPrepare(with: .success(()))
+                Task { [weak self] in await self?.warmUpSeekPreview() }
             }
 
         case .playStarted(_, let error):
@@ -880,12 +925,18 @@ public actor KollusPlayerAdapter:
         case .hlsBitrateChanged(let bitrate):
             publish(event: .bitrateDidChange(bitrate))
 
+        case .thumbnailReady:
+            // 스프라이트가 비동기 다운로드로 뒤늦게 도착할 수 있다 — 캐시를 무효화하고
+            // 즉시 다시 디코드해 다음 드래그에서 바로 이미지가 나오게 한다.
+            seekPreviewSource = nil
+            seekPreviewSnapshot = nil
+            Task { [weak self] in await self?.warmUpSeekPreview() }
+
         case .scrollChanged,
              .zoomChanged,
              .contentModeChanged,
              .playbackRateChanged,
              .repeatChanged,
-             .thumbnailReady,
              .mediaContentKeyResolved:
             // 도메인 중립 PlayerEvent로 표현되지 않는 vendor-specific 신호.
             // diagnostics sink는 KollusDelegateBridge에서 이미 forward됨.

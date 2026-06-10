@@ -9,6 +9,9 @@
 import Foundation
 import Testing
 import VideoPlayerCore
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @Suite("PlayerFeatureAvailability probe — 엔진 protocol 채택 기반 기능 협상")
 struct PlayerFeatureAvailabilityTests {
@@ -84,3 +87,26 @@ private actor RichEngine: PlayerPlaybackEngine,
     func changeBandwidth(_ bps: Int) async throws {}
     func streamInfoList() async -> [StreamInfo] { [] }
 }
+
+#if canImport(UIKit)
+extension PlayerFeatureAvailabilityTests {
+    @Test("PlayerSeekPreviewEngine 채택 → .seekPreview 가용")
+    func seekPreviewEngine_reportsSeekPreview() {
+        #expect(PlayerFeatureAvailability.probe(SeekPreviewEngine()).contains(.seekPreview))
+        #expect(PlayerFeatureAvailability.probe(BareEngine()).contains(.seekPreview) == false)
+    }
+}
+
+private actor SeekPreviewEngine: PlayerPlaybackEngine, PlayerSeekPreviewEngine {
+    nonisolated static let capabilities: EngineCapabilities = []
+    var currentState: PlaybackState { .idle }
+    let eventStream: AsyncStream<PlayerEvent> = AsyncStream { $0.finish() }
+
+    func prepare(source: PlaybackSource) async throws {}
+    func play() async throws {}
+    func pause() async throws {}
+    func seek(to time: TimeInterval) async throws {}
+    func stop(reason: PlayerStopReason) async throws {}
+    func seekPreviewImage(at time: TimeInterval) async -> UIImage? { nil }
+}
+#endif

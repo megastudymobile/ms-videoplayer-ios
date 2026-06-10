@@ -9,6 +9,21 @@ import UIKit
 public final class ProgressBarBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
+    /// 스크럽 매 틱 콜백 — `.seekPreviewChanged`는 throttle되므로 모달 위치 추적용으로 분리.
+    /// AssembledPlayerSkin이 배선한다.
+    var onScrubTick: ((TimeInterval) -> Void)?
+
+    /// 현재 슬라이더 값이 가리키는 프리뷰 시각.
+    var currentPreviewTime: TimeInterval {
+        PlayerSkinState.previewTime(for: slider.value, duration: latestDuration)
+    }
+
+    /// thumb 상단 중심점을 대상 좌표계로 변환 — 프리뷰 모달 anchor.
+    func seekPreviewAnchor(in coordinateSpace: UICoordinateSpace) -> CGPoint {
+        let trackRect = slider.trackRect(forBounds: slider.bounds)
+        let thumbRect = slider.thumbRect(forBounds: slider.bounds, trackRect: trackRect, value: slider.value)
+        return slider.convert(CGPoint(x: thumbRect.midX, y: thumbRect.minY), to: coordinateSpace)
+    }
 
     private let slider = PlayerPlaybackSlider()
     private let currentTimeLabel = UILabel()
@@ -93,11 +108,14 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
         lastPreviewEmit = CACurrentMediaTime()
         // 스크러버를 잡는 순간 host 가 재생을 멈춘다(pause).
         onAction?(.seekBegan)
+        // .seekBegan 가로채기(begin)가 끝난 뒤 첫 위치를 잡도록 액션 다음에 발행한다.
+        onScrubTick?(currentPreviewTime)
     }
     @objc private func seekChanged() {
         let time = PlayerSkinState.previewTime(for: slider.value, duration: latestDuration)
         // thumb은 UISlider가 네이티브로 추적하고, 시간 라벨은 매 틱 갱신(가벼움).
         currentTimeLabel.text = PlayerSkinState.formatTime(time)
+        onScrubTick?(time)
         // 실제 엔진 seek을 유발하는 프리뷰는 throttle — 메인스레드 디코드가 thumb 애니메이션을 막지 않게.
         let now = CACurrentMediaTime()
         guard now - lastPreviewEmit >= Self.previewThrottleInterval else { return }

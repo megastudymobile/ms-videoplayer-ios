@@ -39,6 +39,7 @@ final class PlayerInteractor {
 
     // capability protocol 캐스트 — 시뮬레이터(UnsupportedEnvironmentEngine)에서는 nil.
     private var zoomEngine: PlayerSynchronousZoomEngine?
+    private var seekPreviewEngine: (any PlayerSeekPreviewEngine)?
     private var scrollEngine: PlayerScrollEngine?
     private var pendingScrollDistance = CGPoint.zero
     private var shouldStopScroll = false
@@ -64,7 +65,8 @@ final class PlayerInteractor {
             allowsBackgroundPlayback: PreferenceManager.isBackgroundAudioPlay,
             maxPlaybackRate: 2.0,
             allowsAutoplay: true,
-            skipInterval: TimeInterval(PreferenceManager.seekRangeSeconds)
+            skipInterval: TimeInterval(PreferenceManager.seekRangeSeconds),
+            allowsSeekPreview: PreferenceManager.useSeekPreview
         )
     }
 
@@ -80,6 +82,7 @@ final class PlayerInteractor {
         playerModule = module
         availableFeatures = module.availableFeatures
         zoomEngine = module.engine as? PlayerSynchronousZoomEngine
+        seekPreviewEngine = module.engine as? any PlayerSeekPreviewEngine
         scrollEngine = module.engine as? PlayerScrollEngine
 
         let coordinator = PlayerLifecycleCoordinator(
@@ -126,6 +129,7 @@ final class PlayerInteractor {
         nowPlayingCoordinator = nil
         binder.unbind()
         zoomEngine = nil
+        seekPreviewEngine = nil
         scrollEngine = nil
         pendingScrollDistance = .zero
         shouldStopScroll = false
@@ -165,6 +169,12 @@ final class PlayerInteractor {
             let target = min(max(0, snapshot.currentTime + delta), max(0, snapshot.duration))
             await self.execute(.seek(to: target), on: module)
         }
+    }
+
+    /// 시킹 프리뷰 썸네일 조회 — 실패/미지원/정책 비활성은 nil (skin이 라벨-only로 폴백).
+    func seekPreviewImage(at time: TimeInterval) async -> UIImage? {
+        guard isDisposed == false, featurePolicy.allowsSeekPreview else { return nil }
+        return await seekPreviewEngine?.seekPreviewImage(at: time)
     }
 
     /// 명령 실행 단일 경로 — 실패를 삼키지 않고 onCommandError로 surfacing한다.

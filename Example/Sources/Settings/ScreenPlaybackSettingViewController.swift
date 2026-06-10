@@ -52,6 +52,16 @@ final class ScreenPlaybackSettingViewController: SettingsListViewController {
             )
         }
         screenItems.append(contentsOf: [
+            // 다음 재생 시 반영 — 플레이어 생성 시 PlayerFeaturePolicy.allowsSeekPreview 로 주입.
+            SettingItem(
+                title: "시킹 미리보기 썸네일",
+                description: "재생바 드래그 중 썸네일 미리보기를 표시합니다. 다음 재생부터 적용됩니다.",
+                isNew: true,
+                accessory: .toggle(
+                    get: { PreferenceManager.useSeekPreview },
+                    set: { PreferenceManager.useSeekPreview = $0 }
+                )
+            ),
             // persist-only: AppDelegate 가 이미 .playback 고정.
             SettingItem(
                 title: "무음 모드에서 소리 강제 재생",

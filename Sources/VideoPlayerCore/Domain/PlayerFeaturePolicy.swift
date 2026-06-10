@@ -16,6 +16,9 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
     public let allowsAutoplay: Bool
     public let skipInterval: TimeInterval
     public let nextEpisodeButtonLeadTime: TimeInterval
+    /// 시킹 스크럽 프리뷰 모달 사용 여부 — 플레이어 생성 시 host가 결정한다.
+    /// 엔진이 `PlayerSeekPreviewEngine`을 지원해도 이 정책이 꺼져 있으면 표시하지 않는다.
+    public let allowsSeekPreview: Bool
 
     public static let `default` = PlayerFeaturePolicy(
         allowsBackgroundPlayback: false,
@@ -30,12 +33,14 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
         maxPlaybackRate: Double,
         allowsAutoplay: Bool,
         skipInterval: TimeInterval = 10,
-        nextEpisodeButtonLeadTime: TimeInterval = 30
+        nextEpisodeButtonLeadTime: TimeInterval = 30,
+        allowsSeekPreview: Bool = true
     ) {
         self.allowsBackgroundPlayback = allowsBackgroundPlayback
         self.maxPlaybackRate = maxPlaybackRate
         self.allowsAutoplay = allowsAutoplay
         self.skipInterval = skipInterval > 0 ? skipInterval : 10
         self.nextEpisodeButtonLeadTime = max(0, nextEpisodeButtonLeadTime)
+        self.allowsSeekPreview = allowsSeekPreview
     }
 }

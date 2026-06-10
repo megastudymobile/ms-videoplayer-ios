@@ -19,6 +19,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private let captionOverlay: PlayerSkinCaptionOverlay
     private let loadingOverlay: PlayerSkinLoadingOverlay
     private let gestureHUDOverlay: PlayerSkinGestureHUDOverlay
+    private let seekPreviewPresenter = PlayerSeekPreviewPresenter()
     private var slotContainers: [PlayerSkinSlot: UIStackView] = [:]
     private var blocks: [PlayerSkinBlock] = []
     private var latestState = PlayerSkinState.initial
@@ -55,6 +56,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     }
     public func render(_ state: PlayerSkinState) {
         latestState = state
+        // 드래그 도중 잠금되면 touchCancel을 기다리지 않고 모달을 닫는다.
+        if state.isLocked { seekPreviewPresenter.end() }
         applyLegacyMetrics(state)
         applyVisibility(state)
         blocks.forEach { $0.render(state, theme: theme) }
@@ -78,6 +81,18 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     public func hideGestureHUD() {
         gestureHUDOverlay.hide()
     }
+    /// host가 주입하는 시킹 프리뷰 썸네일 공급자. nil이면 시간 라벨만 표시된다.
+    public var seekPreviewImageProvider: ((TimeInterval) async -> UIImage?)? {
+        get { seekPreviewPresenter.imageProvider }
+        set { seekPreviewPresenter.imageProvider = newValue }
+    }
+
+    /// 시킹 프리뷰 모달 on/off. off 전환 시 표시 중이면 즉시 닫는다.
+    public func setSeekPreviewEnabled(_ enabled: Bool) {
+        seekPreviewPresenter.isEnabled = enabled
+        if enabled == false { seekPreviewPresenter.end() }
+    }
+
     public func updateCaption(text: String, isSecondary: Bool) {
         captionOverlay.update(text: text, isSecondary: isSecondary)
     }
@@ -139,6 +154,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             addSubview(stack)
             positionSlot(slot, stack)
         }
+        addSubview(seekPreviewPresenter.view)
+
         let gestureHUDView = gestureHUDOverlay.view
         gestureHUDView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(gestureHUDView)
@@ -210,10 +227,41 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             guard let container = slotContainers[slot], let makers = blueprint.blocks[slot] else { continue }
             for make in makers {
                 let block = make()
-                block.onAction = { [weak self] action in self?.onAction?(action) }
+                block.onAction = { [weak self] action in
+                    self?.interceptForSeekPreview(action)
+                    self?.onAction?(action)
+                }
                 container.addArrangedSubview(block.view)
                 blocks.append(block)
             }
+        }
+        for bar in blocks.compactMap({ $0 as? ProgressBarBlock }) {
+            bar.onScrubTick = { [weak self, weak bar] time in
+                guard let self, let bar else { return }
+                self.seekPreviewPresenter.move(
+                    time: time,
+                    anchor: bar.seekPreviewAnchor(in: self),
+                    in: self.bounds
+                )
+            }
+        }
+    }
+
+    /// 시킹 프리뷰 모달은 skin이 자체 처리한다 — host 라우팅과 무관하게 액션을 관찰만 한다.
+    private func interceptForSeekPreview(_ action: PlayerSkinAction) {
+        switch action {
+        case .seekBegan:
+            guard latestState.isSeekEnabled, latestState.duration > 0 else { return }
+            seekPreviewPresenter.begin()
+            if let bar = blocks.compactMap({ $0 as? ProgressBarBlock }).first {
+                seekPreviewPresenter.requestImage(at: bar.currentPreviewTime)
+            }
+        case .seekPreviewChanged(let time):
+            seekPreviewPresenter.requestImage(at: time)
+        case .seekEnded:
+            seekPreviewPresenter.end()
+        default:
+            break
         }
     }
 

@@ -172,6 +172,15 @@ final class PlayerViewController: UIViewController {
                 ExtraControl(id: ExtraControlID.bookmark, iconName: "bookmark", title: "북마크", placement: .topMenu)
             )
         }
+        // 시킹 프리뷰는 런타임 토글 없음 — 플레이어 생성 시 정책으로 주입된 값만 따른다.
+        let seekPreviewEnabled = features.contains(.seekPreview)
+            && interactor.featurePolicy.allowsSeekPreview
+        if seekPreviewEnabled {
+            skin.seekPreviewImageProvider = { [weak self] time in
+                await self?.interactor.seekPreviewImage(at: time)
+            }
+        }
+        skin.setSeekPreviewEnabled(seekPreviewEnabled)
         skin.setExtraControls(extraControls)
     }
 

@@ -43,6 +43,18 @@ struct PreferenceManagerTests {
         #expect(PreferenceManager.seekRangeSeconds == 10)
     }
 
+    @Test("시킹 프리뷰 토글 — 기본 true, 라운드트립")
+    func useSeekPreview_defaultsTrueAndRoundTrips() {
+        let original = PreferenceManager.useSeekPreview
+        defer { PreferenceManager.useSeekPreview = original }
+
+        UserDefaults.standard.removeObject(forKey: "useSeekPreview")
+        #expect(PreferenceManager.useSeekPreview == true)
+
+        PreferenceManager.useSeekPreview = false
+        #expect(PreferenceManager.useSeekPreview == false)
+    }
+
     @Test("자막 크기 설정은 10~40pt 7단계를 제공하고 기본값은 20pt")
     func subtitleSize_matchesLegacySteps() {
         let original = PreferenceManager.subtitleSize

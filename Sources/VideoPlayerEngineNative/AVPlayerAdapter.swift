@@ -11,7 +11,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine {
+public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine, PlayerSeekPreviewEngine {
     public nonisolated static let capabilities: EngineCapabilities = [
         .continuesWithoutSurface,
         .seamlessSurfaceSwap
@@ -41,6 +41,9 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
     private var failedToEndObserver: NSObjectProtocol?
     private var timeObserverToken: Any?
     private var displayScaleMode: PlayerDisplayScaleMode = .aspectFit
+    private var imageGenerator: AVAssetImageGenerator?
+    /// generator가 어떤 asset용인지 추적 — 콘텐츠 교체 시 재생성.
+    private var imageGeneratorAsset: AVAsset?
 
     /// KVO/Notification/periodic observer 콜백을 단일 FIFO 스트림으로 직렬 소비한다.
     /// 콜백마다 `Task`를 새로 만들면 임의 스레드에서 도착한 이벤트의 actor 처리 순서가 비결정적이라
@@ -135,6 +138,9 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
             throw PlayerError.engineError("AVPlayerAdapter는 url source만 지원합니다. source=\(key)")
         }
 
+        imageGenerator?.cancelAllCGImageGeneration()
+        imageGenerator = nil
+        imageGeneratorAsset = nil
         cleanupCurrentItemObservers()
 
         let item = AVPlayerItem(url: url)
@@ -201,7 +207,46 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         }
     }
 
+    // MARK: - PlayerSeekPreviewEngine
+
+    public func seekPreviewImage(at time: TimeInterval) async -> UIImage? {
+        let snapshot = await MainActor.run { () -> (asset: AVAsset, duration: TimeInterval)? in
+            guard let item = player.currentItem else { return nil }
+            return (item.asset, Self.duration(for: item))
+        }
+        guard let snapshot, snapshot.duration > 0 else { return nil }
+
+        let generator: AVAssetImageGenerator
+        if let existing = imageGenerator, imageGeneratorAsset === snapshot.asset {
+            generator = existing
+        } else {
+            let created = AVAssetImageGenerator(asset: snapshot.asset)
+            created.appliesPreferredTrackTransform = true
+            created.maximumSize = CGSize(width: 480, height: 270)
+            imageGenerator = created
+            imageGeneratorAsset = snapshot.asset
+            generator = created
+        }
+
+        generator.cancelAllCGImageGeneration()
+
+        let clamped = min(max(0, time), snapshot.duration)
+        let target = CMTime(seconds: clamped, preferredTimescale: 600)
+        return await withCheckedContinuation { continuation in
+            generator.generateCGImagesAsynchronously(forTimes: [NSValue(time: target)]) { _, cgImage, _, result, _ in
+                guard result == .succeeded, let cgImage else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: UIImage(cgImage: cgImage))
+            }
+        }
+    }
+
     public func stop(reason: PlayerStopReason) async throws {
+        imageGenerator?.cancelAllCGImageGeneration()
+        imageGenerator = nil
+        imageGeneratorAsset = nil
         cleanupCurrentItemObservers()
         player.cancelPendingPrerolls()
         player.currentItem?.cancelPendingSeeks()

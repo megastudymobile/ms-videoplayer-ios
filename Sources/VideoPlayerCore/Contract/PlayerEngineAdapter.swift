@@ -113,6 +113,13 @@ public protocol PlayerZoomEngine: Actor {
 public protocol PlayerSynchronousZoomEngine {
     func applyZoomGesture(_ recognizer: UIPinchGestureRecognizer)
 }
+
+/// 시킹 스크럽 중 특정 시각의 프리뷰 프레임을 제공한다.
+/// 실패 원인(스프라이트 없음/추출 실패/취소)은 UI에서 전부 동일한 라벨-only 폴백으로
+/// 수렴하므로 throws 대신 nil로 통일한다.
+public protocol PlayerSeekPreviewEngine: Actor {
+    func seekPreviewImage(at time: TimeInterval) async -> UIImage?
+}
 #endif
 
 public protocol PlayerScrollEngine: Actor {
