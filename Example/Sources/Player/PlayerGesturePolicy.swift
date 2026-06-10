@@ -19,20 +19,17 @@ enum PlayerGesturePolicy {
 
     static func allowsDiscreteSurfaceGesture(from touchedView: UIView?) -> Bool {
         guard let touchedView else { return true }
-        if touchedView.hasSliderAncestor { return false }
-        if touchedView.hasButtonAncestor { return false }
-        return true
+        return touchedView.isInsideUIControlSubtree == false
     }
 }
 
 private extension UIView {
-    var hasButtonAncestor: Bool {
-        if self is UIButton { return true }
-        return superview?.hasButtonAncestor ?? false
-    }
-
-    var hasSliderAncestor: Bool {
-        if self is UISlider { return true }
-        return superview?.hasSliderAncestor ?? false
+    var isInsideUIControlSubtree: Bool {
+        var currentView: UIView? = self
+        while let view = currentView {
+            if view is UIControl { return true }
+            currentView = view.superview
+        }
+        return false
     }
 }

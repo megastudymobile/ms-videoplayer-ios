@@ -19,20 +19,27 @@ struct PlayerGesturePolicyTests {
         #expect(PlayerGesturePolicy.doubleTapSeekDelta(locationX: 99, boundsWidth: 100) == 10)
     }
 
-    @Test("더블탭과 롱프레스는 버튼과 슬라이더 터치를 가로채지 않는다")
-    func discreteSurfaceGesture_ignoresButtonsAndSliders() {
+    @Test("더블탭과 롱프레스는 UIControl 하위 터치를 가로채지 않는다")
+    func discreteSurfaceGesture_ignoresUIControlSubtrees() {
         let rootView = UIView()
         let contentView = UIView()
-        let button = UIButton(type: .system)
-        let slider = UISlider()
+        let controls: [UIControl] = [
+            UIButton(type: .system),
+            UISlider(),
+            UISwitch(),
+            UISegmentedControl(items: ["A", "B"])
+        ]
 
         rootView.addSubview(contentView)
-        rootView.addSubview(button)
-        rootView.addSubview(slider)
+        controls.forEach(rootView.addSubview)
 
         #expect(PlayerGesturePolicy.allowsDiscreteSurfaceGesture(from: contentView))
-        #expect(PlayerGesturePolicy.allowsDiscreteSurfaceGesture(from: button) == false)
-        #expect(PlayerGesturePolicy.allowsDiscreteSurfaceGesture(from: slider) == false)
+        for control in controls {
+            let touchedSubview = UIView()
+            control.addSubview(touchedSubview)
+            #expect(PlayerGesturePolicy.allowsDiscreteSurfaceGesture(from: control) == false)
+            #expect(PlayerGesturePolicy.allowsDiscreteSurfaceGesture(from: touchedSubview) == false)
+        }
         #expect(PlayerGesturePolicy.longPressMinimumDuration == 0.5)
     }
 }
