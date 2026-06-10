@@ -34,6 +34,32 @@ final class BookmarkPaneViewController: UIViewController {
         // 활성화 시점에 이미 로드된 목록을 pull — bookmarksDidLoad 이벤트 누락 대비.
         bookmarks = sorted(channel?.loadedBookmarks ?? [])
         tableView.reloadData()
+        updateBackgroundMessage()
+    }
+
+    /// 빈 상태/미지원 안내 — 엔진이 북마크 미지원이면 추가 행도 의미가 없으므로 명시한다.
+    private func updateBackgroundMessage() {
+        let supportsBookmarks = channel?.availableFeatures.contains(.bookmarks) ?? false
+        let message: String?
+        if supportsBookmarks == false {
+            message = "현재 엔진은 북마크를 지원하지 않습니다"
+        } else if bookmarks.isEmpty {
+            message = "북마크 없음 — 현재 위치 추가로 만들 수 있습니다"
+        } else {
+            message = nil
+        }
+
+        guard let message else {
+            tableView.backgroundView = nil
+            return
+        }
+        let label = UILabel()
+        label.text = message
+        label.textColor = .secondaryLabel
+        label.font = .systemFont(ofSize: 14)
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        tableView.backgroundView = label
     }
 
     private func configureTable() {
@@ -60,7 +86,10 @@ extension BookmarkPaneViewController: PlayerConsolePane {
     func handleEvent(_ event: PlayerEvent) {
         guard case .bookmarksDidLoad(let loaded) = event else { return }
         bookmarks = sorted(loaded)
-        if isViewLoaded { tableView.reloadData() }
+        if isViewLoaded {
+            tableView.reloadData()
+            updateBackgroundMessage()
+        }
     }
 }
 
@@ -118,5 +147,6 @@ extension BookmarkPaneViewController: UITableViewDataSource, UITableViewDelegate
         // 엔진의 bookmarksDidLoad 재방출을 기다리지 않고 즉시 로컬 반영 (낙관적 갱신).
         bookmarks.remove(at: indexPath.row)
         tableView.deleteRows(at: [indexPath], with: .automatic)
+        updateBackgroundMessage()
     }
 }

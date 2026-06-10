@@ -22,8 +22,12 @@ final class PlayerInteractor {
     private let onRender: (PlayerSkinState) -> Void
     /// skin 상태와 무관한 이벤트(자막/북마크/실패/정책 강등)를 화면으로 전달.
     private let onEvent: (PlayerEvent) -> Void
+    /// 명령 실행 실패 전달 — 무음 삼킴 금지. 화면이 토스트로 surfacing한다.
+    private let onCommandError: (PlayerError) -> Void
 
     let featurePolicy: PlayerFeaturePolicy
+    /// 엔진 가용 기능 — setUp 완료 후 확정. UI 버튼 사전 게이트용.
+    private(set) var availableFeatures: PlayerFeatureAvailability = []
 
     private var playerModule: PlayerModule?
     private let binder = PlayerStateBinder()
@@ -40,13 +44,15 @@ final class PlayerInteractor {
         moduleProvider: PlayerModuleProviding,
         viewModel: PlayerStateViewModel,
         onRender: @escaping (PlayerSkinState) -> Void,
-        onEvent: @escaping (PlayerEvent) -> Void
+        onEvent: @escaping (PlayerEvent) -> Void,
+        onCommandError: @escaping (PlayerError) -> Void = { _ in }
     ) {
         self.source = source
         self.moduleProvider = moduleProvider
         self.viewModel = viewModel
         self.onRender = onRender
         self.onEvent = onEvent
+        self.onCommandError = onCommandError
         self.featurePolicy = PlayerFeaturePolicy(
             allowsBackgroundPlayback: PreferenceManager.isBackgroundAudioPlay,
             maxPlaybackRate: 2.0,
@@ -65,6 +71,7 @@ final class PlayerInteractor {
             return
         }
         playerModule = module
+        availableFeatures = module.availableFeatures
         zoomEngine = module.engine as? PlayerSynchronousZoomEngine
 
         let coordinator = PlayerLifecycleCoordinator(
@@ -108,8 +115,8 @@ final class PlayerInteractor {
 
     func send(_ command: PlaybackCommand) {
         Task { @MainActor [weak self] in
-            guard let module = self?.playerModule else { return }
-            try? await module.core.execute(command: command)
+            guard let self, let module = self.playerModule else { return }
+            await self.execute(command, on: module)
         }
     }
 
@@ -117,7 +124,7 @@ final class PlayerInteractor {
         Task { @MainActor [weak self] in
             guard let self, let module = self.playerModule else { return }
             let isPlaying = await module.engine.currentState.status == .playing
-            try? await module.core.execute(command: isPlaying ? .pause : .play)
+            await self.execute(isPlaying ? .pause : .play, on: module)
         }
     }
 
@@ -126,7 +133,17 @@ final class PlayerInteractor {
             guard let self, let module = self.playerModule else { return }
             let snapshot = await module.engine.currentState
             let target = min(max(0, snapshot.currentTime + delta), max(0, snapshot.duration))
-            try? await module.core.execute(command: .seek(to: target))
+            await self.execute(.seek(to: target), on: module)
+        }
+    }
+
+    /// 명령 실행 단일 경로 — 실패를 삼키지 않고 onCommandError로 surfacing한다.
+    private func execute(_ command: PlaybackCommand, on module: PlayerModule) async {
+        do {
+            try await module.core.execute(command: command)
+        } catch {
+            guard isDisposed == false else { return }
+            onCommandError(error as? PlayerError ?? .unknown(error.localizedDescription))
         }
     }
 

@@ -56,16 +56,21 @@ final class PlayerViewController: UIViewController {
 
         var renderSink: (PlayerSkinState) -> Void = { _ in }
         var eventSink: (PlayerEvent) -> Void = { _ in }
+        var commandErrorSink: (PlayerError) -> Void = { _ in }
         self.interactor = PlayerInteractor(
             source: source,
             moduleProvider: moduleProvider,
             viewModel: viewModel,
             onRender: { renderSink($0) },
-            onEvent: { eventSink($0) }
+            onEvent: { eventSink($0) },
+            onCommandError: { commandErrorSink($0) }
         )
         super.init(nibName: nil, bundle: nil)
         renderSink = { [weak self] state in self?.emitRender(state) }
         eventSink = { [weak self] event in self?.handle(event: event) }
+        commandErrorSink = { [weak self] error in
+            self?.showToast(PlayerErrorPresentation.toastText(for: error))
+        }
     }
 
     @available(*, unavailable)
@@ -84,9 +89,6 @@ final class PlayerViewController: UIViewController {
 
         skin.onAction = { [weak self] action in self?.route(action) }
         skin.configure(title: "VideoPlayer Example", maxPlaybackRate: interactor.featurePolicy.maxPlaybackRate)
-        skin.setExtraControls([
-            ExtraControl(id: ExtraControlID.bookmark, iconName: "bookmark", title: "북마크", placement: .topMenu)
-        ])
         skin.setCaptionBottomInset(Metric.captionBottomInset)
         skin.setCaptionFontSize(PreferenceManager.captionFontSize)
 
@@ -96,6 +98,8 @@ final class PlayerViewController: UIViewController {
             guard let self else { return }
             do {
                 try await self.interactor.setUp(renderSurface: self.renderSurfaceView)
+                // 기능 게이팅 — 엔진이 지원하는 기능만 버튼 노출 (런타임 실패 대신 사전 숨김).
+                self.applyFeatureGating(self.interactor.availableFeatures)
                 try await self.interactor.start()
                 // 세팅 반영 — 자막 크기는 재생 중 즉시 적용 가능 (문서 §6).
                 self.interactor.send(.setCaptionFontSize(PreferenceManager.captionFontSize))
@@ -137,6 +141,19 @@ final class PlayerViewController: UIViewController {
     /// 컨테이너가 split/fullscreen 레이아웃 전환 시 호출 — skin 모드 명시 주입.
     func applySkinLayoutMode(_ mode: PlayerSkinLayoutMode) {
         emitRender(viewModel.resolveLayoutMode(mode))
+    }
+
+    // MARK: - 기능 게이팅 (availableFeatures)
+
+    /// setUp 완료 후 1회 — 엔진 미지원 기능의 진입점을 사전에 숨긴다.
+    private func applyFeatureGating(_ features: PlayerFeatureAvailability) {
+        var extraControls: [ExtraControl] = []
+        if features.contains(.bookmarks) {
+            extraControls.append(
+                ExtraControl(id: ExtraControlID.bookmark, iconName: "bookmark", title: "북마크", placement: .topMenu)
+            )
+        }
+        skin.setExtraControls(extraControls)
     }
 
     // MARK: - 렌더 fan-out
@@ -379,9 +396,13 @@ final class PlayerViewController: UIViewController {
     // MARK: - 알림/토스트
 
     private func presentErrorAndClose(_ error: Error) {
+        let message = PlayerErrorPresentation.message(for: error)
+        let body = [message.body, message.recoverySuggestion]
+            .compactMap { $0 }
+            .joined(separator: "\n\n")
         let alert = UIAlertController(
-            title: "재생 오류",
-            message: error.localizedDescription,
+            title: message.title,
+            message: body,
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "닫기", style: .default) { [weak self] _ in
@@ -405,6 +426,7 @@ final class PlayerViewController: UIViewController {
 extension PlayerViewController: PlayerControlChannel {
     var currentSkinState: PlayerSkinState { viewModel.state }
     var loadedBookmarks: [Bookmark] { bookmarks }
+    var availableFeatures: PlayerFeatureAvailability { interactor.availableFeatures }
 
     func togglePlayPause() {
         interactor.togglePlayPause()
