@@ -139,8 +139,10 @@ struct PlayerLifecycleCoordinatorTests {
         #expect(commandRecorder.commands == [.pause])
     }
 
+    // 병렬 테스트 부하에서 notification 핸들러의 Task hop이 1초를 넘겨 flake가 났다 —
+    // 단독 실행은 0.2초에 끝나므로 여유 있는 상한으로 둔다.
     private func waitUntil(
-        timeout: TimeInterval = 1.0,
+        timeout: TimeInterval = 5.0,
         pollInterval: UInt64 = 10_000_000,
         sourceLocation: SourceLocation = #_sourceLocation,
         condition: @escaping @MainActor () -> Bool
