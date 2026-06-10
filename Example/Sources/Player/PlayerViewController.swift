@@ -239,10 +239,10 @@ final class PlayerViewController: UIViewController {
         case .changed:
             if panIsLeftSide {
                 let value = deviceControl.adjustBrightness(by: delta)
-                skin.showGestureHUD(icon: "sun.max", title: "\(Int(value * 100))%")
+                skin.showGestureHUD(icon: "PlayerBrightnessNormal", title: "\(Int(value * 100))%")
             } else {
                 let value = deviceControl.adjustVolume(by: Float(delta))
-                skin.showGestureHUD(icon: "speaker.wave.2", title: "\(Int(value * 100))%")
+                skin.showGestureHUD(icon: "PlayerVolumeNormal", title: "\(Int(value * 100))%")
             }
         case .ended, .cancelled, .failed:
             skin.hideGestureHUD()

@@ -154,8 +154,12 @@ private extension PlayerGestureHUDView {
     }
 
     func applyIcon(_ icon: String) {
-        if let image = UIImage(named: icon, in: .module, with: nil) ?? UIImage(named: icon) {
-            imageView.image = image
+        let assetImage = UIImage(named: icon, in: .module, with: nil) ?? UIImage(named: icon)
+        let symbolImage = assetImage == nil ? UIImage(systemName: icon) : nil
+
+        if let image = assetImage ?? symbolImage {
+            imageView.image = symbolImage == nil ? image : image.withRenderingMode(.alwaysTemplate)
+            imageView.tintColor = .white
             imageView.isHidden = false
             iconLabel.isHidden = true
             iconLabel.text = nil
