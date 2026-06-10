@@ -16,6 +16,7 @@ public final class PlayerGestureHUDView: UIView {
     private let detailLabel = UILabel()
 
     private var hideWorkItem: DispatchWorkItem?
+    public var displayDuration: TimeInterval = 2.0
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -46,11 +47,12 @@ public final class PlayerGestureHUDView: UIView {
         isHidden = false
         alpha = 1
 
+        guard displayDuration > 0 else { return }
         let workItem = DispatchWorkItem { [weak self] in
             self?.hide()
         }
         hideWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + displayDuration, execute: workItem)
     }
 
     public func presentRate(_ rate: Double) {
