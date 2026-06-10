@@ -70,5 +70,23 @@ let project = Project(
                 .target(name: "VideoPlayerExample")
             ]
         )
+    ],
+    schemes: [
+        // 자동 생성 스킴 대신 명시 — QA용 보호 해제 플래그를 기본 비활성으로 등록한다.
+        .scheme(
+            name: "VideoPlayerExample",
+            shared: true,
+            buildAction: .buildAction(targets: ["VideoPlayerExample"]),
+            testAction: .targets(["VideoPlayerExampleTests"]),
+            runAction: .runAction(
+                configuration: "Debug",
+                executable: "VideoPlayerExample",
+                arguments: .arguments(
+                    launchArguments: [
+                        .launchArgument(name: "-disableScreenshotProtection", isEnabled: false)
+                    ]
+                )
+            )
+        )
     ]
 )

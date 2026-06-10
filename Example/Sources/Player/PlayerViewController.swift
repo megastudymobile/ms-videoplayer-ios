@@ -21,6 +21,8 @@ final class PlayerViewController: UIViewController {
     // 전부 VideoPlayerSkin 기성품 — Example 자체 컨트롤 뷰 없음 (문서 §3).
     private let renderSurfaceView = PlayerRenderSurfaceView()
     private let skin = AssembledPlayerSkin(blueprint: .example)
+    /// 스크린샷·녹화 결과물에서 영상/컨트롤을 제외하는 secure 캔버스 래퍼.
+    private let secureContainer = PlayerSecureDisplayContainerView()
     private let toastLabel = UILabel()
 
     private enum Metric {
@@ -115,6 +117,16 @@ final class PlayerViewController: UIViewController {
             self.interactor.send(.pause)
             self.showToast("화면 녹화가 감지되어 재생을 일시정지했습니다")
         }
+        // 스크린샷은 사전 차단 불가(사후 통지만 제공) — secure 캔버스가 결과물에서
+        // 영상을 비워두므로 사용자 안내만 한다.
+        if LaunchFlags.disablesScreenshotProtection == false {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(userDidTakeScreenshot),
+                name: UIApplication.userDidTakeScreenshotNotification,
+                object: nil
+            )
+        }
 
         // setUp → start 연속 실행 — viewDidAppear 분리 시 setUp 완료 전
         // start가 nil 모듈에 걸려 조용히 무재생되는 경쟁 조건이 생긴다 (리뷰 HIGH).
@@ -203,12 +215,35 @@ final class PlayerViewController: UIViewController {
     // MARK: - 뷰 계층
 
     private func configureHierarchy() {
-        // 아래→위: 렌더 서피스 → skin(컨트롤/자막/HUD 오버레이) → 토스트
-        for subview in [renderSurfaceView, skin, toastLabel] {
-            subview.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(subview)
+        // 아래→위: 영상(secure 캔버스 또는 직접 배치) → skin → 토스트.
+        // 영상만 secure 캔버스에 넣어 스크린샷·녹화 결과물에서 제외한다 —
+        // skin(컨트롤/자막)과 토스트는 캡처에 보여야 하므로 컨테이너 밖에 둔다.
+        if LaunchFlags.disablesScreenshotProtection {
+            renderSurfaceView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(renderSurfaceView)
+            NSLayoutConstraint.activate([
+                renderSurfaceView.topAnchor.constraint(equalTo: view.topAnchor),
+                renderSurfaceView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                renderSurfaceView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                renderSurfaceView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
+        } else {
+            secureContainer.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(secureContainer)
+            secureContainer.embed(renderSurfaceView)
+            NSLayoutConstraint.activate([
+                secureContainer.topAnchor.constraint(equalTo: view.topAnchor),
+                secureContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                secureContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                secureContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
         }
 
+        skin.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(skin)
+
+        toastLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(toastLabel)
         toastLabel.textColor = .white
         toastLabel.font = .systemFont(ofSize: 14, weight: .medium)
         toastLabel.textAlignment = .center
@@ -218,11 +253,6 @@ final class PlayerViewController: UIViewController {
         toastLabel.alpha = 0
 
         NSLayoutConstraint.activate([
-            renderSurfaceView.topAnchor.constraint(equalTo: view.topAnchor),
-            renderSurfaceView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            renderSurfaceView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            renderSurfaceView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
             skin.topAnchor.constraint(equalTo: view.topAnchor),
             skin.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             skin.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -417,12 +447,16 @@ final class PlayerViewController: UIViewController {
         case .settingRequested, .moreRequested:
             showToast("데모 미구현 항목")
         case .closeRequested:
-            // push embed 시 컨테이너 pop, modal 시 dismiss. 정리는 viewDidDisappear → interactor.tearDown()
-            if let onClose {
-                onClose()
-            } else {
-                dismiss(animated: false)
-            }
+            closePlayer()
+        }
+    }
+
+    /// push embed 시 컨테이너 pop, modal 시 dismiss. 정리는 viewDidDisappear → interactor.tearDown()
+    private func closePlayer() {
+        if let onClose {
+            onClose()
+        } else {
+            dismiss(animated: false)
         }
     }
 
@@ -542,8 +576,10 @@ final class PlayerViewController: UIViewController {
             message: body,
             preferredStyle: .alert
         )
+        // SDK 캡처 감지 오류 등 치명 오류의 닫기는 화면 닫기 라우팅과 동일해야 한다 —
+        // push embed에서 dismiss는 alert만 닫고 플레이어가 남는다.
         alert.addAction(UIAlertAction(title: "닫기", style: .default) { [weak self] _ in
-            self?.dismiss(animated: false)
+            self?.closePlayer()
         })
         present(alert, animated: true)
     }
@@ -559,6 +595,14 @@ final class PlayerViewController: UIViewController {
             guard Task.isCancelled == false else { return }
             UIView.animate(withDuration: 0.3) { self?.toastLabel.alpha = 0 }
         }
+    }
+
+    @objc private func userDidTakeScreenshot() {
+        showToast(
+            secureContainer.isSecureRenderingActive
+                ? "스크린샷에서 재생 화면이 보호되었습니다"
+                : "스크린샷이 감지되었습니다"
+        )
     }
 
     private func configurePanMode(_ recognizer: UIPanGestureRecognizer, initialTranslation: CGPoint) {
