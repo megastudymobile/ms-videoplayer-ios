@@ -84,6 +84,19 @@ enum SubtitleSize: Int, CaseIterable {
     }
 }
 
+/// 기본 배속 — SL 화면/재생 설정의 ± step parity (0.5x ~ 2.0x, 0.1 간격).
+enum PlaybackRate {
+    static let min = 0.5
+    static let max = 2.0
+    static let step = 0.1
+
+    static func clamped(_ value: Double) -> Double {
+        Swift.min(Swift.max(value, min), max)
+    }
+
+    static var title: (Double) -> String { { String(format: "%.1fx", $0) } }
+}
+
 enum SubtitleColor: Int, CaseIterable {
     case white, black, lightGray, darkGray, red, pink, orange, yellow, green, blue
 
@@ -135,6 +148,32 @@ enum PreferenceManager {
 
     @UserDefault("isFirstExecuted", defaultValue: true)
     static var isFirstExecuted: Bool
+
+    // MARK: SL 화면/재생 설정 parity 키
+
+    /// 기본 배속 — 실연동(다음 재생 시작 시 적용, PlayerViewController).
+    @UserDefault("playbackRate", defaultValue: 1.0)
+    static var playbackRate: Double
+
+    /// 다음 강의 자동 재생 — persist-only(데모에 다음 강의 없음, 재생 효과 없음).
+    @UserDefault("nextLectureAutoPlayMode", defaultValue: false)
+    static var nextLectureAutoPlayMode: Bool
+
+    /// 무음모드 소리 강제 재생 — persist-only(AppDelegate가 이미 .playback 고정).
+    @UserDefault("playSoundInSilentMode", defaultValue: false)
+    static var playSoundInSilentMode: Bool
+
+    /// 모바일 데이터 사용 제한 — persist-only(Example 스트리밍에 WWAN 게이트 없음).
+    @UserDefault("allowsWWANLimit", defaultValue: false)
+    static var allowsWWANLimit: Bool
+
+    /// 좌수 모드(iPad) — persist-only(skin 좌수 레이아웃 미지원).
+    @UserDefault("useLeftHandedMode", defaultValue: false)
+    static var useLeftHandedMode: Bool
+
+    /// 화면 제스처 사용 — persist-only(GestureViewController는 설명 전용). 제스처 행 detail("사용 중/안함") 표시용.
+    @UserDefault("useGesture", defaultValue: true)
+    static var useGesture: Bool
 
     // MARK: 파생 값 (패키지 적용 지점 — 문서 §6 세팅 매핑)
 

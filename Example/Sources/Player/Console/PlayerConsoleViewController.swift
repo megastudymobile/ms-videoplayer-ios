@@ -39,7 +39,7 @@ final class PlayerConsoleViewController: UIViewController {
 
     init(channel: PlayerControlChannel, sourceDescription: String) {
         self.panes = [
-            SettingViewController(),
+            SettingViewController(channel: channel),
             BookmarkPaneViewController(channel: channel),
             CaptionPaneViewController(channel: channel),
             MetadataPaneViewController(channel: channel, sourceDescription: sourceDescription)

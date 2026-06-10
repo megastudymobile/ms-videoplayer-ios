@@ -40,6 +40,16 @@ final class PlayerModuleProvider: PlayerModuleProviding {
 
     private init() {}
 
+    /// 저장 용량/캐시 화면용 Kollus storage facade.
+    /// 시뮬레이터는 실재생 미지원이라 nil — 화면은 "—" 로 표시한다.
+    var downloads: KollusDownloadCenter? {
+        #if targetEnvironment(simulator)
+        return nil
+        #else
+        return (try? resolveFactory())?.downloads
+        #endif
+    }
+
     func makeModule() async throws -> PlayerModule {
         #if targetEnvironment(simulator)
         // Kollus 실재생은 실기기 한정 — 렌더 표면에 미지원 안내만 표시하는 no-op 엔진.
