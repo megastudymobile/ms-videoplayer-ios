@@ -323,23 +323,4 @@ struct PlayerSkinSmokeTests {
         #expect(block.renderColor?.isEqual(UIColor.systemGreen) == true)
     }
 }
-
-private extension UIView {
-    var isEffectivelyHidden: Bool {
-        if isHidden || alpha == 0 { return true }
-        return superview?.isEffectivelyHidden ?? false
-    }
-
-    func descendant(accessibilityIdentifier: String) -> UIView? {
-        if self.accessibilityIdentifier == accessibilityIdentifier {
-            return self
-        }
-        for subview in subviews {
-            if let match = subview.descendant(accessibilityIdentifier: accessibilityIdentifier) {
-                return match
-            }
-        }
-        return nil
-    }
-}
 #endif
