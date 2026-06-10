@@ -71,6 +71,32 @@ struct KollusDownloadCenterTests {
         #expect(value == "mck-cached")
     }
 
+    @Test("check는 조회 에러를 미다운로드(nil)로 해석")
+    func check_returnsNilForUnregisteredURL() async throws {
+        let storage = FakeKollusStorage()
+        // SDK는 코드 상수를 공개하지 않으므로 코드값과 무관하게 nil이어야 한다.
+        storage.checkContentURLErrors["https://x/unregistered"] = NSError(
+            domain: "kollus.storage",
+            code: 404,
+            userInfo: [NSLocalizedDescriptionKey: "content not found"]
+        )
+        storage.checkContentURLErrors["https://x/opaque-error"] = NSError(
+            domain: "kollus.storage",
+            code: -1,
+            userInfo: nil
+        )
+        storage.checkContentURLResults["https://x/registered"] = "mck-registered"
+        let (center, _) = makeCenter(storage: storage)
+
+        let missing = try await center.check(contentURL: "https://x/unregistered")
+        let opaque = try await center.check(contentURL: "https://x/opaque-error")
+        let registered = try await center.check(contentURL: "https://x/registered")
+
+        #expect(missing == nil)
+        #expect(opaque == nil)
+        #expect(registered == "mck-registered")
+    }
+
     // MARK: - download lifecycle
 
     @Test("startDownload는 정확한 contentID로 storage 호출")
@@ -124,14 +150,15 @@ struct KollusDownloadCenterTests {
         }
     }
 
-    @Test("renewLicenses는 storage 호출")
-    func renewLicenses_invokesStorage() async throws {
+    @Test("renewLicenses는 scope를 SDK bAll 의미로 전달")
+    func renewLicenses_mapsScopeToRenewAllFlag() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
+        try await center.renewLicenses(scope: .all)
         try await center.renewLicenses(scope: .expiredOnly)
-        // No throw == success; FakeKollusStorage records no flag for the call,
-        // but absence of error confirms invocation reached storage layer.
+
+        #expect(storage.renewAllValues == [true, false])
     }
 
     @Test("sendStoredLMS는 storage 호출")
@@ -239,6 +266,29 @@ struct KollusDownloadCenterTests {
         }
         #expect(current == 2)
         #expect(total == 5)
+    }
+
+    @Test("DRM 강제 삭제 응답은 최신 contents를 다시 방출")
+    func forcedDRMDeletion_republishesContentsStream() async throws {
+        let storage = FakeKollusStorage()
+        let (center, _) = makeCenter(storage: storage)
+
+        try await center.setCacheSize(megabytes: 64)
+
+        let stream = center.contents
+        Task { @MainActor in
+            storage.emitDRMResponse(
+                request: ["path": "drm"],
+                response: ["kind": 2],
+                error: nil,
+                snapshots: [KollusContentSnapshot(id: "remaining")]
+            )
+        }
+
+        var iterator = stream.makeAsyncIterator()
+        let received = await iterator.next()
+
+        #expect(received?.map(\.id) == ["remaining"])
     }
 
     // MARK: - bootstrap failure

@@ -41,6 +41,9 @@ let project = Project(
                     "UIInterfaceOrientationLandscapeLeft",
                     "UIInterfaceOrientationLandscapeRight"
                 ],
+                "UIBackgroundModes": [
+                    "audio"
+                ],
                 "NSAppTransportSecurity": [
                     "NSAllowsArbitraryLoads": true
                 ]

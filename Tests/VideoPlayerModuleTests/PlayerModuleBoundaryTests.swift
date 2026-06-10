@@ -43,6 +43,27 @@ struct PlayerModuleBoundaryTests {
         }
     }
 
+    @Test("Kollus AI 배속 설정은 setter 메서드를 사용")
+    func kollusAIRateUsesSetter() throws {
+        let packageRoot = try Self.findPackageRoot()
+        let adapterURL = packageRoot.appendingPathComponent("Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift")
+        let source = try String(contentsOf: adapterURL, encoding: .utf8)
+        let forbiddenAssignment = "aiRateEnable = " + "environment.aiPlaybackRateEnabled"
+
+        #expect(source.contains("setAIRate(environment.aiPlaybackRateEnabled)"))
+        #expect(source.contains(forbiddenAssignment) == false)
+    }
+
+    @Test("Example 앱은 background audio mode를 선언")
+    func exampleAppDeclaresBackgroundAudioMode() throws {
+        let packageRoot = try Self.findPackageRoot()
+        let projectURL = packageRoot.appendingPathComponent("Project.swift")
+        let source = try String(contentsOf: projectURL, encoding: .utf8)
+
+        #expect(source.contains("\"UIBackgroundModes\""))
+        #expect(source.contains("\"audio\""))
+    }
+
     private static func findPackageRoot() throws -> URL {
         var current = URL(fileURLWithPath: #filePath)
 

@@ -66,11 +66,9 @@ public actor KollusDownloadCenter: PlayerDownloadCenter {
         do {
             return try await storage.checkContentURL(contentURL)
         } catch {
-            let classified = errorChain.classify(error, context: .resolve)
-            if case .contentNotFound = classified {
-                return nil
-            }
-            throw classified
+            // SDK는 미등록 URL을 에러로 알린다 — 코드 상수가 비공개라 구분할 수 없으므로
+            // 가이드 샘플과 동일하게 조회 실패 전체를 "미다운로드"로 해석한다.
+            return nil
         }
     }
 
@@ -113,7 +111,7 @@ public actor KollusDownloadCenter: PlayerDownloadCenter {
     public func renewLicenses(scope: LicenseRenewalScope) async throws {
         let storage = try await ensureStorage()
         do {
-            try await storage.updateDownloadDRMInfo(includeExpired: scope == .expiredOnly)
+            try await storage.updateDownloadDRMInfo(renewAll: scope == .all)
         } catch {
             throw errorChain.classify(error, context: .licenseRenewal)
         }

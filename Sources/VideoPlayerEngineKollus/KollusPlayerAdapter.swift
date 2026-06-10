@@ -73,6 +73,7 @@ public actor KollusPlayerAdapter:
     private var currentZoom: CGFloat = 0
     private var nextEpisodeEmitter = KollusNextEpisodeEmitter()
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
+    private(set) var systemPausedBeforeBuffering = false
 
     /// SDK delegate(bridge) 신호를 단일 FIFO 스트림으로 직렬 소비한다.
     /// 매 신호마다 `Task`를 새로 만들면 actor 도달 순서가 비결정적이라 `stopStarted` 뒤
@@ -245,7 +246,7 @@ public actor KollusPlayerAdapter:
             guard playerView.disablePlayRate == false else {
                 throw PlayerError.engineError("Kollus 컨텐츠가 배속 제어를 지원하지 않습니다.")
             }
-            playerView.currentPlaybackRate = Float(rate)
+            playerView.currentPlaybackRate = Float(Self.clampedPlaybackRate(rate, maxPlaybackRate: Int(playerView.maxPlaybackRate)))
         }
     }
 
@@ -522,7 +523,7 @@ public actor KollusPlayerAdapter:
         }
 
         // 다운로드 완료 콘텐츠는 SDK prepare 전에 라이선스를 선검증한다 — 만료 콘텐츠가
-        // 재생 시도 후에야 실패하지 않도록 (SDK 가이드 05 — 오프라인 재생 4조건).
+        // 재생 시도 후에야 실패하지 않도록 한다.
         if case .mediaKey(let contentID) = source.kind {
             let downloaded = await storageProto.contentSnapshots
                 .first { $0.id == contentID }
@@ -591,7 +592,8 @@ public actor KollusPlayerAdapter:
                 playerView.extraDrmParam = json
             }
 
-            playerView.aiRateEnable = environment.aiPlaybackRateEnabled
+            // AI배속 사용 여부는 setAIRate가 담당 — aiRateEnable 속성은 지원 여부 조회용.
+            playerView.setAIRate(environment.aiPlaybackRateEnabled)
             playerView.setDecoder(environment.hardwareDecoderPreferred)
             if let skin = environment.customSkinJSON {
                 playerView.customSkin = skin
@@ -628,7 +630,7 @@ public actor KollusPlayerAdapter:
 
                     do {
                         try await MainActor.run {
-                            guard let playerView else {
+                            guard let playerView = self.playerView else {
                                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
                             }
                             // 이후 SDK가 prepareToPlayWithError delegate를 호출한다.
@@ -776,14 +778,16 @@ public actor KollusPlayerAdapter:
                 handleFailure(playerError(from: error, operation: "play"))
                 return
             }
+            systemPausedBeforeBuffering = false
             transition(to: state.updating(status: .playing, isBuffering: false))
             startPositionPolling()
 
-        case .pauseStarted(_, let error):
+        case .pauseStarted(let userInteraction, let error):
             if let error {
                 handleFailure(playerError(from: error, operation: "pause"))
                 return
             }
+            systemPausedBeforeBuffering = !userInteraction
             stopPositionPolling()
             transition(to: state.updating(status: .paused, isBuffering: false))
 
@@ -801,6 +805,7 @@ public actor KollusPlayerAdapter:
                 publish(event: .bufferingDidChange(isBuffering: buffering))
                 return
             }
+            let shouldResumeSystemPause = systemPausedBeforeBuffering && buffering == false
             let nextStatus: PlaybackState.Status
             if buffering {
                 nextStatus = .buffering
@@ -811,14 +816,24 @@ public actor KollusPlayerAdapter:
             }
             transition(to: state.updating(status: nextStatus, isBuffering: buffering), emitStateEvent: false)
             publish(event: .bufferingDidChange(isBuffering: buffering))
+            if shouldResumeSystemPause {
+                systemPausedBeforeBuffering = false
+                await resumeAfterSystemPause()
+            }
 
         case .stopStarted(let userInteraction, let error):
             if let error {
                 handleFailure(playerError(from: error, operation: "stop"))
                 return
             }
+            systemPausedBeforeBuffering = false
             stopPositionPolling()
-            let nextStatus: PlaybackState.Status = userInteraction ? .idle : .finished
+            let reason = KollusSignalMapper.stopReason(
+                userInteraction: userInteraction,
+                currentTime: state.currentTime,
+                duration: state.duration
+            )
+            let nextStatus: PlaybackState.Status = reason == .finished ? .finished : .idle
             transition(to: state.updating(status: nextStatus, isBuffering: false))
             if nextStatus == .finished {
                 publish(event: .didFinish)
@@ -894,6 +909,8 @@ public actor KollusPlayerAdapter:
     private func emitOutput(_ signal: KollusEngineSignal) async {
         guard let output = await KollusSignalMapper.normalize(
             signal,
+            currentTime: state.currentTime,
+            duration: state.duration,
             preparedSnapshot: { await self.makePlaybackPreparedSnapshot() },
             mapError: { self.playerError(from: $0, operation: $1) }
         ) else {
@@ -904,6 +921,18 @@ public actor KollusPlayerAdapter:
         NSLog("[Kollus.out] %@ -> %@", String(describing: signal), String(describing: output))
         #endif
         outputContinuation.yield(output)
+    }
+
+    private func resumeAfterSystemPause() async {
+        await MainActor.run { [weak self] in
+            guard let self, let playerView = self.playerView else { return }
+            do {
+                // 시스템 pause 후 buffering 해소 시 SDK가 스스로 재생을 복원하지 않아 수동 재개가 필요하다.
+                try playerView.play()
+            } catch {
+                Task { await self.handleFailure(self.playerError(from: error, operation: "play")) }
+            }
+        }
     }
 
     /// prepare 완료 스냅샷 — SDK에서 position/duration/live만 조회한다(부수효과 없음).
@@ -1116,11 +1145,18 @@ public actor KollusPlayerAdapter:
             return .aspectFit
         case .scaleAspectFill:
             return .aspectFill
+        case .scaleCenter:
+            return .aspectFit
         case .scaleFill:
             return .fill
         @unknown default:
             return .aspectFit
         }
+    }
+
+    static func clampedPlaybackRate(_ requestedRate: Double, maxPlaybackRate: Int) -> Double {
+        guard maxPlaybackRate > 0 else { return requestedRate }
+        return min(requestedRate, Double(maxPlaybackRate))
     }
 
     @MainActor

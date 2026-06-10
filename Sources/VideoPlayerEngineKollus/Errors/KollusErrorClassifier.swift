@@ -11,11 +11,10 @@ import VideoPlayerCore
 
 /// Kollus SDK NSError 분류기.
 ///
-/// Kollus iOS SDK는 에러 도메인/코드 상수를 헤더로 공개하지 않는다
-/// (가이드 09-error-code: "NSError.code 분기 처리" 권장, 코드값은 Android ErrorCodes와 매칭).
+/// Kollus iOS SDK는 에러 도메인/코드 상수를 헤더로 공개하지 않는다.
 /// 따라서 두 단계로 분류한다:
 /// 1. `codeTable` — 실기기 QA로 확정한 코드값 매핑 (host/모듈이 주입·갱신)
-/// 2. context 폴백 — 가이드의 "트리거 시점" 표 기반. 코드가 테이블에 없을 때
+/// 2. context 폴백 — 코드가 테이블에 없을 때
 ///    작업 지점만으로 확실하게 좁혀지는 카테고리만 분류하고, 모호하면 nil(체인 폴백).
 public struct KollusErrorClassifier: PlayerErrorClassifier {
     /// SDK 에러 코드 → 분류 결과. 실기기에서 관측된 코드를 확정하는 대로 추가한다.
@@ -31,6 +30,8 @@ public struct KollusErrorClassifier: PlayerErrorClassifier {
 
     private let codeTable: [Int: Kind]
 
+    // SDK가 코드 상수를 공개하지 않으므로 기본 테이블은 비워 둔다 —
+    // 추측 매핑은 다른 작업의 동일 코드를 오분류할 수 있어 실기기 QA로 확정한 값만 주입한다.
     public init(codeTable: [Int: Kind] = [:]) {
         self.codeTable = codeTable
     }
@@ -47,7 +48,7 @@ public struct KollusErrorClassifier: PlayerErrorClassifier {
             return playerError(for: kind, message: message)
         }
 
-        // Context 폴백 — 가이드 09 트리거 표에서 시점만으로 단일 카테고리로 좁혀지는 경우만.
+        // Context 폴백 — 시점만으로 단일 카테고리로 좁혀지는 경우만.
         switch context {
         case .bootstrap:
             // start()/startWithCheck() 실패 = 인증 오류 또는 기기 미지원.

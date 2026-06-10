@@ -13,8 +13,8 @@ import Testing
 @testable import VideoPlayerCore
 @testable import VideoPlayerEngineKollus
 
-/// US2 T022/T024 — `KollusSignalMapper`가 vendor 신호를 올바른 `PlayerEngineOutput`으로
-/// 번역하는지 검증한다. 매퍼는 순수하므로 SDK/actor 없이 전수 검증 가능. (설계 §8 4단계)
+/// `KollusSignalMapper`가 vendor 신호를 올바른 `PlayerEngineOutput`으로 번역하는지 검증한다.
+/// 매퍼는 순수하므로 SDK/actor 없이 전수 검증 가능하다.
 @Suite("KollusSignalMapper")
 struct KollusSignalMapperTests {
     private let snapshot = PlaybackPreparedSnapshot(position: 3, duration: 100, isLive: false, liveDuration: nil)
@@ -23,9 +23,15 @@ struct KollusSignalMapperTests {
         .engineError("\(operation): \(error.localizedDescription)")
     }
 
-    private func normalize(_ signal: KollusEngineSignal) async -> PlayerEngineOutput? {
+    private func normalize(
+        _ signal: KollusEngineSignal,
+        currentTime: TimeInterval = 0,
+        duration: TimeInterval = 0
+    ) async -> PlayerEngineOutput? {
         await KollusSignalMapper.normalize(
             signal,
+            currentTime: currentTime,
+            duration: duration,
             preparedSnapshot: { snapshot },
             mapError: mapError
         )
@@ -104,9 +110,39 @@ struct KollusSignalMapperTests {
         }
     }
 
-    @Test("stopStarted(userInteraction: false)는 stopped(.finished)로 번역된다")
-    func stopFinished() async {
-        let output = await normalize(.stopStarted(userInteraction: false, error: nil))
+    @Test("stopStarted(userInteraction: false)는 끝 지점이면 stopped(.finished)로 번역된다")
+    func stopFinishedNearEnd() async {
+        let output = await normalize(
+            .stopStarted(userInteraction: false, error: nil),
+            currentTime: 99.6,
+            duration: 100
+        )
+        guard case .stateInput(.stopped(.finished)) = output else {
+            Issue.record("got \(String(describing: output))")
+            return
+        }
+    }
+
+    @Test("stopStarted(userInteraction: false)는 중간 지점이면 시스템 중단으로 번역된다")
+    func stopSystemMidPlayback() async {
+        let output = await normalize(
+            .stopStarted(userInteraction: false, error: nil),
+            currentTime: 20,
+            duration: 100
+        )
+        guard case .stateInput(.stopped(.appLifecycle)) = output else {
+            Issue.record("got \(String(describing: output))")
+            return
+        }
+    }
+
+    @Test("stopStarted(userInteraction: false)는 duration 0이면 완료로 번역된다")
+    func stopSystemWithUnknownDurationFinished() async {
+        let output = await normalize(
+            .stopStarted(userInteraction: false, error: nil),
+            currentTime: 0,
+            duration: 0
+        )
         guard case .stateInput(.stopped(.finished)) = output else {
             Issue.record("got \(String(describing: output))")
             return

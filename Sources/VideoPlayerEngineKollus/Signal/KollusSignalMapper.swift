@@ -25,6 +25,8 @@ enum KollusSignalMapper {
     ///     내보내지 않기 위해 매퍼 내부에서 즉시 변환한다(Sendable-clean).
     static func normalize(
         _ signal: KollusEngineSignal,
+        currentTime: TimeInterval = 0,
+        duration: TimeInterval = 0,
         preparedSnapshot: () async -> PlaybackPreparedSnapshot,
         mapError: (Error, String) -> PlayerError
     ) async -> PlayerEngineOutput? {
@@ -57,7 +59,11 @@ enum KollusSignalMapper {
             if let error {
                 return .stateInput(.failed(mapError(error, "stop")))
             }
-            return .stateInput(.stopped(userInteraction ? .userClosed : .finished))
+            return .stateInput(.stopped(stopReason(
+                userInteraction: userInteraction,
+                currentTime: currentTime,
+                duration: duration
+            )))
 
         case .positionChanged(let time, let isSeeking):
             guard !isSeeking else { return nil }
@@ -106,5 +112,15 @@ enum KollusSignalMapper {
              .mediaContentKeyResolved:
             return nil
         }
+    }
+
+    static func stopReason(
+        userInteraction: Bool,
+        currentTime: TimeInterval,
+        duration: TimeInterval
+    ) -> PlayerStopReason {
+        guard userInteraction == false else { return .userClosed }
+        guard duration > 0 else { return .finished }
+        return currentTime >= duration - 0.5 ? .finished : .appLifecycle
     }
 }

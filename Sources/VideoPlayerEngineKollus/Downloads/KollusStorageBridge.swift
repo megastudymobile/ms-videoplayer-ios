@@ -71,6 +71,9 @@ final class KollusStorageBridge: KollusStorageEventReceiving {
                 error: resolution.error
             )
         }
+        if Self.containsForcedDeleteKind(resolution.response) {
+            storageDidUpdateContents(resolution.snapshots, failure: nil)
+        }
     }
 
     func storageDidPostLMS(_ post: KollusStorageLMSPost) {
@@ -86,5 +89,33 @@ final class KollusStorageBridge: KollusStorageEventReceiving {
                 failure: completion.failureCount
             )
         }
+    }
+
+    private static func containsForcedDeleteKind(_ dictionary: [String: Any]) -> Bool {
+        dictionary.contains { key, value in
+            if key.caseInsensitiveCompare("kind") == .orderedSame {
+                return forcedDeleteKindValue(value)
+            }
+            if let nested = value as? [String: Any] {
+                return containsForcedDeleteKind(nested)
+            }
+            if let nested = value as? [[String: Any]] {
+                return nested.contains { containsForcedDeleteKind($0) }
+            }
+            return false
+        }
+    }
+
+    private static func forcedDeleteKindValue(_ value: Any) -> Bool {
+        if let number = value as? NSNumber {
+            return number.intValue == 2 || number.intValue == 3
+        }
+        if let int = value as? Int {
+            return int == 2 || int == 3
+        }
+        if let string = value as? String {
+            return string == "2" || string == "3" || string.lowercased() == "kind2" || string.lowercased() == "kind3"
+        }
+        return false
     }
 }

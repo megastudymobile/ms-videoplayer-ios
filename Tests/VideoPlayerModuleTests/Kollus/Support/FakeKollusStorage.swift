@@ -35,12 +35,14 @@ final class FakeKollusStorage: KollusStorageProtocol {
 
     var loadContentURLResults: [String: Result<String, Error>] = [:]
     var checkContentURLResults: [String: String?] = [:]
+    var checkContentURLErrors: [String: Error] = [:]
     var checkContentURLError: Error?
     var startedDownloads: [String] = []
     var canceledDownloads: [String] = []
     var removedContents: [String] = []
     var removeCacheError: Error?
     var updateDRMError: Error?
+    var renewAllValues: [Bool] = []
     var sendStoredLmsInvocationCount = 0
 
     private var snapshots: [KollusContentSnapshot] = []
@@ -90,6 +92,9 @@ final class FakeKollusStorage: KollusStorageProtocol {
     }
 
     func checkContentURL(_ url: String) throws -> String? {
+        if let error = checkContentURLErrors[url] {
+            throw error
+        }
         if let checkContentURLError {
             throw checkContentURLError
         }
@@ -114,10 +119,11 @@ final class FakeKollusStorage: KollusStorageProtocol {
         }
     }
 
-    func updateDownloadDRMInfo(includeExpired: Bool) throws {
+    func updateDownloadDRMInfo(renewAll: Bool) throws {
         if let updateDRMError {
             throw updateDRMError
         }
+        renewAllValues.append(renewAll)
     }
 
     func sendStoredLms() {
@@ -142,8 +148,21 @@ final class FakeKollusStorage: KollusStorageProtocol {
         storageDelegate?.storageDidProgressLicenseRenewal(current: current, total: total, error: error)
     }
 
-    func emitDRMResponse(request: [String: Any], response: [String: Any], error: Error?) {
-        storageDelegate?.storageDidResolveDRM(.init(request: request, response: response, error: error))
+    func emitDRMResponse(
+        request: [String: Any],
+        response: [String: Any],
+        error: Error?,
+        snapshots: [KollusContentSnapshot]? = nil
+    ) {
+        if let snapshots {
+            self.snapshots = snapshots
+        }
+        storageDelegate?.storageDidResolveDRM(.init(
+            request: request,
+            response: response,
+            error: error,
+            snapshots: snapshots ?? self.snapshots
+        ))
     }
 
     func emitLMSPost(data: String, result: [String: Any]) {

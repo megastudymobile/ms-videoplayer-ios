@@ -123,8 +123,8 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
         try storage.removeCache()
     }
 
-    func updateDownloadDRMInfo(includeExpired: Bool) throws {
-        storage.updateDownloadDRMInfo(includeExpired)
+    func updateDownloadDRMInfo(renewAll: Bool) throws {
+        storage.updateDownloadDRMInfo(renewAll)
     }
 
     func sendStoredLms() {
@@ -155,7 +155,8 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
         storageDelegate?.storageDidResolveDRM(.init(
             request: Self.normalize(request),
             response: Self.normalize(json),
-            error: error
+            error: error,
+            snapshots: contentSnapshots
         ))
     }
 

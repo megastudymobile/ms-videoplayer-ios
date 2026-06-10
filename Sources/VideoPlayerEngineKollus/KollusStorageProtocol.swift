@@ -13,6 +13,19 @@ struct KollusStorageDRMResolution {
     let request: [String: Any]
     let response: [String: Any]
     let error: Error?
+    let snapshots: [KollusContentSnapshot]
+
+    init(
+        request: [String: Any],
+        response: [String: Any],
+        error: Error?,
+        snapshots: [KollusContentSnapshot] = []
+    ) {
+        self.request = request
+        self.response = response
+        self.error = error
+        self.snapshots = snapshots
+    }
 }
 
 struct KollusStorageLMSPost {
@@ -60,7 +73,7 @@ protocol KollusStorageProtocol: AnyObject {
     func downloadCancelContent(_ mediaContentKey: String) throws
     func removeContent(_ mediaContentKey: String) throws
     func removeCacheWithError() throws
-    func updateDownloadDRMInfo(includeExpired: Bool) throws
+    func updateDownloadDRMInfo(renewAll: Bool) throws
     func sendStoredLms()
 
     var contentSnapshots: [KollusContentSnapshot] { get }

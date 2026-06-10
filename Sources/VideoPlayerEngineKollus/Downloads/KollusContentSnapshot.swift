@@ -205,7 +205,7 @@ extension KollusContentSnapshot {
         // 제약 없는 항목은 nil — "무제한"과 "소진"을 구분한다.
         let playCountRemaining: Int?
         if content.drmExpireCountMax > 0 {
-            playCountRemaining = max(0, Int(content.drmExpireCountMax - content.drmExpireCount))
+            playCountRemaining = max(0, Int(content.drmExpireCount))
         } else {
             playCountRemaining = nil
         }
