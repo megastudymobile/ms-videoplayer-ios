@@ -179,6 +179,11 @@ case .scrollChanged, .zoomChanged, .thumbnailReady, …:
     return nil                                             // ③ 상태도 이벤트도 아님
 ```
 
+SDK가 구분해주지 않는 두 가지를 mapper/어댑터가 보완합니다:
+
+- `stopStarted(userInteraction: false)`는 **재생 완료와 시스템 강제 종료가 같은 신호**로 옵니다. mapper의 `stopReason`이 재생 위치로 구분합니다 — 끝 0.5초 이내면 `.finished`, 중간이면 `.appLifecycle`(didFinish 미발행).
+- 시스템 pause 직후 buffering이 해소돼도 **SDK는 재생을 스스로 복원하지 않습니다**. 어댑터가 system-pause 플래그를 추적해 buffering 해제 시 `play()`를 재호출합니다.
+
 ### Playback/ 하위의 보조 장치 3개
 
 Kollus SDK의 빈틈을 메우는 장치들입니다. 전부 "SDK가 안 해주는 것"이 존재 이유입니다.
@@ -211,6 +216,11 @@ public actor KollusDownloadCenter: PlayerDownloadCenter {
 ```
 
 버퍼링 정책 차이에 주목하세요. `contents`는 "최신 목록"만 의미 있으니 newest 8, `events`는 "완료됐다/실패했다"는 사실 자체가 중요하니 unbounded입니다.
+
+두 가지 의미 규칙도 함께 기억하세요:
+
+- `renewLicenses(scope:)`는 SDK `updateDownloadDRMInfo(bAll)`로 그대로 내려갑니다 — `.all`=전체 갱신, `.expiredOnly`=만료분만.
+- `check(contentURL:)`는 조회 실패 전체를 미다운로드(nil)로 해석합니다. SDK가 미등록 URL을 에러로 알리면서 코드 상수를 공개하지 않아, 에러 코드로 "미등록"만 골라낼 방법이 없기 때문입니다.
 
 다운로드 → 오프라인 재생의 전체 사이클:
 
