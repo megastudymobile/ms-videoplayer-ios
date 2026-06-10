@@ -135,6 +135,21 @@ struct PlaybackStateReducerTests {
         #expect(output.next.isBuffering == false)
     }
 
+    @Test("paused 중 버퍼링은 paused를 유지한다 — 종료 후 재생으로 둔갑하지 않는다")
+    func bufferingDuringPause_preservesPausedStatus() {
+        let begun = reducer.reduce(.bufferingChanged(true), state: makeState(status: .paused))
+
+        #expect(begun.next.status == .paused)
+        #expect(begun.next.isBuffering == true)
+        #expect(begun.events == [.bufferingDidChange(isBuffering: true)])
+
+        let ended = reducer.reduce(.bufferingChanged(false), state: begun.next)
+
+        #expect(ended.next.status == .paused)
+        #expect(ended.next.isBuffering == false)
+        #expect(ended.events == [.bufferingDidChange(isBuffering: false)])
+    }
+
     @Test("bufferingChanged는 finished를 되살리지 않고 이벤트만 발행한다")
     func bufferingGuardsFinished() {
         let state = makeState(status: .finished)
@@ -151,15 +166,6 @@ struct PlaybackStateReducerTests {
 
         #expect(output.next == state)
         #expect(output.events == [.bufferingDidChange(isBuffering: false)])
-    }
-
-    @Test("bufferingChanged(false)는 paused에서도 playing으로 되살아난다(의도적 보존 quirk)")
-    func bufferingFalseFromPausedRevivesToPlaying() {
-        // 설계 §5.2 잠재버그 보존: paused 중 buffering 종료 시 playing으로 전이.
-        // 이는 기존 consume/handleSignal과 동일한 행위를 의도적으로 보존한 것이다.
-        let output = reducer.reduce(.bufferingChanged(false), state: makeState(status: .paused))
-
-        #expect(output.next.status == .playing)
     }
 
     // MARK: - stopped (4 reason 전수)

@@ -25,6 +25,7 @@ public actor PlayerCore {
     private var seekInProgressValue: TimeInterval?
     private static let seekSettleThreshold: TimeInterval = 3.0
     private var pendingPrepareTask: Task<Void, Error>?
+    private var pendingSeekTask: Task<Void, Never>?
     /// H5/H7 — prepare 작업의 세대(generation). `start` 진입마다 증가하며, await 복귀 후
     /// `generation == prepareGeneration`인 경우에만 "내가 아직 최신 작업"이다.
     /// 더 새로운 `start`/`.stop`이 끼어들면 generation이 어긋나 stale 정리/실패 surfacing을 막는다.
@@ -103,6 +104,8 @@ public actor PlayerCore {
     public func dispose() async {
         pendingPrepareTask?.cancel()
         pendingPrepareTask = nil
+        pendingSeekTask?.cancel()
+        pendingSeekTask = nil
 
         // H10/M1 — teardown 시 engine.stop을 idempotent하게 선행한다.
         // 정상 경로는 viewWillDisappear의 `.stop`이 이미 선행되지만(중복 stop은 무해),
@@ -374,12 +377,14 @@ public actor PlayerCore {
     }
 
     /// 엔진 seek을 비차단으로 발행한다(완료는 positionChanged로 감지). 동시 1개만 보장됨.
+    /// dispose()가 in-flight seek을 취소할 수 있도록 Task를 보관한다.
     private func dispatchEngineSeek(to target: TimeInterval) {
-        Task { [weak self] in
+        pendingSeekTask = Task { [weak self] in
             guard let self else { return }
             do {
                 try await self.engine.seek(to: target)
             } catch {
+                guard !Task.isCancelled else { return }
                 await self.handleSeekFailure(error)
             }
         }

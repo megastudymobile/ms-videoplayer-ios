@@ -115,16 +115,23 @@ public struct PlaybackStateReducer: Sendable {
             return PlaybackStateReducerOutput(next: state, events: [.bufferingDidChange(isBuffering: buffering)])
         }
 
-        // NOTE(설계 §5.2 잠재버그 보존): 직전 status가 `.paused`여도 buffering 종료 시 `.playing`을 반환한다.
-        // 즉 일시정지 중 버퍼링이 끝나면 재생 상태로 되살아난다. 이는 기존 consume/handleSignal과 동일한
-        // 행위를 의도적으로 보존한 것이다. 수정하려면 별도 work item으로 다룬다.
+        // 일시정지/준비완료 중 버퍼링은 status를 유지한다(isBuffering 플래그만 변경).
+        // 과거에는 buffering 종료 시 무조건 `.playing`을 반환해 일시정지가 재생으로 둔갑하는
+        // 잠재버그가 있었다(설계 §5.2 보존 항목 — 2026-06-10 수정). `.playing`에서 시작한
+        // 버퍼링만 `.buffering`으로 전이하고, 종료 시 `.playing`으로 복원한다.
         let nextStatus: PlaybackState.Status
         if buffering {
-            nextStatus = .buffering
-        } else if case .readyToPlay = state.status {
-            nextStatus = .readyToPlay
+            if case .playing = state.status {
+                nextStatus = .buffering
+            } else {
+                nextStatus = state.status
+            }
         } else {
-            nextStatus = .playing
+            if case .buffering = state.status {
+                nextStatus = .playing
+            } else {
+                nextStatus = state.status
+            }
         }
 
         let next = state.updating(status: nextStatus, isBuffering: buffering)

@@ -34,8 +34,7 @@ public actor KollusPlayerAdapter:
     PlayerSynchronousZoomEngine,
     PlayerScrollEngine,
     PlayerAdaptiveStreamingEngine,
-    PlayerEngineOutputProducing,
-    PlayerPiPCapability {
+    PlayerEngineOutputProducing {
     // emitsObservedCommandState: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
     // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의
     // .stateInput만 신뢰한다(이중 적용 방지). (설계 §5.2.1)
@@ -475,41 +474,9 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerPiPCapability (KollusPlayerType.native 한정)
-
-    public func startPiP() async throws {
-        try await MainActor.run {
-            guard playerView != nil else {
-                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
-            }
-        }
-        guard playerType == .native else {
-            throw PlayerError.engineError("PIP는 KollusPlayerType.native 한정으로 지원됩니다.")
-        }
-        // H9 — KollusSDK는 PiP 직접 API가 없고 실 구현은 host AVPictureInPictureController 통합이 필요하다.
-        // 과거엔 isPiPRunning 플래그를 토글해 isPiPActive가 실제 PiP 상태와 무관하게 true로 거짓 보고됐다.
-        // 미구현 동안 내부 상태를 바꾸지 않고(=isPiPActive 항상 false) 통지 이벤트만 발행한다.
-        publish(event: .policyDowngraded(reason: .custom("PIP 미구현 — host AVPictureInPictureController 통합 필요")))
-    }
-
-    public func stopPiP() async throws {
-        try await MainActor.run {
-            guard playerView != nil else {
-                throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
-            }
-        }
-        guard playerType == .native else {
-            throw PlayerError.engineError("PIP는 KollusPlayerType.native 한정으로 지원됩니다.")
-        }
-        publish(event: .policyDowngraded(reason: .custom("PIP 미구현 — host AVPictureInPictureController 통합 필요")))
-    }
-
-    /// H9 — 실제 PiP 미구현이므로 항상 false. startPiP가 내부 플래그를 토글하지 않아 거짓 활성 보고가 없다.
-    public var isPiPActive: Bool {
-        get async {
-            false
-        }
-    }
+    // H9 — PiP는 미구현이므로 `PlayerPiPCapability`를 채택하지 않는다.
+    // 채택 + 가짜 구현은 capability 협상(P3 availability probe)이 거짓 보고를 하게 만든다.
+    // 실 구현 시 host AVPictureInPictureController 통합과 함께 채택을 복원한다.
 
     // MARK: - PlayerDisplayScalingEngine
 

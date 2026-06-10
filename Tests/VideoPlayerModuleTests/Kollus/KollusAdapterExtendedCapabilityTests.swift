@@ -20,12 +20,12 @@ import VideoPlayerCore
 /// - `PlayerZoomEngine`        — zoom / setZoomOutDisabled / zoomValue / isZoomedIn
 /// - `PlayerScrollEngine`      — scroll / stopScroll
 /// - `PlayerAdaptiveStreamingEngine` — changeBandwidth / streamInfoList
-/// - `PlayerPiPCapability`     — startPiP / stopPiP / isPiPActive
+/// - `PlayerPiPCapability`     — 미채택 검증 (PiP 미구현, H9)
 ///
 /// 본 테스트는 `KollusPlayerView` 인스턴스 없이 호출했을 때의 계약을 잠근다:
-/// - "조회/disable" 류 (`setZoomOutDisabled`, `zoomValue`, `streamInfoList`, `isZoomedIn`, `isPiPActive`)는
+/// - "조회/disable" 류 (`setZoomOutDisabled`, `zoomValue`, `streamInfoList`, `isZoomedIn`)는
 ///   throw 없이 default 값(빈 배열, 0, false)을 반환.
-/// - "실제 동작" 류 (`changeBandwidth`, `startPiP`, `stopPiP`, `zoom`, `scroll`, `stopScroll`)는
+/// - "실제 동작" 류 (`changeBandwidth`, `zoom`, `scroll`, `stopScroll`)는
 ///   `PlayerError.engineError("...playerView가 준비되지 않았습니다...")`를 throw.
 ///
 /// 주의: 본 파일은 `KollusPlayerAdapter`가 위 4개 protocol을 채택하기 *전*에 작성된다.
@@ -140,40 +140,14 @@ struct KollusAdapterExtendedCapabilityTests {
         }
     }
 
-    // MARK: - PlayerPiPCapability
+    // MARK: - PlayerPiPCapability 미채택
 
-    /// `startPiP()`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
-    @Test("startPiP는 playerView 미준비 시 engineError throw")
-    func pip_startWithoutPlayerView_throws() async {
+    /// PiP는 미구현이므로 어댑터가 `PlayerPiPCapability`를 채택하지 않아야 한다.
+    /// 채택 + 가짜 구현은 capability 협상이 거짓 보고를 하게 만든다 (H9).
+    @Test("KollusPlayerAdapter는 PlayerPiPCapability를 채택하지 않는다")
+    func adapter_doesNotConformToPiPCapability() {
         let adapter = makeAdapter()
-
-        await #expect {
-            try await adapter.startPiP()
-        } throws: { error in
-            guard case let PlayerError.engineError(message) = error else { return false }
-            return message.contains("playerView가 준비되지 않았습니다")
-        }
-    }
-
-    /// `stopPiP()`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
-    @Test("stopPiP는 playerView 미준비 시 engineError throw")
-    func pip_stopWithoutPlayerView_throws() async {
-        let adapter = makeAdapter()
-
-        await #expect {
-            try await adapter.stopPiP()
-        } throws: { error in
-            guard case let PlayerError.engineError(message) = error else { return false }
-            return message.contains("playerView가 준비되지 않았습니다")
-        }
-    }
-
-    /// `isPiPActive`는 playerView 미준비 시 `false`이다.
-    @Test("isPiPActive는 playerView 미준비 시 false")
-    func isPiPActive_isFalseWithoutPlayerView() async {
-        let adapter = makeAdapter()
-        let active = await adapter.isPiPActive
-        #expect(!(active), "playerView 미준비 시 isPiPActive는 false 이어야 한다")
+        #expect(!(adapter is any PlayerPiPCapability))
     }
 }
 
