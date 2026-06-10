@@ -18,13 +18,16 @@ public final class PlayerStateBinder {
 
     public func bind(
         core: PlayerCore,
+        nowPlaying: PlayerNowPlayingCoordinator? = nil,
         onState: @escaping (PlaybackState) -> Void,
         onEvent: @escaping (PlayerEvent) -> Void
     ) {
         unbind()
 
+        // stateStream은 단일 consumer — NowPlaying 동기화는 여기서 fan-out한다.
         stateTask = Task { @MainActor in
             for await state in core.stateStream {
+                nowPlaying?.apply(state: state)
                 onState(state)
             }
         }

@@ -125,6 +125,11 @@ public protocol PlayerAdaptiveStreamingEngine: Actor {
     func streamInfoList() async -> [StreamInfo]
 }
 
+/// 현재 재생 중인 콘텐츠의 메타데이터(제목/썸네일 등) 조회 — NowPlaying 표시 등 부가 UI용.
+public protocol PlayerContentMetadataEngine: Actor {
+    func currentContent() async -> DownloadedContent?
+}
+
 public protocol PlayerPiPCapability: Actor {
     func startPiP() async throws
     func stopPiP() async throws

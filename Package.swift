@@ -41,7 +41,8 @@ let package = Package(
             path: "Sources/VideoPlayerShellSupport",
             linkerSettings: [
                 .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
-                .linkedFramework("UIKit", .when(platforms: [.iOS]))
+                .linkedFramework("UIKit", .when(platforms: [.iOS])),
+                .linkedFramework("MediaPlayer", .when(platforms: [.iOS]))
             ]
         ),
         .target(

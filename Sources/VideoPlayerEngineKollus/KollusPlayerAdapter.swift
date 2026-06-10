@@ -33,6 +33,7 @@ public actor KollusPlayerAdapter:
     PlayerSynchronousZoomEngine,
     PlayerScrollEngine,
     PlayerAdaptiveStreamingEngine,
+    PlayerContentMetadataEngine,
     PlayerEngineOutputProducing {
     // emitsObservedCommandState: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
     // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의

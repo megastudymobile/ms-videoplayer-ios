@@ -32,6 +32,7 @@ final class PlayerInteractor {
     private var playerModule: PlayerModule?
     private let binder = PlayerStateBinder()
     private var lifecycleCoordinator: PlayerLifecycleCoordinator?
+    private var nowPlayingCoordinator: PlayerNowPlayingCoordinator?
     /// tearDown 이 setUp(async) 완료 전에 호출된 경우 — 뒤늦게 만들어진 모듈이
     /// 미해제로 누수되지 않도록 차단한다 (push 후 즉시 back 레이스).
     private var isDisposed = false
@@ -90,8 +91,21 @@ final class PlayerInteractor {
         lifecycleCoordinator = coordinator
         coordinator.start()
 
+        // 백그라운드 재생 정책이 켜진 경우에만 잠금화면/제어센터 플레이어를 노출한다.
+        if featurePolicy.allowsBackgroundPlayback {
+            let nowPlaying = PlayerNowPlayingCoordinator(
+                core: module.core,
+                metadataProvider: module.engine as? PlayerContentMetadataEngine,
+                skipInterval: featurePolicy.skipInterval,
+                fallbackTitle: "VideoPlayer Example"
+            )
+            nowPlaying.start()
+            nowPlayingCoordinator = nowPlaying
+        }
+
         binder.bind(
             core: module.core,
+            nowPlaying: nowPlayingCoordinator,
             onState: { [weak self] state in self?.consume(playbackState: state) },
             onEvent: { [weak self] event in self?.consume(event: event) }
         )
@@ -108,6 +122,8 @@ final class PlayerInteractor {
         isDisposed = true
         lifecycleCoordinator?.stop()
         lifecycleCoordinator = nil
+        nowPlayingCoordinator?.stop()
+        nowPlayingCoordinator = nil
         binder.unbind()
         zoomEngine = nil
         scrollEngine = nil
@@ -155,6 +171,10 @@ final class PlayerInteractor {
     private func execute(_ command: PlaybackCommand, on module: PlayerModule) async {
         do {
             try await module.core.execute(command: command)
+            // PlayerEvent에 배속 이벤트가 없어 명령 경로에서 NowPlaying 진행 속도를 맞춘다.
+            if case .setPlaybackRate(let rate) = command {
+                nowPlayingCoordinator?.setPlaybackRate(rate)
+            }
         } catch {
             guard isDisposed == false else { return }
             onCommandError(error as? PlayerError ?? .unknown(error.localizedDescription))
