@@ -104,4 +104,10 @@ final class PlayerStateViewModel {
         )
         return state
     }
+
+    /// 가로/세로 판정 단일 진실원 — PlayerViewController(skin 모드)와
+    /// PlayerTestConsoleContainerViewController(split 레이아웃)가 같은 규칙을 공유한다.
+    static func isLandscape(_ size: CGSize) -> Bool {
+        size.width > size.height
+    }
 }

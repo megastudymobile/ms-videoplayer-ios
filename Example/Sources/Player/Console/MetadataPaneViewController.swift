@@ -48,7 +48,7 @@ final class MetadataPaneViewController: UIViewController {
     }
 
     private func rebuild(from state: PlayerSkinState) {
-        rows = [
+        let nextRows: [(title: String, value: String)] = [
             ("소스", sourceDescription),
             ("상태", state.isLoading ? "로딩중" : (state.isPlaying ? "재생중" : "일시정지")),
             ("현재 시간", state.currentTimeText),
@@ -62,7 +62,19 @@ final class MetadataPaneViewController: UIViewController {
             ("전체화면", state.isFullScreenMode ? "ON" : "OFF"),
             ("레이아웃", String(describing: state.layoutMode))
         ]
-        if isViewLoaded { tableView.reloadData() }
+
+        // timeDidChange가 0.5s마다 도착한다 — 전체 reload 대신 변경 행만 갱신.
+        // 행 구성(개수/제목)은 고정이므로 값 비교로 충분하다.
+        guard isViewLoaded, rows.count == nextRows.count else {
+            rows = nextRows
+            if isViewLoaded { tableView.reloadData() }
+            return
+        }
+
+        let changed = (0..<nextRows.count).filter { rows[$0].value != nextRows[$0].value }
+        rows = nextRows
+        guard changed.isEmpty == false else { return }
+        tableView.reloadRows(at: changed.map { IndexPath(row: $0, section: 0) }, with: .none)
     }
 
     private static func describe(_ sectionRepeat: PlayerSkinState.SectionRepeatState) -> String {

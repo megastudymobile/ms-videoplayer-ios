@@ -29,6 +29,7 @@ final class PlayerViewController: UIViewController {
 
     private var hasResolvedInitialLayout = false
     private var bookmarks: [Bookmark] = []
+    private var toastDismissTask: Task<Void, Never>?
     /// 팬 제스처 시작 시점의 좌/우 — 도중 중심선 통과로 밝기↔음량이 바뀌지 않도록 고정.
     private var panIsLeftSide = false
 
@@ -135,7 +136,7 @@ final class PlayerViewController: UIViewController {
     }
 
     private func layoutMode(for size: CGSize) -> PlayerSkinLayoutMode {
-        size.width > size.height ? .fullScreen : .verticalSplit
+        PlayerStateViewModel.isLandscape(size) ? .fullScreen : .verticalSplit
     }
 
     /// 컨테이너가 split/fullscreen 레이아웃 전환 시 호출 — skin 모드 명시 주입.
@@ -219,11 +220,13 @@ final class PlayerViewController: UIViewController {
     }
 
     @objc private func didPinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard PreferenceManager.useGesture else { return }
         interactor.applyZoom(recognizer)
     }
 
     /// 좌측 팬 = 밝기, 우측 팬 = 음량 (샘플 제스처 parity).
     @objc private func didPan(_ recognizer: UIPanGestureRecognizer) {
+        guard PreferenceManager.useGesture else { return }
         guard viewModel.state.isLocked == false else { return }
         let translation = recognizer.translation(in: view)
         recognizer.setTranslation(.zero, in: view)
@@ -415,7 +418,11 @@ final class PlayerViewController: UIViewController {
         toastLabel.text = "  \(message)  "
         view.bringSubviewToFront(toastLabel)
         UIView.animate(withDuration: 0.2) { [weak self] in self?.toastLabel.alpha = 1 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        // 연속 토스트 시 이전 dismiss 예약을 취소 — 새 메시지가 2초를 온전히 보장받는다.
+        toastDismissTask?.cancel()
+        toastDismissTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard Task.isCancelled == false else { return }
             UIView.animate(withDuration: 0.3) { self?.toastLabel.alpha = 0 }
         }
     }

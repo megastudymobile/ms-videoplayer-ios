@@ -119,7 +119,7 @@ final class PlayerTestConsoleContainerViewController: UIViewController {
     // MARK: - Layout
 
     private func resolveMode(for size: CGSize) -> LayoutMode {
-        size.width > size.height ? .fullScreen : .verticalSplit
+        PlayerStateViewModel.isLandscape(size) ? .fullScreen : .verticalSplit
     }
 
     private func applyLayout(_ mode: LayoutMode) {

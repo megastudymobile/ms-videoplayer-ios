@@ -171,7 +171,7 @@ enum PreferenceManager {
     @UserDefault("useLeftHandedMode", defaultValue: false)
     static var useLeftHandedMode: Bool
 
-    /// 화면 제스처 사용 — persist-only(GestureViewController는 설명 전용). 제스처 행 detail("사용 중/안함") 표시용.
+    /// 화면 제스처 사용 — 실연동(PlayerViewController 핀치줌/팬 밝기·음량 게이트).
     @UserDefault("useGesture", defaultValue: true)
     static var useGesture: Bool
 
