@@ -13,6 +13,8 @@ struct PlayerInterfaceTests {
         #expect(featureSet.playback.initialSkipInterval == 10)
         #expect(featureSet.subtitle.supportsSubtitles)
         #expect(featureSet.subtitle.supportsTrackSelection)
+        #expect(featureSet.subtitle.captionFontSizes == [10, 15, 20, 25, 30, 35, 40])
+        #expect(featureSet.subtitle.initialCaptionFontSize == 20)
         #expect(featureSet.bookmark.supportsBookmarks)
         #expect(featureSet.playlist.supportsItemSelection)
         #expect(featureSet.display.supportsLock)

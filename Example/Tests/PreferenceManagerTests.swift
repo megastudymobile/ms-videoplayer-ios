@@ -43,6 +43,16 @@ struct PreferenceManagerTests {
         #expect(PreferenceManager.seekRangeSeconds == 10)
     }
 
+    @Test("자막 크기 설정은 10~40pt 7단계를 제공하고 기본값은 20pt")
+    func subtitleSize_matchesLegacySteps() {
+        let original = PreferenceManager.subtitleSize
+        defer { PreferenceManager.subtitleSize = original }
+
+        PreferenceManager.subtitleSize = SubtitleSize.normal.rawValue
+        #expect(SubtitleSize.allCases.map(\.fontSize) == [10, 15, 20, 25, 30, 35, 40])
+        #expect(PreferenceManager.captionFontSize == 20)
+    }
+
     @Test("reset은 isFirstExecuted를 보존하고 나머지를 초기화")
     func reset_preservesFirstExecutedFlag() {
         let originalRate = PreferenceManager.playbackRate

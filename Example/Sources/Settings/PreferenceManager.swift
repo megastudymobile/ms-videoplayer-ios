@@ -60,16 +60,18 @@ enum SeekRange: Int, CaseIterable {
 }
 
 enum SubtitleSize: Int, CaseIterable {
-    case verySmall, small, normal, big, veryBig
+    case verySmall, small, normal, big, veryBig, extraBig, maximum
 
     /// 패키지 setCaptionFontSize(Int)에 전달할 포인트 값.
     var fontSize: Int {
         switch self {
-        case .verySmall: return 12
-        case .small: return 16
+        case .verySmall: return 10
+        case .small: return 15
         case .normal: return 20
-        case .big: return 24
-        case .veryBig: return 28
+        case .big: return 25
+        case .veryBig: return 30
+        case .extraBig: return 35
+        case .maximum: return 40
         }
     }
 
@@ -80,6 +82,8 @@ enum SubtitleSize: Int, CaseIterable {
         case .normal: return "보통"
         case .big: return "크게"
         case .veryBig: return "아주 크게"
+        case .extraBig: return "매우 크게"
+        case .maximum: return "최대"
         }
     }
 }
