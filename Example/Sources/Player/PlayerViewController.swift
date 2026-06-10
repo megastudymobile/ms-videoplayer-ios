@@ -33,6 +33,7 @@ final class PlayerViewController: UIViewController {
     /// 팬 제스처 시작 시점의 좌/우 — 도중 중심선 통과로 밝기↔음량이 바뀌지 않도록 고정.
     private var panIsLeftSide = false
     private var panIsMoveMode = false
+    private weak var doubleTapRecognizer: UITapGestureRecognizer?
 
     // MARK: - Embed seam (split 컨테이너 호스팅용)
 
@@ -207,6 +208,7 @@ final class PlayerViewController: UIViewController {
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(didDoubleTapSurface))
         doubleTap.numberOfTapsRequired = 2
         doubleTap.delegate = self
+        doubleTapRecognizer = doubleTap
         view.addGestureRecognizer(doubleTap)
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(didTapSurface))
@@ -514,6 +516,13 @@ extension PlayerViewController: PlayerControlChannel {
 // MARK: - UIGestureRecognizerDelegate
 
 extension PlayerViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === doubleTapRecognizer {
+            return PreferenceManager.useGesture && viewModel.state.isLocked == false
+        }
+        return true
+    }
+
     /// 블록 버튼(UIControl) 터치는 토글/팬 제스처에서 제외 — 컨트롤 조작이 우선.
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         (touch.view is UIControl) == false

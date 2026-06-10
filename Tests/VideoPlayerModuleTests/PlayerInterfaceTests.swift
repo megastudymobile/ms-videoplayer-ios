@@ -56,6 +56,14 @@ struct PlayerInterfaceTests {
         #expect(featureSet.offline.supportsOfflineSourceValidation)
     }
 
+    @Test("빈 자막 크기 목록은 20pt 기본값으로 복구한다")
+    func emptyCaptionFontSizesFallBackToDefaultSize() {
+        let subtitleFeatures = PlayerSubtitleFeatures(captionFontSizes: [])
+
+        #expect(subtitleFeatures.captionFontSizes == [20])
+        #expect(subtitleFeatures.initialCaptionFontSize == 20)
+    }
+
     @Test("PlaybackCommand는 일반 rate와 seek origin을 담는다")
     func playbackCommandCarriesGenericRateAndSeekOrigin() {
         let rateCommand = PlaybackCommand.setPlaybackRate(1.5)

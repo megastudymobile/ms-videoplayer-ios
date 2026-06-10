@@ -35,6 +35,7 @@ public final class PlayerGestureHUDView: UIView {
         emphasized: Bool = false
     ) {
         hideWorkItem?.cancel()
+        layer.removeAllAnimations()
 
         applyIcon(icon)
         titleLabel.text = title
@@ -57,6 +58,7 @@ public final class PlayerGestureHUDView: UIView {
 
     public func presentRate(_ rate: Double) {
         hideWorkItem?.cancel()
+        layer.removeAllAnimations()
 
         applyIcon("▶")
         titleLabel.text = String(format: "%.1f배속", rate)

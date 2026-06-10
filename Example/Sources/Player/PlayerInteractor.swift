@@ -39,6 +39,9 @@ final class PlayerInteractor {
     // capability protocol 캐스트 — 시뮬레이터(UnsupportedEnvironmentEngine)에서는 nil.
     private var zoomEngine: PlayerSynchronousZoomEngine?
     private var scrollEngine: PlayerScrollEngine?
+    private var pendingScrollDistance = CGPoint.zero
+    private var shouldStopScroll = false
+    private var scrollTask: Task<Void, Never>?
     private(set) var isZoomedIn = false
 
     init(
@@ -107,6 +110,10 @@ final class PlayerInteractor {
         binder.unbind()
         zoomEngine = nil
         scrollEngine = nil
+        pendingScrollDistance = .zero
+        shouldStopScroll = false
+        scrollTask?.cancel()
+        scrollTask = nil
         isZoomedIn = false
         let module = playerModule
         playerModule = nil
@@ -167,12 +174,45 @@ final class PlayerInteractor {
 
     func scroll(by distance: CGPoint) {
         guard let scrollEngine else { return }
-        Task { try? await scrollEngine.scroll(by: distance) }
+        pendingScrollDistance.x += distance.x
+        pendingScrollDistance.y += distance.y
+        drainScrollQueue(using: scrollEngine)
     }
 
     func stopScroll() {
         guard let scrollEngine else { return }
-        Task { try? await scrollEngine.stopScroll() }
+        pendingScrollDistance = .zero
+        shouldStopScroll = true
+        drainScrollQueue(using: scrollEngine)
+    }
+
+    private func drainScrollQueue(using scrollEngine: PlayerScrollEngine) {
+        guard scrollTask == nil else { return }
+        scrollTask = Task { @MainActor [weak self] in
+            defer { self?.scrollTask = nil }
+            guard let self else { return }
+
+            while Task.isCancelled == false {
+                if self.hasPendingScrollDistance {
+                    let distance = self.pendingScrollDistance
+                    self.pendingScrollDistance = .zero
+                    try? await scrollEngine.scroll(by: distance)
+                    continue
+                }
+
+                if self.shouldStopScroll {
+                    self.shouldStopScroll = false
+                    try? await scrollEngine.stopScroll()
+                    continue
+                }
+
+                break
+            }
+        }
+    }
+
+    private var hasPendingScrollDistance: Bool {
+        pendingScrollDistance.x != 0 || pendingScrollDistance.y != 0
     }
 
     // MARK: - 구간 반복 (shell 레벨 — 어댑터 API 없음, 문서 §6 갭)

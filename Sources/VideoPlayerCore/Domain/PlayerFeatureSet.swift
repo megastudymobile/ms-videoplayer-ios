@@ -80,7 +80,7 @@ public struct PlayerSubtitleFeatures: Equatable, Sendable {
         initialCaptionFontSize: Int = 20
     ) {
         let normalizedSizes = Array(SetBackedSequence(captionFontSizes)).sorted()
-        let resolvedSizes = normalizedSizes.isEmpty ? [16] : normalizedSizes
+        let resolvedSizes = normalizedSizes.isEmpty ? [20] : normalizedSizes
 
         self.supportsSubtitles = supportsSubtitles
         self.supportsTrackSelection = supportsTrackSelection
