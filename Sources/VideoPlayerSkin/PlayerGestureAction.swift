@@ -20,4 +20,6 @@ public enum PlayerGestureAction: Equatable {
     case pinchPreview(scale: CGFloat)
     case longPressBegan
     case longPressEnded
+    case doubleTapTogglePlayPause
+    case doubleTapSkip(forward: Bool)
 }

@@ -203,8 +203,14 @@ final class PlayerViewController: UIViewController {
     // MARK: - 제스처 (컨트롤 토글 / 핀치줌 / 밝기·음량)
 
     private func configureGestures() {
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(didDoubleTapSurface))
+        doubleTap.numberOfTapsRequired = 2
+        doubleTap.delegate = self
+        view.addGestureRecognizer(doubleTap)
+
         let tap = UITapGestureRecognizer(target: self, action: #selector(didTapSurface))
         tap.delegate = self
+        tap.require(toFail: doubleTap)
         view.addGestureRecognizer(tap)
 
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(didPinch))
@@ -217,6 +223,23 @@ final class PlayerViewController: UIViewController {
 
     @objc private func didTapSurface() {
         emitRender(viewModel.toggleControlsVisible())
+    }
+
+    @objc private func didDoubleTapSurface(_ recognizer: UITapGestureRecognizer) {
+        guard PreferenceManager.useGesture else { return }
+        guard viewModel.state.isLocked == false else { return }
+
+        if PreferenceManager.useDoubleTapSkip {
+            let isForward = recognizer.location(in: view).x >= view.bounds.midX
+            let interval = TimeInterval(PreferenceManager.seekRangeSeconds)
+            interactor.seekBy(isForward ? interval : -interval)
+            skin.showGestureHUD(
+                icon: isForward ? "PlayerForwardGestureNormal" : "PlayerBackwardGestureNormal",
+                title: "\(isForward ? "+" : "-")\(PreferenceManager.seekRangeSeconds)초"
+            )
+        } else {
+            interactor.togglePlayPause()
+        }
     }
 
     @objc private func didPinch(_ recognizer: UIPinchGestureRecognizer) {
