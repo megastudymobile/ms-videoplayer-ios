@@ -1141,11 +1141,13 @@ public actor KollusPlayerAdapter:
     /// (레거시 `SLKollusManager.errorMessageWithError:` parity — "Kollus X 실패:" 같은 dev 접두 없음).
     /// 네트워크/인증/디코딩은 classify가 분류(NSURLErrorDomain 등), 그 외는 접두 없는 engineError.
     /// 실패한 작업(operation)은 DEBUG 로그에만 남긴다.
+    private static let errorChain = PlayerErrorClassifierChain(classifiers: [KollusErrorClassifier()])
+
     private func playerError(from error: Error, operation: String) -> PlayerError {
         if let playerError = error as? PlayerError {
             return playerError
         }
-        let classified = PlayerError.classify(error)
+        let classified = Self.errorChain.classify(error, context: .playback)
         if case .unknown(let message) = classified {
 #if DEBUG
             NSLog("[KollusEngine] %@ 실패: %@", operation, message)

@@ -30,6 +30,18 @@ public extension PlayerError {
             return ("PlayerBridge.Decode", 1003, message)
         case .engineError(let message):
             return ("PlayerBridge.Engine", 1004, message)
+        case .licenseExpired(let message):
+            return ("PlayerBridge.License", 1005, message)
+        case .licenseRenewalRequired(let message):
+            return ("PlayerBridge.License", 1006, message)
+        case .storageFull(let message):
+            return ("PlayerBridge.Storage", 1007, message)
+        case .downloadConflict(let message):
+            return ("PlayerBridge.Download", 1008, message)
+        case .contentNotFound(let message):
+            return ("PlayerBridge.Content", 1009, message)
+        case .deviceNotSupported(let message):
+            return ("PlayerBridge.Device", 1010, message)
         case .unknown(let message):
             return ("PlayerBridge.Unknown", 1099, message)
         }
