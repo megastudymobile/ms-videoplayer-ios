@@ -191,6 +191,7 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
 - `PlayerCaptionView` — 자막 표시. `skin.setCaptionFontSize(_:)`, `setCaptionBottomInset(_:)`
 - `PlayerGestureHUDView` — 더블탭/롱프레스 제스처 피드백. `skin.showGestureHUD(icon:title:)` (2초 자동 숨김)
 - `PlayerLoadingIndicatorView` — `state.isLoading` 기반 로딩 표시
+- `PlayerSeekPreviewView`/`PlayerSeekPreviewPresenter` — 시킹 스크럽 프리뷰 모달. skin이 `.seekBegan`/`.seekPreviewChanged`/`.seekEnded` 액션을 가로채 자체 구동하고, 썸네일은 host가 `skin.seekPreviewImageProvider`(async closure)로 주입한다(Skin은 엔진을 모름). 모달 위치는 `ProgressBarBlock.onScrubTick`(매 틱)으로 추적하고 이미지 요청은 throttle + in-flight 1건 coalescing. 공급자가 있으면 placeholder로 시작해 크기 점프를 막고, 첫 응답이 nil이면 라벨-only로 축소. on/off는 `PlayerFeaturePolicy.allowsSeekPreview`를 host가 `setSeekPreviewEnabled(_:)`로 1회 반영
 
 잠금화면/제어센터 NowPlaying은 Skin이 아니라 ShellSupport의 `PlayerNowPlayingCoordinator`가 담당합니다 ([7편](07-shell-support.md)).
 

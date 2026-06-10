@@ -156,6 +156,7 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
     public let allowsAutoplay: Bool
     public let skipInterval: TimeInterval
     public let nextEpisodeButtonLeadTime: TimeInterval
+    public let allowsSeekPreview: Bool       // 시킹 프리뷰 모달 — 생성 시 결정, 런타임 토글 없음
 
     public static let `default` = PlayerFeaturePolicy(
         allowsBackgroundPlayback: false,

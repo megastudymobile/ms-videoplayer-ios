@@ -54,7 +54,8 @@ public protocol PlayerBookmarkEngine: Actor {
 }
 // PlayerTitledBookmarkEngine, PlayerDisplayEngine, PlayerZoomEngine,
 // PlayerScrollEngine, PlayerAdaptiveStreamingEngine, PlayerPiPCapability,
-// PlayerContentMetadataEngine(제목/썸네일 조회 — NowPlaying 등 부가 UI용) …
+// PlayerContentMetadataEngine(제목/썸네일 조회 — NowPlaying 등 부가 UI용),
+// PlayerSeekPreviewEngine(스크럽 중 특정 시각의 프리뷰 프레임 — 실패는 nil로 통일) …
 ```
 
 `PlayerCore`는 `engine as? PlayerSubtitleEngine` 캐스팅으로 위임하고, 채택 여부는 `PlayerFeatureAvailability.probe(engine)`가 init 시점에 한 번 조사해 화면에 알려줍니다(버튼 노출 게이팅).

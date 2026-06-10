@@ -67,7 +67,7 @@ videoplayer-ios-ms/
 │   │   ├── KollusEngineSignal.swift       # SDK 콜백 26종의 enum 표현
 │   │   ├── Signal/KollusSignalMapper.swift# 신호 → PlayerEngineOutput 정규화
 │   │   ├── Downloads/                     # KollusDownloadCenter, StorageBridge
-│   │   ├── Playback/                      # 북마크 캐시, 위치 폴러, 다음화 emitter
+│   │   ├── Playback/                      # 북마크 캐시, 위치 폴러, 다음화 emitter, 시킹 프리뷰 스프라이트
 │   │   ├── Errors/KollusErrorClassifier.swift
 │   │   └── Resources/PrivacyInfo.xcprivacy
 │   │
@@ -77,7 +77,7 @@ videoplayer-ios-ms/
 │       ├── Blocks/                #    ProgressBar, PlayButton 등 UI 조각 20여 종
 │       ├── Theme/                 #    색/폰트/아이콘 role 시스템
 │       ├── Resources/             #    PlayerSkin.xcassets
-│       └── (루트)                 #    PlayerSkinAction/State, 자막/제스처 오버레이
+│       └── (루트)                 #    PlayerSkinAction/State, 자막/제스처/시킹 프리뷰 오버레이
 │
 ├── Tests/VideoPlayerModuleTests/
 │   ├── Core/                      # Reducer 등 순수 로직 테스트 (macOS에서도 실행)
