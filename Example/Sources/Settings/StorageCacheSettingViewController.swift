@@ -60,13 +60,12 @@ final class StorageCacheSettingViewController: SettingsListViewController {
             return   // 시뮬레이터/미인증 — 기본 "—" 유지.
         }
         Task { @MainActor [weak self] in
-            let storageBytes = (try? await downloads.storageSize()) ?? 0
-            let cacheBytes = (try? await downloads.cacheDataSize()) ?? 0
+            let metrics = try? await downloads.storageMetrics()
             let id = (try? await downloads.playerID()).flatMap { $0 }
             let version = (try? await downloads.playerVersion()).flatMap { $0 }
             guard let self else { return }
-            self.storageSizeText = Self.format(storageBytes)
-            self.cacheSizeText = Self.format(cacheBytes)
+            self.storageSizeText = Self.format(metrics?.downloadedBytes ?? 0)
+            self.cacheSizeText = Self.format(metrics?.streamingCacheBytes ?? 0)
             self.playerIDText = id ?? Self.placeholder
             self.playerVersionText = version ?? Self.placeholder
             self.reloadSections()

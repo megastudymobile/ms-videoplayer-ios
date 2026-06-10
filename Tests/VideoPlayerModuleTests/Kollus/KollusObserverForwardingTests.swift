@@ -46,9 +46,13 @@ struct KollusObserverForwardingTests {
         var storedLMSComplete: [KollusStoredLMSCompletion] = []
         var contentsUpdates: [Int] = []
         var drmCalls: [KollusStorageDRMResolution] = []
+        var renewalProgress: [(current: Int, total: Int)] = []
 
-        func storageDidUpdateContents(_ snapshots: [KollusContentSnapshot]) {
+        func storageDidUpdateContents(_ snapshots: [KollusContentSnapshot], failure: KollusStorageDownloadFailure?) {
             contentsUpdates.append(snapshots.count)
+        }
+        func storageDidProgressLicenseRenewal(current: Int, total: Int, error: Error?) {
+            renewalProgress.append((current, total))
         }
         func storageDidPostLMS(_ post: KollusStorageLMSPost) {
             lmsPosts.append(post)
@@ -144,13 +148,18 @@ struct KollusObserverForwardingTests {
     func storageBridge_forwardsStorageDRMResponseToObserver() {
         let observer = FakeObserver()
         let storage = FakeKollusStorage()
-        var continuation: AsyncStream<[KollusContentSnapshot]>.Continuation?
-        _ = AsyncStream<[KollusContentSnapshot]> {
-            continuation = $0
+        var contentsContinuation: AsyncStream<[DownloadedContent]>.Continuation?
+        _ = AsyncStream<[DownloadedContent]> {
+            contentsContinuation = $0
+        }
+        var eventsContinuation: AsyncStream<DownloadEvent>.Continuation?
+        _ = AsyncStream<DownloadEvent> {
+            eventsContinuation = $0
         }
         let bridge = KollusStorageBridge(
             observer: observer,
-            snapshotsContinuation: continuation!
+            contentsContinuation: contentsContinuation!,
+            eventsContinuation: eventsContinuation!
         )
         let error = NSError(domain: "kollus.storage.drm", code: 12)
 

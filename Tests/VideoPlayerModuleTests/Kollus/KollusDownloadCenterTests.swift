@@ -73,12 +73,12 @@ struct KollusDownloadCenterTests {
 
     // MARK: - download lifecycle
 
-    @Test("startDownload는 정확한 MCK로 storage 호출")
-    func startDownload_invokesStorageWithExactMCK() async throws {
+    @Test("startDownload는 정확한 contentID로 storage 호출")
+    func startDownload_invokesStorageWithExactContentID() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
-        try await center.startDownload(mediaContentKey: "mck-2")
+        try await center.startDownload(contentID: "mck-2")
 
         #expect(storage.startedDownloads == ["mck-2"])
     }
@@ -88,7 +88,7 @@ struct KollusDownloadCenterTests {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
-        try await center.cancelDownload(mediaContentKey: "mck-3")
+        try await center.cancelDownload(contentID: "mck-3")
 
         #expect(storage.canceledDownloads == ["mck-3"])
     }
@@ -98,33 +98,38 @@ struct KollusDownloadCenterTests {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
-        try await center.remove(mediaContentKey: "mck-4")
+        try await center.remove(contentID: "mck-4")
 
         #expect(storage.removedContents == ["mck-4"])
     }
 
     // MARK: - cache / DRM / LMS
 
-    @Test("clearStreamingCache는 에러를 전파")
-    func clearStreamingCache_propagatesError() async {
+    @Test("clearStreamingCache는 에러를 PlayerError로 분류해 전파")
+    func clearStreamingCache_propagatesClassifiedError() async {
         let storage = FakeKollusStorage()
-        storage.removeCacheError = NSError(domain: "t", code: 1)
+        storage.removeCacheError = NSError(
+            domain: "t",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "cache removal failed"]
+        )
         let (center, _) = makeCenter(storage: storage)
 
         await #expect {
             try await center.clearStreamingCache()
         } throws: { error in
-            let nsError = error as NSError
-            return nsError.domain == "t" && nsError.code == 1
+            // 분류기 체인 통과 — 미분류 도메인은 .unknown으로 수렴하되 메시지 보존.
+            guard case let PlayerError.unknown(message) = error else { return false }
+            return message == "cache removal failed"
         }
     }
 
-    @Test("updateDRM는 storage 호출")
-    func updateDRM_invokesStorage() async throws {
+    @Test("renewLicenses는 storage 호출")
+    func renewLicenses_invokesStorage() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
-        try await center.updateDRM(includeExpiredOnly: true)
+        try await center.renewLicenses(scope: .expiredOnly)
         // No throw == success; FakeKollusStorage records no flag for the call,
         // but absence of error confirms invocation reached storage layer.
     }
@@ -153,15 +158,15 @@ struct KollusDownloadCenterTests {
 
     // MARK: - snapshot stream
 
-    @Test("contents 스트림은 storage delegate 콜백 시 방출")
-    func contents_stream_yieldsOnStorageDelegateCallback() async throws {
+    @Test("contents 스트림은 storage delegate 콜백 시 중립 모델로 방출")
+    func contents_stream_yieldsNeutralModelOnStorageDelegateCallback() async throws {
         let storage = FakeKollusStorage()
         let (center, _) = makeCenter(storage: storage)
 
         // Trigger ensureStorage so bridge becomes delegate.
         try await center.setCacheSize(megabytes: 64)
 
-        let expected: [KollusContentSnapshot] = [
+        let emitted: [KollusContentSnapshot] = [
             KollusContentSnapshot(id: "a"),
             KollusContentSnapshot(id: "b")
         ]
@@ -170,13 +175,70 @@ struct KollusDownloadCenterTests {
 
         // Emit on next runloop tick to ensure subscriber is awaiting.
         Task { @MainActor in
-            storage.emitSnapshots(expected)
+            storage.emitSnapshots(emitted)
         }
 
         var iterator = stream.makeAsyncIterator()
         let received = await iterator.next()
 
         #expect(received?.map(\.id) == ["a", "b"])
+    }
+
+    // MARK: - events stream
+
+    @Test("다운로드 실패는 events 스트림으로 분류되어 전파")
+    func downloadFailure_isDeliveredOnEventsStream() async throws {
+        let storage = FakeKollusStorage()
+        let (center, _) = makeCenter(storage: storage)
+
+        try await center.setCacheSize(megabytes: 64)
+
+        let stream = center.events
+
+        Task { @MainActor in
+            storage.emitDownloadFailure(
+                mediaContentKey: "mck-9",
+                error: NSError(
+                    domain: "kollus.download",
+                    code: 42,
+                    userInfo: [NSLocalizedDescriptionKey: "disk write failed"]
+                )
+            )
+        }
+
+        var iterator = stream.makeAsyncIterator()
+        let event = await iterator.next()
+
+        guard case .failed(let contentID, let error) = event else {
+            Issue.record("failed 이벤트가 아님: \(String(describing: event))")
+            return
+        }
+        #expect(contentID == "mck-9")
+        #expect(error.errorDescription == "disk write failed")
+    }
+
+    @Test("라이선스 갱신 진행은 events 스트림으로 전파")
+    func licenseRenewalProgress_isDeliveredOnEventsStream() async throws {
+        let storage = FakeKollusStorage()
+        let (center, _) = makeCenter(storage: storage)
+
+        try await center.setCacheSize(megabytes: 64)
+
+        let stream = center.events
+
+        Task { @MainActor in
+            storage.emitLicenseRenewalProgress(current: 2, total: 5)
+        }
+
+        var iterator = stream.makeAsyncIterator()
+        let event = await iterator.next()
+
+        guard case .licenseRenewalProgressed(let current, let total) = event else {
+            Issue.record("licenseRenewalProgressed 이벤트가 아님: \(String(describing: event))")
+            return
+        }
+        #expect(current == 2)
+        #expect(total == 5)
     }
 
     // MARK: - bootstrap failure

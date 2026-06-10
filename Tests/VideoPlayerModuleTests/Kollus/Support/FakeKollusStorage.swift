@@ -35,6 +35,7 @@ final class FakeKollusStorage: KollusStorageProtocol {
 
     var loadContentURLResults: [String: Result<String, Error>] = [:]
     var checkContentURLResults: [String: String?] = [:]
+    var checkContentURLError: Error?
     var startedDownloads: [String] = []
     var canceledDownloads: [String] = []
     var removedContents: [String] = []
@@ -88,8 +89,11 @@ final class FakeKollusStorage: KollusStorageProtocol {
         }
     }
 
-    func checkContentURL(_ url: String) -> String? {
-        checkContentURLResults[url] ?? nil
+    func checkContentURL(_ url: String) throws -> String? {
+        if let checkContentURLError {
+            throw checkContentURLError
+        }
+        return checkContentURLResults[url] ?? nil
     }
 
     func downloadContent(_ mediaContentKey: String) throws {
@@ -124,7 +128,18 @@ final class FakeKollusStorage: KollusStorageProtocol {
 
     func emitSnapshots(_ snapshots: [KollusContentSnapshot]) {
         self.snapshots = snapshots
-        storageDelegate?.storageDidUpdateContents(snapshots)
+        storageDelegate?.storageDidUpdateContents(snapshots, failure: nil)
+    }
+
+    func emitDownloadFailure(mediaContentKey: String, error: Error) {
+        storageDelegate?.storageDidUpdateContents(
+            snapshots,
+            failure: .init(mediaContentKey: mediaContentKey, error: error)
+        )
+    }
+
+    func emitLicenseRenewalProgress(current: Int, total: Int, error: Error? = nil) {
+        storageDelegate?.storageDidProgressLicenseRenewal(current: current, total: total, error: error)
     }
 
     func emitDRMResponse(request: [String: Any], response: [String: Any], error: Error?) {

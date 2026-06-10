@@ -50,7 +50,12 @@ struct KollusContentSnapshotMappingTests {
         #expect(snapshot.fileSize == 1_000)
         #expect(snapshot.downloadedAt == downloadedAt)
         #expect(snapshot.download == .inProgress(percent: 42, downloadedBytes: 420))
-        #expect(snapshot.drm == .valid(expiresAt: drmExpiresAt, playCountRemaining: 7))
+        #expect(snapshot.drm == .valid(
+            expiresAt: drmExpiresAt,
+            playCountRemaining: 7,
+            playTimeRemaining: nil,
+            needsRenewalPrompt: false
+        ))
     }
 
     @Test("완료된 다운로드를 snapshot으로 매핑")

@@ -8,13 +8,15 @@
 
 import CoreGraphics
 import Foundation
+import VideoPlayerCore
 
 #if canImport(KollusSDKBinary)
 import KollusSDKBinary
 #endif
 
-public struct KollusContentSnapshot: Sendable, Hashable, Identifiable {
-    public enum ContentType: Sendable, Hashable {
+/// SDK `KollusContent` → 중립 모델 변환 중간 표현. host에는 `DownloadedContent`만 노출된다.
+struct KollusContentSnapshot: Sendable, Hashable, Identifiable {
+    enum ContentType: Sendable, Hashable {
         case streaming
         case downloading
         case hlsStreaming
@@ -22,36 +24,45 @@ public struct KollusContentSnapshot: Sendable, Hashable, Identifiable {
         case sample
     }
 
-    public enum DRMStatus: Sendable, Hashable {
+    enum DRMStatus: Sendable, Hashable {
         case unknown
-        case valid(expiresAt: Date?, playCountRemaining: Int?)
+        case valid(
+            expiresAt: Date?,
+            playCountRemaining: Int?,
+            playTimeRemaining: TimeInterval?,
+            needsRenewalPrompt: Bool
+        )
         case expired
     }
 
-    public enum DownloadStatus: Sendable, Hashable {
+    enum DownloadStatus: Sendable, Hashable {
         case notDownloaded
         case inProgress(percent: Double, downloadedBytes: Int64)
         case completed
     }
 
-    public let id: String
-    public let title: String
-    public let course: String
-    public let teacher: String
-    public let synopsis: String?
-    public let thumbnailPath: String?
-    public let snapshotPath: String?
-    public let descriptionURL: URL?
-    public let naturalSize: CGSize
-    public let duration: TimeInterval
-    public let position: TimeInterval
-    public let contentType: ContentType
-    public let drm: DRMStatus
-    public let download: DownloadStatus
-    public let fileSize: Int64
-    public let downloadedAt: Date?
+    let id: String
+    let title: String
+    let course: String
+    let teacher: String
+    let synopsis: String?
+    let thumbnailPath: String?
+    let snapshotPath: String?
+    let descriptionURL: URL?
+    let naturalSize: CGSize
+    let duration: TimeInterval
+    let position: TimeInterval
+    let contentType: ContentType
+    let drm: DRMStatus
+    let download: DownloadStatus
+    let fileSize: Int64
+    let downloadedAt: Date?
+    /// SDK가 오프라인 재생에 사용하는 인덱스 (KollusContent.contentIndex)
+    let contentIndex: Int
+    /// 다운로드 중단 시점 바이트 (재개 위치 표시용)
+    let downloadStopSize: Int64
 
-    public init(
+    init(
         id: String,
         title: String = "",
         course: String = "",
@@ -67,7 +78,9 @@ public struct KollusContentSnapshot: Sendable, Hashable, Identifiable {
         drm: DRMStatus = .unknown,
         download: DownloadStatus = .notDownloaded,
         fileSize: Int64 = 0,
-        downloadedAt: Date? = nil
+        downloadedAt: Date? = nil,
+        contentIndex: Int = 0,
+        downloadStopSize: Int64 = 0
     ) {
         self.id = id
         self.title = title
@@ -85,6 +98,61 @@ public struct KollusContentSnapshot: Sendable, Hashable, Identifiable {
         self.download = download
         self.fileSize = fileSize
         self.downloadedAt = downloadedAt
+        self.contentIndex = contentIndex
+        self.downloadStopSize = downloadStopSize
+    }
+}
+
+// MARK: - 중립 모델 변환
+
+extension KollusContentSnapshot {
+    func toDownloadedContent() -> DownloadedContent {
+        var vendorFields: [String: String] = [:]
+        if !course.isEmpty { vendorFields["course"] = course }
+        if !teacher.isEmpty { vendorFields["teacher"] = teacher }
+        if contentIndex > 0 { vendorFields["contentIndex"] = String(contentIndex) }
+        if downloadStopSize > 0 { vendorFields["downloadStopSize"] = String(downloadStopSize) }
+
+        return DownloadedContent(
+            id: id,
+            title: title,
+            synopsis: synopsis,
+            thumbnailPath: thumbnailPath,
+            duration: duration,
+            lastPosition: position,
+            download: neutralDownloadStatus,
+            license: neutralLicenseStatus,
+            fileSize: fileSize,
+            downloadedAt: downloadedAt,
+            vendorFields: vendorFields
+        )
+    }
+
+    private var neutralDownloadStatus: DownloadedContent.DownloadStatus {
+        switch download {
+        case .notDownloaded:
+            return .notDownloaded
+        case .inProgress(let percent, let bytes):
+            return .inProgress(percent: percent, downloadedBytes: bytes)
+        case .completed:
+            return .completed
+        }
+    }
+
+    private var neutralLicenseStatus: DownloadedContent.LicenseStatus {
+        switch drm {
+        case .unknown:
+            return .unknown
+        case .expired:
+            return .expired
+        case .valid(let expiresAt, let count, let time, let prompt):
+            return .valid(.init(
+                expiresAt: expiresAt,
+                playCountRemaining: count,
+                playTimeRemaining: time,
+                needsRenewalPrompt: prompt
+            ))
+        }
     }
 }
 
@@ -108,7 +176,9 @@ extension KollusContentSnapshot {
             drm: drmStatus(from: content),
             download: downloadStatus(from: content),
             fileSize: max(0, Int64(content.fileSize)),
-            downloadedAt: downloadedAt(from: content.downloadedTime)
+            downloadedAt: downloadedAt(from: content.downloadedTime),
+            contentIndex: Int(content.contentIndex),
+            downloadStopSize: max(0, Int64(content.downloadStopSize))
         )
     }
 
@@ -131,14 +201,35 @@ extension KollusContentSnapshot {
         if content.drmExpired {
             return .expired
         }
-        if content.drmExpireDate != nil {
-            let remaining = Int(content.drmExpireCountMax - content.drmExpireCount)
-            return .valid(
-                expiresAt: content.drmExpireDate,
-                playCountRemaining: remaining > 0 ? remaining : nil
-            )
+
+        // 제약 없는 항목은 nil — "무제한"과 "소진"을 구분한다.
+        let playCountRemaining: Int?
+        if content.drmExpireCountMax > 0 {
+            playCountRemaining = max(0, Int(content.drmExpireCountMax - content.drmExpireCount))
+        } else {
+            playCountRemaining = nil
         }
-        return .unknown
+
+        let playTimeRemaining: TimeInterval?
+        if content.drmTotalExpirePlayTime > 0 {
+            playTimeRemaining = max(0, content.drmExpirePlayTime)
+        } else {
+            playTimeRemaining = nil
+        }
+
+        let hasAnyConstraint = content.drmExpireDate != nil
+            || playCountRemaining != nil
+            || playTimeRemaining != nil
+        guard hasAnyConstraint else {
+            return .unknown
+        }
+
+        return .valid(
+            expiresAt: content.drmExpireDate,
+            playCountRemaining: playCountRemaining,
+            playTimeRemaining: playTimeRemaining,
+            needsRenewalPrompt: content.drmExpireRefreshPopup
+        )
     }
 
     private static func downloadStatus(from content: KollusContent) -> DownloadStatus {

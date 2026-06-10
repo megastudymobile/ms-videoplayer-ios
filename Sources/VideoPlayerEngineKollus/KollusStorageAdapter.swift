@@ -101,8 +101,10 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
         return mck
     }
 
-    func checkContentURL(_ url: String) -> String? {
-        try? storage.checkContentURL(url)
+    func checkContentURL(_ url: String) throws -> String? {
+        // SDK는 미등록 URL도 throw로 알린다. 미등록과 조회 실패를 구분할 코드 상수가 없어
+        // 에러를 그대로 올린다 — 호출 측(KollusDownloadCenter)이 분류기로 처리.
+        try storage.checkContentURL(url)
     }
 
     func downloadContent(_ mediaContentKey: String) throws {
@@ -143,7 +145,10 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
     // MARK: - KollusStorageDelegate (forwards to storageDelegate as snapshot refresh)
 
     func kollusStorage(_ kollusStorage: KollusStorage, downloadContent content: KollusContent, error: Error?) {
-        storageDelegate?.storageDidUpdateContents(contentSnapshots)
+        let failure = error.map {
+            KollusStorageDownloadFailure(mediaContentKey: content.mediaContentKey ?? "", error: $0)
+        }
+        storageDelegate?.storageDidUpdateContents(contentSnapshots, failure: failure)
     }
 
     func kollusStorage(_ kollusStorage: KollusStorage, request: [AnyHashable: Any], json: [AnyHashable: Any], error: Error?) {
@@ -155,7 +160,8 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
     }
 
     func kollusStorage(_ kollusStorage: KollusStorage, cur: Int32, count: Int32, error: Error?) {
-        storageDelegate?.storageDidUpdateContents(contentSnapshots)
+        storageDelegate?.storageDidProgressLicenseRenewal(current: Int(cur), total: Int(count), error: error)
+        storageDelegate?.storageDidUpdateContents(contentSnapshots, failure: nil)
     }
 
     func kollusStorage(_ kollusStorage: KollusStorage, lmsData: String, resultJson: [AnyHashable: Any]) {

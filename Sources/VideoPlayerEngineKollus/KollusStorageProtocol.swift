@@ -25,6 +25,12 @@ struct KollusStoredLMSCompletion {
     let failureCount: Int
 }
 
+/// 다운로드 진행 delegate가 전달한 실패. SDK error 파라미터를 버리지 않고 동반 전파한다.
+struct KollusStorageDownloadFailure {
+    let mediaContentKey: String
+    let error: Error
+}
+
 @MainActor
 protocol KollusStorageProtocol: AnyObject {
     var applicationKey: String? { get set }
@@ -48,7 +54,8 @@ protocol KollusStorageProtocol: AnyObject {
     func startStorage() throws
 
     func loadContentURL(_ url: String) async throws -> String
-    func checkContentURL(_ url: String) -> String?
+    /// 미등록 URL은 nil. 조회 자체 실패(네트워크/저장소)는 throw — 두 경우를 구분한다.
+    func checkContentURL(_ url: String) throws -> String?
     func downloadContent(_ mediaContentKey: String) throws
     func downloadCancelContent(_ mediaContentKey: String) throws
     func removeContent(_ mediaContentKey: String) throws
@@ -62,7 +69,10 @@ protocol KollusStorageProtocol: AnyObject {
 
 @MainActor
 protocol KollusStorageEventReceiving: AnyObject {
-    func storageDidUpdateContents(_ snapshots: [KollusContentSnapshot])
+    /// 콘텐츠 목록 갱신. 다운로드 실패가 원인이면 `failure`에 SDK 에러가 동반된다.
+    func storageDidUpdateContents(_ snapshots: [KollusContentSnapshot], failure: KollusStorageDownloadFailure?)
+    /// 라이선스 일괄 갱신 진행 콜백 (updateDownloadDRMInfo 응답, cur/count).
+    func storageDidProgressLicenseRenewal(current: Int, total: Int, error: Error?)
     func storageDidResolveDRM(_ resolution: KollusStorageDRMResolution)
     func storageDidPostLMS(_ post: KollusStorageLMSPost)
     func storageDidCompleteStoredLMS(_ completion: KollusStoredLMSCompletion)

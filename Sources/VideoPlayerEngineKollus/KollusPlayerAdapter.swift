@@ -551,6 +551,18 @@ public actor KollusPlayerAdapter:
             throw PlayerError.engineError("KollusPlayerAdapter: KollusStorageAdapter가 아닌 storage protocol 구현은 미지원.")
         }
 
+        // 다운로드 완료 콘텐츠는 SDK prepare 전에 라이선스를 선검증한다 — 만료 콘텐츠가
+        // 재생 시도 후에야 실패하지 않도록 (SDK 가이드 05 — 오프라인 재생 4조건).
+        if case .mediaKey(let contentID) = source.kind {
+            let downloaded = await storageProto.contentSnapshots
+                .first { $0.id == contentID }
+                .map { $0.toDownloadedContent() }
+            if let downloaded, case .completed = downloaded.download,
+               let licenseError = downloaded.validateOfflinePlayability() {
+                throw licenseError
+            }
+        }
+
         let boundSurface = renderSurface
         let displayScaleMode = self.displayScaleMode
         let playerType = self.playerType
@@ -1034,11 +1046,11 @@ public actor KollusPlayerAdapter:
         )
     }
 
-    /// T057 — 현재 컨텐츠 메타데이터 스냅샷.
-    public func currentContent() async -> KollusContentSnapshot? {
+    /// T057 — 현재 컨텐츠 메타데이터 (중립 모델).
+    public func currentContent() async -> DownloadedContent? {
         await MainActor.run {
             guard let content = playerView?.content else { return nil }
-            return Self.snapshot(from: content)
+            return Self.snapshot(from: content).toDownloadedContent()
         }
     }
 

@@ -9,13 +9,17 @@
 import Foundation
 import VideoPlayerCore
 
-/// KollusStorage 위에 다운로드/오프라인 라이프사이클을 actor-based facade로 노출한다.
-/// Shell은 `KollusStorage`를 직접 import하지 않고도 모든 다운로드 운영 동작을 수행할 수 있다.
-public actor KollusDownloadCenter {
+/// `PlayerDownloadCenter` 계약의 Kollus 구현. host는 계약 타입(`any PlayerDownloadCenter`)만 의존하고,
+/// Kollus 전용 운영 API(아래 "Kollus 전용" 섹션)는 조립 지점에서만 접근한다.
+public actor KollusDownloadCenter: PlayerDownloadCenter {
     private let bootstrapper: KollusSessionBootstrapper
     private let environment: KollusEnvironment
-    private let snapshotsContinuation: AsyncStream<[KollusContentSnapshot]>.Continuation
-    public nonisolated let contents: AsyncStream<[KollusContentSnapshot]>
+    private let contentsContinuation: AsyncStream<[DownloadedContent]>.Continuation
+    private let eventsContinuation: AsyncStream<DownloadEvent>.Continuation
+    private let errorChain = PlayerErrorClassifierChain(classifiers: [KollusErrorClassifier()])
+
+    public nonisolated let contents: AsyncStream<[DownloadedContent]>
+    public nonisolated let events: AsyncStream<DownloadEvent>
 
     private var storageProto: KollusStorageProtocol?
     private var bridge: KollusStorageBridge?
@@ -27,64 +31,113 @@ public actor KollusDownloadCenter {
         self.bootstrapper = bootstrapper
         self.environment = environment
 
-        var continuation: AsyncStream<[KollusContentSnapshot]>.Continuation?
-        self.contents = AsyncStream<[KollusContentSnapshot]>(bufferingPolicy: .bufferingNewest(8)) {
-            continuation = $0
+        var contentsCont: AsyncStream<[DownloadedContent]>.Continuation?
+        self.contents = AsyncStream<[DownloadedContent]>(bufferingPolicy: .bufferingNewest(8)) {
+            contentsCont = $0
         }
-        self.snapshotsContinuation = continuation!
+        self.contentsContinuation = contentsCont!
+
+        var eventsCont: AsyncStream<DownloadEvent>.Continuation?
+        // 실패/완료 이벤트는 델타라 유실되면 안 된다 — unbounded.
+        self.events = AsyncStream<DownloadEvent>(bufferingPolicy: .unbounded) {
+            eventsCont = $0
+        }
+        self.eventsContinuation = eventsCont!
     }
 
     deinit {
-        snapshotsContinuation.finish()
+        contentsContinuation.finish()
+        eventsContinuation.finish()
     }
 
-    // MARK: - Resolve / check
+    // MARK: - PlayerDownloadCenter
 
     public func resolve(contentURL: String) async throws -> String {
         let storage = try await ensureStorage()
-        return try await storage.loadContentURL(contentURL)
+        do {
+            return try await storage.loadContentURL(contentURL)
+        } catch {
+            throw errorChain.classify(error, context: .resolve)
+        }
     }
 
     public func check(contentURL: String) async throws -> String? {
         let storage = try await ensureStorage()
-        return await storage.checkContentURL(contentURL)
+        do {
+            return try await storage.checkContentURL(contentURL)
+        } catch {
+            let classified = errorChain.classify(error, context: .resolve)
+            if case .contentNotFound = classified {
+                return nil
+            }
+            throw classified
+        }
     }
 
-    // MARK: - Download lifecycle
-
-    public func startDownload(mediaContentKey: String) async throws {
+    public func startDownload(contentID: String) async throws {
         let storage = try await ensureStorage()
-        try await storage.downloadContent(mediaContentKey)
+        do {
+            try await storage.downloadContent(contentID)
+        } catch {
+            throw errorChain.classify(error, context: .download)
+        }
     }
 
-    public func cancelDownload(mediaContentKey: String) async throws {
+    public func cancelDownload(contentID: String) async throws {
         let storage = try await ensureStorage()
-        try await storage.downloadCancelContent(mediaContentKey)
+        do {
+            try await storage.downloadCancelContent(contentID)
+        } catch {
+            throw errorChain.classify(error, context: .download)
+        }
     }
 
-    public func remove(mediaContentKey: String) async throws {
+    public func remove(contentID: String) async throws {
         let storage = try await ensureStorage()
-        try await storage.removeContent(mediaContentKey)
+        do {
+            try await storage.removeContent(contentID)
+        } catch {
+            throw errorChain.classify(error, context: .removal)
+        }
     }
-
-    // MARK: - Cache / DRM / LMS
 
     public func clearStreamingCache() async throws {
         let storage = try await ensureStorage()
-        try await storage.removeCacheWithError()
+        do {
+            try await storage.removeCacheWithError()
+        } catch {
+            throw errorChain.classify(error, context: .removal)
+        }
     }
 
-    public func updateDRM(includeExpiredOnly: Bool) async throws {
+    public func renewLicenses(scope: LicenseRenewalScope) async throws {
         let storage = try await ensureStorage()
-        try await storage.updateDownloadDRMInfo(includeExpired: includeExpiredOnly)
+        do {
+            try await storage.updateDownloadDRMInfo(includeExpired: scope == .expiredOnly)
+        } catch {
+            throw errorChain.classify(error, context: .licenseRenewal)
+        }
     }
+
+    public func currentContents() async throws -> [DownloadedContent] {
+        let storage = try await ensureStorage()
+        return await storage.contentSnapshots.map { $0.toDownloadedContent() }
+    }
+
+    public func storageMetrics() async throws -> StorageMetrics {
+        let storage = try await ensureStorage()
+        return await StorageMetrics(
+            downloadedBytes: storage.storageSize,
+            streamingCacheBytes: storage.cacheDataSize
+        )
+    }
+
+    // MARK: - Kollus 전용 (계약 밖 — 조립 지점/진단 화면에서만 접근)
 
     public func sendStoredLMS() async throws {
         let storage = try await ensureStorage()
         await storage.sendStoredLms()
     }
-
-    // MARK: - Operational policy
 
     public func setCacheSize(megabytes: Int) async throws {
         let storage = try await ensureStorage()
@@ -101,49 +154,41 @@ public actor KollusDownloadCenter {
         await storage.setNetworkTimeOut(seconds: seconds, retry: retry)
     }
 
+    /// Kollus device ID. 진단 화면 표시용.
     public func playerID() async throws -> String? {
         let storage = try await ensureStorage()
         return await storage.applicationDeviceID
     }
 
-    /// 다운로드된 컨텐츠 총 용량(byte). 저장 용량/캐시 화면 표시용.
-    public func storageSize() async throws -> Int64 {
-        let storage = try await ensureStorage()
-        return await storage.storageSize
-    }
-
-    /// 스트리밍 재생 시 누적된 캐시 용량(byte).
-    public func cacheDataSize() async throws -> Int64 {
-        let storage = try await ensureStorage()
-        return await storage.cacheDataSize
-    }
-
-    /// Kollus SDK 버전 문자열.
+    /// Kollus SDK 버전 문자열. 진단 화면 표시용.
     public func playerVersion() async throws -> String? {
         let storage = try await ensureStorage()
         return await storage.applicationVersion
     }
 
-    // MARK: - Snapshot
+    // MARK: - Internal
 
-    public func currentSnapshots() async throws -> [KollusContentSnapshot] {
+    /// 오프라인 재생 사전 검증용 — 어댑터가 prepare 직전에 조회한다.
+    func downloadedContent(for contentID: String) async throws -> DownloadedContent? {
         let storage = try await ensureStorage()
         return await storage.contentSnapshots
+            .first { $0.id == contentID }?
+            .toDownloadedContent()
     }
-
-    // MARK: - Internal
 
     private func ensureStorage() async throws -> KollusStorageProtocol {
         if let storageProto {
             return storageProto
         }
         let resolved = try await bootstrapper.resolveStorage()
-        let continuation = snapshotsContinuation
+        let contentsCont = contentsContinuation
+        let eventsCont = eventsContinuation
         let observer = environment.observer
         let newBridge = await MainActor.run { () -> KollusStorageBridge in
             let bridge = KollusStorageBridge(
                 observer: observer,
-                snapshotsContinuation: continuation
+                contentsContinuation: contentsCont,
+                eventsContinuation: eventsCont
             )
             resolved.storageDelegate = bridge
             return bridge
