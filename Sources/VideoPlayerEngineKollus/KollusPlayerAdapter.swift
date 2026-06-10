@@ -70,20 +70,9 @@ public actor KollusPlayerAdapter:
     /// SDK가 path를 비동기 보관할 가능성에 대비해 NSString을 actor가 retain한다.
     /// utf8String 포인터는 NSString lifetime 동안 유효.
     @MainActor private var subtitlePathBuffer: NSString?
-    private var lastKnownBookmarks: [Bookmark] = []
+    private var bookmarkStore = KollusBookmarkStore()
     private var currentZoom: CGFloat = 0
-    private var hasEmittedNextEpisode: Bool = false
-    /// 다음 회차 메타데이터 — `.readyToPlay` 시 MainActor에서 1회 캐시.
-    /// positionChanged hot path가 매 신호마다 MainActor를 왕복하면(단일 FIFO consumer가
-    /// 그 왕복에 막혀) currentTime 발행이 실시간보다 지연된다. 캐시 후 hot path는 산술 비교만 한다.
-    /// 엔진 next-episode가 없으면(showTime<=0) nil → hot path 즉시 단락.
-    private struct NextEpisodeMeta: Sendable {
-        let showAt: TimeInterval
-        let callbackURL: URL?
-        let params: [String: String]
-        let showsButton: Bool
-    }
-    private var nextEpisodeMeta: NextEpisodeMeta?
+    private var nextEpisodeEmitter = KollusNextEpisodeEmitter()
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
 
     /// H1 — SDK delegate(bridge) 신호를 단일 FIFO 스트림으로 직렬 소비한다.
@@ -98,13 +87,8 @@ public actor KollusPlayerAdapter:
     private nonisolated let bridgeEventContinuation: AsyncStream<BridgeEvent>.Continuation
     private var signalConsumerTask: Task<Void, Never>?
 
-    /// 재생 위치 주기 폴링 Task.
-    /// Kollus `kollusPlayerView:position:error:` delegate는 **seek 시에만** 호출되고 재생 중 주기 통지를
-    /// 하지 않는다. 따라서 재생바 currentTime이 갱신되지 않는다. 레거시(`playbackProgressTimer`,
-    /// `LegacyMoviePlayerController.m:5593`, 1.0s)처럼 재생 중 `currentPlaybackTime`을 주기적으로 읽어
-    /// `.timeDidChange`를 발행한다. playStarted에 시작, pause/stop에 중지.
-    private var positionPollTask: Task<Void, Never>?
-    private static let positionPollInterval: UInt64 = 500_000_000 // 0.5s
+    /// 재생 위치 주기 폴러 — playStarted에 시작, pause/stop에 중지. (KollusPositionPoller 참조)
+    private var positionPoller: KollusPositionPoller?
 
     // MARK: - Initializers
 
@@ -184,7 +168,6 @@ public actor KollusPlayerAdapter:
 
     deinit {
         signalConsumerTask?.cancel()
-        positionPollTask?.cancel()
         bridgeEventContinuation.finish()
         eventContinuation.finish()
         outputContinuation.finish()
@@ -287,16 +270,8 @@ public actor KollusPlayerAdapter:
             }
             try playerView.addBookmark(time, value: title)
         }
-        // Kollus SDK 는 로컬 add 를 playerView.bookmarks 에 즉시 반영하지 않는다(서버 동기화 후 reload
-        // 시점에만 갱신). 따라서 SDK 재조회(currentBookmarks)는 직전 낙관적 추가분을 포함하지 못해 매번
-        // 첫 항목만 덮어쓴다. 누적이 유지되도록 마지막으로 발행한 목록(lastKnownBookmarks)을 base 로 쓴다.
-        // 다음 실제 reload 시 권위 목록으로 자연 수렴한다.
-        var updated = lastKnownBookmarks
-        if !updated.contains(where: { abs($0.position - time) < 0.5 }) {
-            updated.append(Bookmark(position: time, title: title, kind: .user))
-            updated.sort { $0.position < $1.position }
-        }
-        handleBookmarks(updated)
+        // SDK가 로컬 add를 즉시 반영하지 않는 비동기 특성 — 낙관적 캐시로 보완 (KollusBookmarkStore 참조).
+        publishBookmarks(bookmarkStore.addOptimistically(position: time, title: title))
     }
 
     public func removeBookmark(at time: TimeInterval) async throws {
@@ -312,10 +287,8 @@ public actor KollusPlayerAdapter:
             }
             try playerView.removeBookmark(time)
         }
-        // add 와 동일 — 마지막 발행 목록에서 낙관적으로 제거해 재발행(SDK 즉시 미반영 대응).
-        var updated = lastKnownBookmarks
-        updated.removeAll { abs($0.position - time) < 0.5 }
-        handleBookmarks(updated)
+        // add 와 동일 — 낙관적 제거 후 재발행 (SDK 즉시 미반영 대응).
+        publishBookmarks(bookmarkStore.removeOptimistically(position: time))
     }
 
     public func currentBookmarks() async -> [Bookmark] {
@@ -738,20 +711,16 @@ public actor KollusPlayerAdapter:
     // MARK: - Position polling (재생바 시간 주기 갱신)
 
     private func startPositionPolling() {
-        guard positionPollTask == nil else { return }
-        positionPollTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: Self.positionPollInterval)
-                guard let self else { return }
-                if Task.isCancelled { return }
-                await self.pollCurrentPlaybackTime()
+        if positionPoller == nil {
+            positionPoller = KollusPositionPoller { [weak self] in
+                await self?.pollCurrentPlaybackTime()
             }
         }
+        positionPoller?.start()
     }
 
     private func stopPositionPolling() {
-        positionPollTask?.cancel()
-        positionPollTask = nil
+        positionPoller?.stop()
     }
 
     private func pollCurrentPlaybackTime() async {
@@ -914,8 +883,13 @@ public actor KollusPlayerAdapter:
         }
     }
 
+    /// SDK 권위 reload — 캐시 교체 후 발행.
     private func handleBookmarks(_ bookmarks: [Bookmark]) {
-        lastKnownBookmarks = bookmarks
+        bookmarkStore.replaceAll(bookmarks)
+        publishBookmarks(bookmarks)
+    }
+
+    private func publishBookmarks(_ bookmarks: [Bookmark]) {
         publish(event: .bookmarksDidLoad(bookmarks))
         // Core 권위 경로 (handleSignal 밖 emit — bookmarks 로드).
         outputContinuation.yield(.event(.bookmarksDidLoad(bookmarks)))
@@ -970,19 +944,9 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    /// T056 — 다음 회차 진입 시간 도달 검사. **동기·산술 전용**(MainActor 왕복 없음).
-    /// 메타는 `readyStateSnapshot`에서 1회 캐시되므로 positionChanged마다 호출돼도 consumer를 막지 않는다.
+    /// T056 — 다음 회차 진입 시간 도달 검사. 판정은 KollusNextEpisodeEmitter(동기·산술 전용).
     private func emitNextEpisodeIfNeeded(currentTime: TimeInterval) {
-        guard !hasEmittedNextEpisode, let meta = nextEpisodeMeta else { return }
-        guard currentTime >= meta.showAt else { return }
-        guard let url = meta.callbackURL else { return }
-        hasEmittedNextEpisode = true
-        let info = NextEpisodeInfo(
-            showAt: meta.showAt,
-            callbackURL: url,
-            callbackParameters: meta.params,
-            showsButton: meta.showsButton
-        )
+        guard let info = nextEpisodeEmitter.takeDueInfo(currentTime: currentTime) else { return }
 #if DEBUG
         NSLog("[KollusNextEpisode] publish nextEpisodeAvailable showAt=%.3f", info.showAt)
         NSLog("[Kollus.out] event nextEpisodeAvailable showAt=%.3f", info.showAt)
@@ -1021,19 +985,13 @@ public actor KollusPlayerAdapter:
                 nextEpisodeShowsButton: view?.nextEpisodeShowButton ?? false
             )
         }
-        // 다음 회차 메타 1회 캐시 + 재진입 시 재-probe 위해 emit 플래그 리셋.
-        // 엔진 next-episode가 없으면(showAt<=0) nil → positionChanged hot path 즉시 단락.
-        hasEmittedNextEpisode = false
-        if snap.nextEpisodeShowAt > 0 {
-            nextEpisodeMeta = NextEpisodeMeta(
-                showAt: snap.nextEpisodeShowAt,
-                callbackURL: snap.nextEpisodeCallbackURLString.flatMap { URL(string: $0) },
-                params: snap.nextEpisodeParams,
-                showsButton: snap.nextEpisodeShowsButton
-            )
-        } else {
-            nextEpisodeMeta = nil
-        }
+        // 다음 회차 메타 1회 캐시 + 재진입 시 재-probe 위해 emit 플래그 리셋 (emitter가 관리).
+        nextEpisodeEmitter.arm(
+            showAt: snap.nextEpisodeShowAt,
+            callbackURL: snap.nextEpisodeCallbackURLString.flatMap { URL(string: $0) },
+            params: snap.nextEpisodeParams,
+            showsButton: snap.nextEpisodeShowsButton
+        )
         // T055 — isLive/liveDuration 캡처. liveDuration 0이면 nil 표기(타임쉬프트 길이 unknown).
         let liveDurationValue: TimeInterval? = snap.liveDuration > 0 ? snap.liveDuration : nil
         return state.updating(
