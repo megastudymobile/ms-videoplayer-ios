@@ -76,7 +76,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         self.player = player
         self.state = .idle
         self.observerConsumerTask = nil
-        startObserverConsumerIfNeeded()
+        Task { await self.startObserverConsumerIfNeeded() }
     }
 
     deinit {

@@ -16,7 +16,7 @@ import VideoPlayerShellSupport
 /// 자체 렌더 레이어(`AVPlayerLayer` 등)를 attach 한다. 본 view 는 영상 layer 자체를
 /// 다루지 않으며, 영상 준비 전/엔진 detach 상태에서 placeholder 만 표시.
 @MainActor
-public final class PlayerRenderSurfaceView: UIView, PlayerRenderSurface {
+public final class PlayerRenderSurfaceView: UIView {
     public var containerView: UIView { self }
 
     private let placeholderLabel = UILabel()
@@ -115,3 +115,5 @@ public final class PlayerRenderSurfaceView: UIView, PlayerRenderSurface {
         ])
     }
 }
+
+extension PlayerRenderSurfaceView: @MainActor PlayerRenderSurface {}

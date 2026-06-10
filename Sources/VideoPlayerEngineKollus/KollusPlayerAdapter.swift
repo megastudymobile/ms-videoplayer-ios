@@ -3,7 +3,6 @@
 //  VideoPlayerModule
 //
 //  Created by 모바일개발팀_정준영 on 2026/05/11.
-//  Updated by 모바일개발팀_정준영 on 2026/05/15 (Phase 3 T025).
 //  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
 //
 
@@ -123,7 +122,7 @@ public actor KollusPlayerAdapter:
         self.playerType = playerType
         self.state = .idle
         self.signalConsumerTask = nil
-        startSignalConsumerIfNeeded()
+        Task { await self.startSignalConsumerIfNeeded() }
     }
 
     /// Test-only init. `@testable import`로만 접근. 새 wiring(인증/26 콜백) 미사용.
@@ -162,7 +161,7 @@ public actor KollusPlayerAdapter:
         self.playerType = playerType
         self.state = .idle
         self.signalConsumerTask = nil
-        startSignalConsumerIfNeeded()
+        Task { await self.startSignalConsumerIfNeeded() }
     }
 
     deinit {
@@ -358,13 +357,14 @@ public actor KollusPlayerAdapter:
     // MARK: - PlayerZoomEngine
 
     public func zoom(_ recognizer: UIPinchGestureRecognizer) async throws {
-        try await MainActor.run {
+        let scale = try await MainActor.run {
             guard let playerView else {
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
             }
             try playerView.zoom(recognizer)
+            return recognizer.scale
         }
-        currentZoom = recognizer.scale
+        currentZoom = scale
     }
 
     // MARK: - PlayerSynchronousZoomEngine
