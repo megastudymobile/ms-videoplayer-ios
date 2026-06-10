@@ -6,6 +6,7 @@
   - [architecture-review-2026-06-10.md](./architecture-review-2026-06-10.md) — 아키텍처 검토
   - [kollus-sdk-coverage-review-2026-06-10.md](./kollus-sdk-coverage-review-2026-06-10.md) — Kollus SDK 기능 대조 검토
 - 목적: 두 검토에서 발견된 문제를 해소하는 구체적 설계 — 목표 아키텍처, 폴더 구조, 예시 코드, 작업 순서
+- **구현 상태: 전체 완료 (2026-06-10)** — P1(a446b7d) · P4(1fabed7) · P7a(e5a4571) · P2+P5(4e9d997) · P3(9dcdefa) · P7b(e40abc7) · P6(bf29195). iOS 시뮬레이터 232 테스트 통과. 잔여: Kollus 에러 코드 테이블 실기기 QA 확정(§6.2), 실기기 재생/다운로드 QA
 
 ---
 
