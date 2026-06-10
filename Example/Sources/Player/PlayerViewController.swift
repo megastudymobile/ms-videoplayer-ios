@@ -32,6 +32,7 @@ final class PlayerViewController: UIViewController {
     private var toastDismissTask: Task<Void, Never>?
     /// 팬 제스처 시작 시점의 좌/우 — 도중 중심선 통과로 밝기↔음량이 바뀌지 않도록 고정.
     private var panIsLeftSide = false
+    private var panIsMoveMode = false
 
     // MARK: - Embed seam (split 컨테이너 호스팅용)
 
@@ -245,6 +246,9 @@ final class PlayerViewController: UIViewController {
     @objc private func didPinch(_ recognizer: UIPinchGestureRecognizer) {
         guard PreferenceManager.useGesture else { return }
         interactor.applyZoom(recognizer)
+        if recognizer.state == .ended || recognizer.state == .cancelled {
+            interactor.refreshZoomState()
+        }
     }
 
     /// 좌측 팬 = 밝기, 우측 팬 = 음량 (샘플 제스처 parity).
@@ -254,8 +258,23 @@ final class PlayerViewController: UIViewController {
         let translation = recognizer.translation(in: view)
         recognizer.setTranslation(.zero, in: view)
         if recognizer.state == .began {
+            panIsMoveMode = interactor.isZoomedIn
             panIsLeftSide = recognizer.location(in: view).x < view.bounds.midX
         }
+
+        if panIsMoveMode {
+            switch recognizer.state {
+            case .changed:
+                interactor.scroll(by: translation)
+            case .ended, .cancelled, .failed:
+                interactor.stopScroll()
+                panIsMoveMode = false
+            default:
+                break
+            }
+            return
+        }
+
         let delta = -translation.y / view.bounds.height
 
         switch recognizer.state {

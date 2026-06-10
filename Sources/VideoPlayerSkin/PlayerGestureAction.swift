@@ -18,6 +18,7 @@ public enum PlayerGestureAction: Equatable {
     case brightnessPreview(Float)
     case volumePreview(Float)
     case pinchPreview(scale: CGFloat)
+    case panMove(translation: CGPoint)
     case longPressBegan
     case longPressEnded
     case doubleTapTogglePlayPause

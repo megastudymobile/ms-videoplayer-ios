@@ -38,6 +38,8 @@ final class PlayerInteractor {
 
     // capability protocol 캐스트 — 시뮬레이터(UnsupportedEnvironmentEngine)에서는 nil.
     private var zoomEngine: PlayerSynchronousZoomEngine?
+    private var scrollEngine: PlayerScrollEngine?
+    private(set) var isZoomedIn = false
 
     init(
         source: PlaybackSource,
@@ -73,6 +75,7 @@ final class PlayerInteractor {
         playerModule = module
         availableFeatures = module.availableFeatures
         zoomEngine = module.engine as? PlayerSynchronousZoomEngine
+        scrollEngine = module.engine as? PlayerScrollEngine
 
         let coordinator = PlayerLifecycleCoordinator(
             core: module.core,
@@ -103,6 +106,8 @@ final class PlayerInteractor {
         lifecycleCoordinator = nil
         binder.unbind()
         zoomEngine = nil
+        scrollEngine = nil
+        isZoomedIn = false
         let module = playerModule
         playerModule = nil
         Task { @MainActor in
@@ -150,6 +155,24 @@ final class PlayerInteractor {
     /// 핀치줌 — nonisolated 동기 경로. Task hop 없이 매 제스처 이벤트 즉시 적용.
     func applyZoom(_ recognizer: UIPinchGestureRecognizer) {
         zoomEngine?.applyZoomGesture(recognizer)
+    }
+
+    func refreshZoomState() {
+        Task { @MainActor [weak self] in
+            guard let self, let module = self.playerModule else { return }
+            guard let zoomEngine = module.engine as? PlayerZoomEngine else { return }
+            self.isZoomedIn = await zoomEngine.isZoomedIn
+        }
+    }
+
+    func scroll(by distance: CGPoint) {
+        guard let scrollEngine else { return }
+        Task { try? await scrollEngine.scroll(by: distance) }
+    }
+
+    func stopScroll() {
+        guard let scrollEngine else { return }
+        Task { try? await scrollEngine.stopScroll() }
     }
 
     // MARK: - 구간 반복 (shell 레벨 — 어댑터 API 없음, 문서 §6 갭)
