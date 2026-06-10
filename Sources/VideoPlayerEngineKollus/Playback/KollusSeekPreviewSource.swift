@@ -89,8 +89,24 @@ actor KollusSeekPreviewSource {
         if didAttemptLoad { return spriteCGImage }
         didAttemptLoad = true
         guard let lazyImage = UIImage(contentsOfFile: path)?.cgImage else { return nil }
+        Self.applyAtRestProtection(toPath: path)
         spriteCGImage = Self.decodedBitmap(from: lazyImage) ?? lazyImage
         return spriteCGImage
+    }
+
+    /// 스프라이트는 영상과 달리 DRM 없는 평문 이미지다 — 백업 추출/잠금 상태 포렌식으로
+    /// 새지 않게 보호 클래스(`.complete`)와 백업 제외를 건다. 로드에 성공한 파일(다운로드
+    /// 완료)에만 적용한다 — 쓰기 중인 파일에 걸면 잠금 중 SDK 쓰기가 실패할 수 있다.
+    /// 보호는 최선 노력: 실패해도 프리뷰 동작에는 영향을 주지 않는다.
+    static func applyAtRestProtection(toPath path: String, fileManager: FileManager = .default) {
+        try? fileManager.setAttributes(
+            [.protectionKey: FileProtectionType.complete],
+            ofItemAtPath: path
+        )
+        var url = URL(fileURLWithPath: path)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? url.setResourceValues(values)
     }
 
     /// CGImage는 lazy decode라 첫 렌더 시점에 메인 스레드가 전체 스프라이트를 디코드해

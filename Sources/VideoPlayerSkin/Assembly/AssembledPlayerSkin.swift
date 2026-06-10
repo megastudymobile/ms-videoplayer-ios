@@ -20,6 +20,9 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private let loadingOverlay: PlayerSkinLoadingOverlay
     private let gestureHUDOverlay: PlayerSkinGestureHUDOverlay
     private let seekPreviewPresenter = PlayerSeekPreviewPresenter()
+    private let captureShield = PlayerScreenCaptureShieldView()
+    private var captureMonitor: PlayerScreenCaptureMonitor?
+    private var isCaptureProtectionEnabled = false
     private var slotContainers: [PlayerSkinSlot: UIStackView] = [:]
     private var blocks: [PlayerSkinBlock] = []
     private var latestState = PlayerSkinState.initial
@@ -36,6 +39,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         super.init(frame: .zero)
         buildSkeleton()
         assembleBlocks()
+        configureCaptureMonitor()
         render(.initial)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
@@ -91,6 +95,22 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     public func setSeekPreviewEnabled(_ enabled: Bool) {
         seekPreviewPresenter.isEnabled = enabled
         if enabled == false { seekPreviewPresenter.end() }
+    }
+
+    /// 화면 캡처(녹화) 상태 변경 콜백 — 차단막 사용 여부와 무관하게 발행된다.
+    /// host가 일시정지 등 재생 정책을 결정할 수 있다.
+    /// 주의: AirPlay 화면 미러링도 캡처로 판정된다(iOS 동작).
+    public var onScreenCaptureChanged: ((Bool) -> Void)?
+
+    /// 현재 화면이 캡처(녹화/미러링)되고 있는지.
+    public var isScreenCaptured: Bool { captureMonitor?.isCaptured ?? false }
+
+    /// 화면 캡처 차단막 on/off. 켜면 캡처 중 영상 영역을 차단막으로 가리고
+    /// 시킹 프리뷰 모달을 닫는다. 컨트롤 터치는 막지 않는다.
+    public func setScreenCaptureProtectionEnabled(_ enabled: Bool) {
+        isCaptureProtectionEnabled = enabled
+        captureMonitor?.refresh()
+        applyCaptureShield()
     }
 
     public func updateCaption(text: String, isSecondary: Bool) {
@@ -165,6 +185,44 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             gestureHUDView.trailingAnchor.constraint(equalTo: trailingAnchor),
             gestureHUDView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+
+        // 캡처 차단막은 최상단 — 프리뷰 모달/HUD 포함 전부를 가린다.
+        captureShield.isHidden = true
+        captureShield.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(captureShield)
+        NSLayoutConstraint.activate([
+            captureShield.topAnchor.constraint(equalTo: topAnchor),
+            captureShield.leadingAnchor.constraint(equalTo: leadingAnchor),
+            captureShield.trailingAnchor.constraint(equalTo: trailingAnchor),
+            captureShield.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    // MARK: 화면 캡처 대응
+    private func configureCaptureMonitor() {
+        // UIScreen.main 대신 소속 윈도우의 screen을 읽는다 — 윈도우 밖이면 비캡처로 본다.
+        let monitor = PlayerScreenCaptureMonitor { [weak self] in
+            self?.window?.windowScene?.screen.isCaptured ?? false
+        }
+        monitor.onChange = { [weak self] captured in
+            guard let self else { return }
+            self.applyCaptureShield()
+            if captured, self.isCaptureProtectionEnabled {
+                self.seekPreviewPresenter.end()
+            }
+            self.onScreenCaptureChanged?(captured)
+        }
+        captureMonitor = monitor
+    }
+
+    private func applyCaptureShield() {
+        captureShield.isHidden = !(isCaptureProtectionEnabled && isScreenCaptured)
+    }
+
+    /// 윈도우 attach 전에는 캡처 상태를 알 수 없다 — attach 시점에 재평가.
+    public override func didMoveToWindow() {
+        super.didMoveToWindow()
+        captureMonitor?.refresh()
     }
 
     private func positionSlot(_ slot: PlayerSkinSlot, _ stack: UIStackView) {
@@ -252,6 +310,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         switch action {
         case .seekBegan:
             guard latestState.isSeekEnabled, latestState.duration > 0 else { return }
+            // 캡처 중엔 모달을 띄우지 않는다 — 차단막이 가리긴 하지만 디코드 비용도 아낀다.
+            if isCaptureProtectionEnabled, isScreenCaptured { return }
             seekPreviewPresenter.begin()
             if let bar = blocks.compactMap({ $0 as? ProgressBarBlock }).first {
                 seekPreviewPresenter.requestImage(at: bar.currentPreviewTime)

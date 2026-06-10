@@ -108,6 +108,13 @@ final class PlayerViewController: UIViewController {
         skin.configure(title: "VideoPlayer Example", maxPlaybackRate: interactor.featurePolicy.maxPlaybackRate)
         skin.setCaptionBottomInset(Metric.captionBottomInset)
         skin.setCaptionFontSize(PreferenceManager.captionFontSize)
+        // 화면 녹화/미러링 감지 시 영상 영역을 차단막으로 가리고 재생을 멈춘다.
+        skin.setScreenCaptureProtectionEnabled(true)
+        skin.onScreenCaptureChanged = { [weak self] captured in
+            guard let self, captured else { return }
+            self.interactor.send(.pause)
+            self.showToast("화면 녹화가 감지되어 재생을 일시정지했습니다")
+        }
 
         // setUp → start 연속 실행 — viewDidAppear 분리 시 setUp 완료 전
         // start가 nil 모듈에 걸려 조용히 무재생되는 경쟁 조건이 생긴다 (리뷰 HIGH).
