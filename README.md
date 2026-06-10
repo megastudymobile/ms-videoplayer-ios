@@ -1,375 +1,381 @@
 # VideoPlayerModule
 
-`videoplayer-ios-ms`는 영상 재생을 특정 화면이나 특정 SDK에 묶지 않고, **공통 상태 머신 + 교체 가능한 재생 엔진**으로 다루는 Swift Package입니다.
+`videoplayer-ios-ms`는 영상 재생을 **공통 상태 머신 + 교체 가능한 재생 엔진**으로 다루는 Swift Package입니다.
 
-처음에는 `AVPlayer` 하나만 감싸도 충분해 보일 수 있습니다. 하지만 강의 앱의 플레이어는 곧 DRM, 다운로드, 자막, 배속, 북마크, PiP, 백그라운드 재생, 외부 SDK, 앱 생명주기와 얽힙니다. 이 책임이 앱 화면으로 흘러들어가면 화면은 재생 정책과 벤더 SDK 세부 구현을 동시에 알아야 하고, 테스트도 실제 SDK에 끌려갑니다.
+앱은 `PlaybackSource` / `PlaybackCommand` / `PlaybackState`만 다루고, 실제 재생은 `AVPlayerAdapter`(일반 URL/HLS)나 `KollusPlayerAdapter`(Kollus MCK + DRM + 다운로드)가 맡습니다. 엔진을 바꿔도 앱의 사용 흐름은 바뀌지 않습니다.
 
-이 패키지는 그 문제를 끊기 위해 만들어졌습니다. 앱은 `PlaybackSource`, `PlaybackCommand`, `PlaybackState`만 다루고, 실제 재생은 `AVPlayerAdapter`나 `KollusPlayerAdapter` 같은 엔진이 맡습니다. 엔진을 바꿔도 앱의 사용 흐름은 바뀌지 않는 것이 핵심입니다.
+> 이 문서는 **이 모듈을 사용하는 개발자**를 위한 가이드입니다.
+> 모듈 내부 구조·설계 배경·유지보수 방법은 [docs/HANDOVER/](docs/HANDOVER/README.md) 인수인계 시리즈를 보세요.
 
-## 설계 철학
-
-- 앱은 재생 의도를 말하고, 엔진은 재생 방법을 안다.
-- 모든 엔진 명령은 `async throws`로 실패 가능성을 숨기지 않는다.
-- 엔진은 `Actor`로 격리해서 재생 상태 변경 순서를 명확히 한다.
-- 지원 기능은 `EngineCapabilities`와 `PlayerFeaturePolicy`로 협상한다.
-- Kollus/PallyCon 같은 벤더 SDK는 `VideoPlayerEngineKollus` 경계 안에 둔다.
-- SmartLearning 앱의 화면, 라우팅, Remote Config, 분석 코드는 이 패키지로 가져오지 않는다.
-
-Mermaid 다이어그램은 라이트/다크 모드 모두에서 읽히도록 고정 색상 `classDef`를 쓰지 않습니다. 렌더러의 기본 테마에 맡기는 쪽이 가장 안전합니다.
-
-## 전체 구조
-
-```mermaid
-flowchart TB
-    App[Host App / Shell UI]
-    UseCase[Use Cases]
-    Core[PlayerCore actor]
-    Contract[PlayerPlaybackEngine]
-    Native[AVPlayerAdapter]
-    Kollus[KollusPlayerAdapter]
-    Vendor[KollusSDK / PallyConFPS]
-    Output[PlaybackState / PlayerEvent]
-
-    App --> UseCase
-    UseCase --> Core
-    Core --> Contract
-    Contract --> Native
-    Contract --> Kollus
-    Kollus --> Vendor
-    Core --> Output
-    Output --> App
-```
-
-흐름은 단순합니다.
-
-1. 앱이나 Shell이 `StartPlaybackUseCase`, `ControlPlaybackUseCase`를 호출합니다.
-2. `PlayerCore`가 명령을 받고 현재 정책과 엔진 기능을 확인합니다.
-3. `PlayerCore`가 `PlayerPlaybackEngine` 구현체에 실제 명령을 위임합니다.
-4. 엔진은 `PlaybackState`와 `PlayerEvent`를 다시 흘려보냅니다.
-5. 화면은 상태 스트림만 구독하고, 엔진 내부 구현은 모릅니다.
-
-## 패키지 Product 선택
-
-필요한 만큼만 가져다 쓰도록 product를 나눴습니다.
-
-| Product | 역할 | 언제 사용하나 |
-| --- | --- | --- |
-| `VideoPlayerCore` | 도메인 타입, 명령, 상태, `PlayerCore`, 엔진 프로토콜 | 엔진 없는 순수 로직 테스트나 공통 계약이 필요할 때 |
-| `VideoPlayerShellSupport` | 모듈 wiring, render surface, lifecycle/audio helper | 앱 화면과 플레이어 코어를 연결할 때 |
-| `VideoPlayerEngineNative` | `AVPlayerAdapter` | 일반 URL/HLS 재생이 필요할 때 |
-| `VideoPlayerEngineKollus` | Kollus/PallyCon 엔진, 다운로드 센터, SDK bootstrap | Kollus MCK 재생, DRM, 오프라인 다운로드가 필요할 때 |
-| `VideoPlayerModule` | 위 product를 다시 export하는 umbrella | 앱에서 전체 표면을 한 번에 import하고 싶을 때 |
+## 한눈에 보는 구조
 
 ```mermaid
 flowchart LR
+    App[Host 앱 화면] -- "PlaybackCommand" --> Core["PlayerCore (actor)"]
+    Core -- "async throws" --> Engine["엔진 어댑터<br/>(AVPlayer / Kollus)"]
+    Engine -- "신호" --> Core
+    Core -- "PlaybackState / PlayerEvent<br/>AsyncStream" --> App
+    Skin[VideoPlayerSkin UI] -- "PlayerSkinAction" --> App
+    App -- "render(PlayerSkinState)" --> Skin
+```
+
+1. 앱이 `PlayerModule`을 만들고 (`PlayerModuleWiring` 또는 `KollusPlayerModuleFactory`)
+2. `module.core.start(source:policy:)` / `module.core.execute(command:)`로 명령을 보내고
+3. `module.core.stateStream` / `eventStream`을 구독해 화면을 그립니다
+4. UI가 필요하면 `VideoPlayerSkin`의 `AssembledPlayerSkin`을 조립해 올립니다
+
+## 설치와 Product 선택
+
+Swift Package Manager로 추가한 뒤, 필요한 product만 import합니다.
+
+| Product | 역할 | 언제 사용하나 |
+| --- | --- | --- |
+| `VideoPlayerCore` | 도메인 타입, `PlayerCore`, 엔진 계약 | 항상 (다른 product가 끌어옴) |
+| `VideoPlayerShellSupport` | `PlayerModuleWiring`, `PlayerRenderSurface`, 생명주기/오디오 helper | 화면과 코어를 연결할 때 |
+| `VideoPlayerEngineNative` | `AVPlayerAdapter` | 일반 URL/HLS 재생 |
+| `VideoPlayerEngineKollus` | Kollus/PallyCon 엔진, 다운로드 센터, SDK bootstrap | Kollus MCK 재생, DRM, 오프라인 다운로드 |
+| `VideoPlayerSkin` | 재사용 플레이어 UI (Blueprint/Block 조립식) | 플레이어 컨트롤 UI가 필요할 때 |
+
+```mermaid
+flowchart BT
     Core[VideoPlayerCore]
     Shell[VideoPlayerShellSupport]
     Native[VideoPlayerEngineNative]
     Kollus[VideoPlayerEngineKollus]
-    KollusBinary[VideoPlayerKollusBinary]
-    PallyConBinary[VideoPlayerPallyConBinary]
-    Umbrella[VideoPlayerModule]
+    Skin[VideoPlayerSkin]
+    KBin[[KollusSDK.xcframework]]
+    PBin[[PallyConFPSSDK.xcframework]]
 
-    Core --> Shell
-    Shell --> Native
-    Shell --> Kollus
-    KollusBinary --> Kollus
-    PallyConBinary --> Kollus
-    Core --> Umbrella
-    Shell --> Umbrella
-    Native --> Umbrella
-    Kollus --> Umbrella
+    Shell --> Core
+    Native --> Shell
+    Kollus --> Shell
+    Kollus --> KBin
+    Kollus --> PBin
+    Skin --> Core
+    Skin --> Shell
 ```
 
-## 폴더 구조
+host 앱은 **Kollus SDK를 직접 import하지 않습니다.** 이 패키지의 product만 사용하세요.
 
-```text
-videoplayer-ios-ms/
-├── Package.swift
-├── Project.swift                # Tuist 매니페스트 (Example 앱)
-├── Sources/
-│   ├── VideoPlayerModule/
-│   │   ├── Core/
-│   │   │   ├── Domain/          # PlaybackSource, PlaybackState, PlayerEvent 등
-│   │   │   ├── Internal/        # PlayerCore actor
-│   │   │   └── UseCase/         # start/control/observe use case
-│   │   ├── Engine/
-│   │   │   ├── PlayerEngineAdapter.swift
-│   │   │   ├── Native/          # AVPlayerAdapter
-│   │   │   └── Kollus/          # Kollus adapter, bootstrap, downloads, SDK bridge
-│   │   └── ShellSupport/        # wiring, render surface, lifecycle/audio helper
-│   └── VideoPlayerModuleExports/
-│       └── VideoPlayerModule.swift
-├── Example/                     # Tuist iOS 데모 앱 (자세히는 아래 "Example 앱" 섹션)
-│   ├── Resources/
-│   │   └── kollus.local.plist.example   # Kollus 자격증명 + DRM/chat 옵션 템플릿
-│   └── Sources/
-│       ├── App/                 # AppDelegate / SceneDelegate
-│       ├── Root/                # RootViewController (URL 입력 + 데모 진입 메뉴)
-│       ├── AVPlayer/            # Native AVPlayer 셸 데모
-│       └── Kollus/              # Kollus 환경/플레이어/다운로드/Observer 로그
-├── Tests/
-│   └── VideoPlayerModuleTests/
-├── Binaries/                    # Kollus/PallyCon XCFramework 위치
-├── Vendor/                      # vendor 원본 산출물 보관 영역
-├── Packaging/                   # binary target packaging 산출물
-├── scripts/                     # packaging/verification script
-└── docs/
-    ├── kollus-sdk-implementation-guide.md
-    ├── kollus-ios-sdk-reference.md
-    ├── kollus-sdk-packaging.md
-    └── blog/
-```
-
-폴더 이름은 레이어를 그대로 드러냅니다. `Core`는 SDK를 모릅니다. `ShellSupport`는 앱 화면과 연결되는 최소한의 접착제만 둡니다. `Engine/Native`와 `Engine/Kollus`는 같은 계약을 구현하지만 서로의 구현을 공유하지 않습니다.
-
-## 핵심 타입을 읽는 순서
-
-처음 보는 사람은 아래 순서로 읽는 것이 가장 빠릅니다.
-
-1. `PlaybackSource`: 어떤 영상을 틀 것인지 표현합니다. 현재는 `.url(URL)`과 `.kollus(mediaContentKey:)`가 있습니다.
-2. `PlaybackCommand`: 재생 중 사용자가 내리는 명령입니다.
-3. `PlaybackState` / `PlayerEvent`: 화면이 관찰해야 할 출력입니다.
-4. `PlayerFeaturePolicy`: 앱이 허용하는 정책입니다. 예를 들어 최대 배속이나 백그라운드 재생 허용 여부가 여기에 있습니다.
-5. `EngineCapabilities`: 엔진이 실제로 지원하는 기능입니다.
-6. `PlayerCore`: 정책과 엔진 기능을 확인한 뒤 명령을 실행하는 상태 머신입니다.
-7. `PlayerPlaybackEngine`: 모든 엔진이 지켜야 하는 최소 계약입니다.
-
-명령 흐름은 다음과 같습니다.
-
-```mermaid
-sequenceDiagram
-    participant Shell as Shell / ViewModel
-    participant UseCase as UseCase
-    participant Core as PlayerCore
-    participant Engine as PlayerEngineAdapter
-
-    Shell->>UseCase: execute(command)
-    UseCase->>Core: execute(command)
-    Core->>Engine: async throws engine call
-    Engine-->>Core: PlayerEvent
-    Core-->>Shell: PlaybackState stream
-```
-
-## 사용법
-
-### 1. URL 재생
-
-일반 URL/HLS 재생은 `AVPlayerAdapter`를 사용합니다.
+## Quickstart 1 — 일반 URL/HLS 재생
 
 ```swift
-import Foundation
 import VideoPlayerCore
 import VideoPlayerEngineNative
 import VideoPlayerShellSupport
 
+// 1) 모듈 조립
 let engine = AVPlayerAdapter()
 let module = await PlayerModuleWiring.makeModule(
     engine: engine,
     engineCapabilities: AVPlayerAdapter.capabilities
 )
 
+// 2) 상태 구독 (화면 갱신)
 Task {
-    for await state in await module.observePlaybackStateUseCase.stateStream {
-        print("player state:", state)
+    for await state in module.core.stateStream {
+        // state.status: .idle / .preparing / .readyToPlay / .playing / .paused / .buffering / .finished / .failed
+        // state.currentTime, state.duration, state.isBuffering
+        render(state)
     }
 }
 
-try await module.startPlaybackUseCase.execute(
-    source: .url(videoURL),
-    policy: .default
-)
+// 3) 재생
+try await module.core.start(source: .url(videoURL), policy: .default)
+try await module.core.execute(command: .play)
 
-try await module.controlPlaybackUseCase.execute(command: .play)
+// 4) 화면 부착 — PlayerRenderSurface를 구현한 view를 엔진에 bind
+await module.engine.bind(renderSurface: myRenderSurfaceView)
+
+// 5) 종료
+try await module.core.execute(command: .stop)
+await module.engine.unbindRenderSurface()
+await module.core.dispose()
 ```
 
-화면에 붙일 때는 `PlayerRenderSurface`를 구현한 view를 만들고, 엔진의 `bind(renderSurface:)`를 호출합니다. 앱 생명주기와 오디오 세션 처리는 `PlayerLifecycleCoordinator`, `PlayerAudioSessionManager`를 통해 Shell 쪽에서 조합합니다.
+`PlayerRenderSurface`는 `containerView: UIView` 하나만 필수인 프로토콜입니다. 직접 구현해도 되고, `VideoPlayerSkin`의 `PlayerRenderSurfaceView`를 그대로 써도 됩니다.
 
-### 2. Kollus 재생
+## Quickstart 2 — Kollus 재생 (DRM/다운로드)
 
-Kollus는 SDK 초기화 값과 DRM/다운로드 설정이 필요하므로 `KollusEnvironment`를 먼저 구성합니다. 앱은 Remote Config나 서버에서 받은 값을 `KollusEnvironment`로 넘기고, 이 패키지는 그 값을 소비만 합니다.
+Kollus는 SDK 초기화 값이 필요하므로 `KollusEnvironment`를 먼저 구성합니다. 앱은 서버/Remote Config에서 받은 값을 넘기기만 하고, 검증과 SDK 주입은 패키지가 합니다.
 
 ```swift
-import Foundation
 import VideoPlayerCore
 import VideoPlayerEngineKollus
 
+// 1) 환경 구성 (앱 자격증명 + 옵션)
 let environment = KollusEnvironment(
     applicationKey: applicationKey,
     applicationBundleID: bundleID,
     applicationExpireDate: expireDate,
-    storagePath: storageURL,
+    storagePath: storageURL,          // 다운로드/캐시 디렉터리 (실재해야 함)
     cacheSizeMB: 1024,
-    drm: drmConfiguration,
-    observer: observer,
-    diagnostics: diagnostics
+    drm: KollusDRMConfiguration(
+        fpsCertificateURL: certURL,   // PallyCon FairPlay 인증서
+        fpsDRMURL: drmURL
+    ),
+    observer: observer,               // DRM/LMS 콜백 수신 (선택)
+    diagnostics: diagnostics          // 진단 로그 sink (선택)
 )
+try environment.validate()            // 잘못된 설정을 일찍 잡는다
 
-let factory = KollusPlayerModuleFactory(
-    environment: environment,
-    observer: observer,
-    diagnostics: diagnostics
-)
+// 2) 팩토리 생성 — 화면 여러 개가 같은 factory를 공유해야 함 (인증 1회)
+let factory = KollusPlayerModuleFactory(environment: environment)
 
+// 3) 모듈 생성 후 사용법은 Quickstart 1과 동일
 let module = await factory.makeModule()
-
-try await module.startPlaybackUseCase.execute(
-    source: .kollus(mediaContentKey: mediaContentKey),
-    policy: .default
-)
-
-try await module.controlPlaybackUseCase.execute(command: .play)
+try await module.core.start(source: .mediaKey(mediaContentKey), policy: .default)
+try await module.core.execute(command: .play)
 ```
 
-#### `KollusEnvironment` 파라미터
+주의: Kollus SDK는 **시뮬레이터를 지원하지 않습니다.** 시뮬레이터 빌드에는 `UnsupportedEnvironmentEngine`을 대신 끼우세요.
 
-`KollusEnvironment`는 Kollus SDK bootstrap, storage/download 설정, 플레이어 뷰 옵션, DRM/채팅/진단 hook을 한 곳에 모으는 host 앱 주입 값입니다. 필수 값은 `validate()`에서 검증되며, `applicationKey`와 `applicationBundleID`는 비어 있으면 안 되고 `applicationExpireDate`는 현재 시각보다 미래여야 합니다.
+```swift
+#if targetEnvironment(simulator)
+let module = await PlayerModuleWiring.makeModule(
+    engine: UnsupportedEnvironmentEngine(message: "Kollus 재생은 실기기에서만 지원됩니다."),
+    engineCapabilities: []
+)
+#else
+let module = await factory.makeModule()
+#endif
+```
+
+### KollusEnvironment 파라미터
+
+필수 값은 `validate()`에서 검증됩니다. `applicationKey`/`applicationBundleID`는 비어 있으면 안 되고, `applicationExpireDate`는 현재 시각보다 미래여야 합니다.
 
 | 파라미터 | 기본값 | 설명 |
 | --- | --- | --- |
-| `applicationKey` | 없음 | Kollus SDK storage에 주입되는 앱 인증 키입니다. 빈 문자열이면 `validate()`가 실패합니다. |
-| `applicationBundleID` | 없음 | Kollus SDK에 전달할 host 앱 bundle identifier입니다. 빈 문자열이면 `validate()`가 실패합니다. |
-| `applicationExpireDate` | 없음 | 앱 인증 키 만료 시각입니다. 현재 시각보다 과거이거나 같으면 `validate()`가 실패합니다. |
-| `keychainGroup` | `nil` | Kollus SDK storage가 사용할 keychain access group입니다. 앱 그룹/확장 공유가 필요할 때만 지정합니다. |
-| `storagePath` | `nil` | Kollus 다운로드와 캐시가 저장될 디렉터리 URL입니다. 값이 있으면 실제 존재하는 디렉터리여야 합니다. |
-| `cacheSizeMB` | `nil` | Kollus storage 캐시 한도(MB)입니다. 값이 있으면 1 이상이어야 합니다. |
-| `backgroundDownload` | `false` | Kollus storage의 백그라운드 다운로드 사용 여부입니다. |
-| `networkTimeoutSeconds` | `nil` | Kollus storage 네트워크 timeout(초)입니다. 값이 있을 때만 SDK에 적용됩니다. |
-| `networkRetry` | `nil` | 네트워크 timeout 설정과 함께 전달되는 retry 횟수입니다. `networkTimeoutSeconds`가 있을 때만 적용되며, 생략하면 `0`으로 전달됩니다. |
-| `aiPlaybackRateEnabled` | `false` | Kollus player view의 AI 배속 기능 사용 여부입니다. |
-| `hardwareDecoderPreferred` | `true` | Kollus player view decoder 설정입니다. `true`면 hardware decoder 선호 값으로 전달합니다. |
-| `customSkinJSON` | `nil` | Kollus player view에 전달할 custom skin JSON 문자열입니다. |
-| `pauseOnForeground` | `false` | 앱이 foreground로 전환될 때 Kollus player view가 일시정지할지 결정합니다. |
-| `audioBackgroundPlayPolicy` | `false` | Kollus player view의 백그라운드 오디오 재생 정책입니다. `true`면 모듈 capability에 `.continuesWithoutSurface`도 추가됩니다. |
-| `drm` | 빈 `KollusDRMConfiguration()` | FairPlay 인증서 URL, DRM URL, SDK에 전달할 추가 DRM 파라미터를 담습니다. 평문 컨텐츠만 재생한다면 기본값을 사용할 수 있습니다. |
-| `chat` | `nil` | 라이브 채팅에 필요한 room/user/server profile입니다. 라이브 채팅을 사용하지 않으면 생략합니다. |
-| `extraDrmParameters` | `[:]` | host 앱이 별도 DRM 확장 값을 보존해야 할 때 쓰는 environment-level 슬롯입니다. 현재 SDK player view로 직접 주입되는 값은 `drm.extraParameters`입니다. |
-| `observer` | `nil` | Kollus storage/download/player 이벤트를 host 앱으로 전달할 observer입니다. |
-| `diagnostics` | `nil` | SDK bootstrap, playback, download 흐름의 진단 로그를 받을 sink입니다. |
+| `applicationKey` | 없음 | Kollus SDK storage에 주입되는 앱 인증 키 |
+| `applicationBundleID` | 없음 | SDK에 전달할 host 앱 bundle identifier |
+| `applicationExpireDate` | 없음 | 앱 인증 키 만료 시각 |
+| `keychainGroup` | `nil` | SDK storage가 사용할 keychain access group |
+| `storagePath` | `nil` | 다운로드/캐시 디렉터리 URL — 실재하는 디렉터리여야 함 |
+| `cacheSizeMB` | `nil` | storage 캐시 한도(MB), 1 이상 |
+| `backgroundDownload` | `false` | 백그라운드 다운로드 사용 여부 |
+| `networkTimeoutSeconds` | `nil` | storage 네트워크 timeout(초) |
+| `networkRetry` | `nil` | timeout과 함께 전달되는 retry 횟수 |
+| `aiPlaybackRateEnabled` | `false` | player view AI 배속 기능 |
+| `hardwareDecoderPreferred` | `true` | hardware decoder 선호 여부 |
+| `customSkinJSON` | `nil` | SDK player view custom skin JSON |
+| `pauseOnForeground` | `false` | foreground 복귀 시 일시정지 여부 |
+| `audioBackgroundPlayPolicy` | `false` | 백그라운드 오디오 재생 — `true`면 capability에 `.continuesWithoutSurface` 추가 |
+| `drm` | 빈 설정 | FairPlay 인증서/DRM URL + 추가 파라미터 (아래 표) |
+| `observer` | `nil` | storage/download/player 이벤트를 host로 전달 |
+| `diagnostics` | `nil` | bootstrap/playback/download 진단 로그 sink |
 
-`drm`에는 FairPlay 값을 아래처럼 분리해서 넣습니다.
-
-| `KollusDRMConfiguration` 파라미터 | 설명 |
+| `KollusDRMConfiguration` | 설명 |
 | --- | --- |
-| `fpsCertificateURL` | Kollus player view의 `fpsCertURL`로 전달되는 FairPlay 인증서 URL입니다. |
-| `fpsDRMURL` | Kollus player view의 `fpsDrmURL`로 전달되는 FairPlay DRM URL입니다. |
-| `extraParameters` | JSON 문자열로 직렬화되어 Kollus player view의 `extraDrmParam`으로 전달되는 추가 DRM 파라미터입니다. |
+| `fpsCertificateURL` | player view `fpsCertURL`로 전달되는 FairPlay 인증서 URL |
+| `fpsDRMURL` | player view `fpsDrmURL`로 전달되는 DRM URL |
+| `extraParameters` | JSON 직렬화되어 `extraDrmParam`으로 전달되는 추가 파라미터 |
 
-같은 `KollusPlayerModuleFactory`에서 만든 모듈들은 하나의 `KollusSessionBootstrapper`와 `KollusDownloadCenter`를 공유합니다. 다운로드 목록이나 오프라인 스냅샷은 `factory.downloads`에서 접근합니다.
+### 다운로드 / 오프라인 재생
+
+같은 factory의 모듈들은 하나의 `KollusDownloadCenter`를 공유합니다. `factory.downloads`로 접근합니다.
 
 ```swift
-if let downloads = factory.downloads {
-    Task {
-        for await contents in downloads.contents {
-            print("download snapshots:", contents)
+guard let downloads = factory.downloads else { return }
+
+// 목록 구독 — 진행률/라이선스 상태 실시간 갱신
+Task {
+    for await contents in downloads.contents {
+        updateDownloadList(contents)   // [DownloadedContent]
+    }
+}
+
+// 완료/실패 이벤트 구독
+Task {
+    for await event in downloads.events {
+        switch event {
+        case .completed(let contentID):      showToast("다운로드 완료")
+        case .failed(let contentID, let error): showToast(error.localizedDescription)
+        case .licenseRenewalProgressed(let current, let total): updateProgress(current, total)
+        case .licenseRenewalFailed(let error):  handle(error)
         }
+    }
+}
+
+// 다운로드 사이클
+let contentID = try await downloads.resolve(contentURL: contentURL)
+try await downloads.startDownload(contentID: contentID)
+// …
+try await downloads.renewLicenses(scope: .expiredOnly)   // 라이선스 갱신
+
+// 오프라인 재생 — DownloadedContent.id를 그대로 source로
+try await module.core.start(source: .mediaKey(contentID), policy: .default)
+```
+
+재생 전에 `DownloadedContent.validateOfflinePlayability()`로 라이선스 만료를 미리 확인할 수 있습니다 (Kollus 어댑터도 prepare 시 자동으로 검사합니다).
+
+## 플레이어 UI — VideoPlayerSkin
+
+플레이어 컨트롤 UI를 직접 만들 필요 없이 `AssembledPlayerSkin`을 조립해 쓸 수 있습니다. Skin은 엔진을 모르며, 두 타입으로만 통신합니다: 상태는 `render(PlayerSkinState)`로 넣고, 사용자 입력은 `onAction(PlayerSkinAction)`으로 받습니다.
+
+```swift
+import VideoPlayerSkin
+
+let renderSurfaceView = PlayerRenderSurfaceView()
+let skin = AssembledPlayerSkin(blueprint: .default)   // 기본 구성
+
+// 뷰 계층: 아래 → 위 = 영상 → 컨트롤
+view.addSubview(renderSurfaceView)
+view.addSubview(skin)
+
+// 1회 설정
+skin.configure(title: "강의 제목", maxPlaybackRate: 2.0)
+
+// 사용자 입력 → 명령
+skin.onAction = { [weak self] action in
+    guard let self else { return }
+    switch action {
+    case .togglePlayPause:      Task { try await self.module.core.execute(command: self.isPlaying ? .pause : .play) }
+    case .seekEnded(let time):  Task { try await self.module.core.execute(command: .seek(to: time)) }
+    case .rateSelected(let r):  Task { try await self.module.core.execute(command: .setPlaybackRate(r)) }
+    case .closeRequested:       self.dismiss(animated: true)
+    default: break
+    }
+}
+
+// 상태 → UI
+Task {
+    for await state in module.core.stateStream {
+        skin.render(PlayerSkinState(playbackState: state, /* rate, layoutMode 등 */))
+    }
+}
+```
+
+버튼 구성을 바꾸려면 Blueprint를 변형합니다. 슬롯 9곳에 Block(UI 조각)을 끼우는 선언적 방식입니다.
+
+```swift
+var blueprint = PlayerSkinBlueprint.default
+blueprint.blocks[.topCenter, default: []].append { MyCustomBadgeBlock() }
+let skin = AssembledPlayerSkin(blueprint: blueprint)
+```
+
+엔진이 지원하지 않는 기능의 버튼은 `module.availableFeatures`(`PlayerFeatureAvailability`)를 보고 숨기세요. 자세한 조립 모델은 [HANDOVER 8편](docs/HANDOVER/08-skin.md)에 있습니다.
+
+## 정책과 기능 협상
+
+앱이 허용하는 것(`PlayerFeaturePolicy`)과 엔진이 지원하는 것(`EngineCapabilities`)은 `PlayerCore`가 협상합니다.
+
+```swift
+let policy = PlayerFeaturePolicy(
+    allowsBackgroundPlayback: true,   // 엔진이 .continuesWithoutSurface를 지원할 때만 유효
+    maxPlaybackRate: 2.0,
+    allowsAutoplay: true,
+    skipInterval: 10,
+    nextEpisodeButtonLeadTime: 30
+)
+try await module.core.start(source: source, policy: policy)
+```
+
+협상 결과 정책이 낮춰지면 `eventStream`에 `.policyDowngraded(reason:)` 이벤트가 옵니다. 배속은 `maxPlaybackRate`로 자동 clamp됩니다.
+
+## 생명주기와 오디오 세션
+
+백그라운드 전환·전화 인터럽션 처리는 `PlayerLifecycleCoordinator`로, 오디오 세션은 `PlayerAudioSessionManager`(reference counting)로 처리합니다.
+
+```swift
+import VideoPlayerShellSupport
+
+// 화면 등장 시
+try PlayerAudioSessionManager.shared.acquire(category: .playback, mode: .moviePlayback)
+
+let coordinator = PlayerLifecycleCoordinator(
+    core: module.core,
+    policy: policy,
+    engineCapabilities: module.engineCapabilities,
+    onEvent: { event in /* .policyDowngraded 알림 등 */ }
+)
+coordinator.start()
+
+// 화면 퇴장 시
+coordinator.stop()
+try PlayerAudioSessionManager.shared.release()
+```
+
+## 에러 처리
+
+모든 엔진 명령은 `async throws`이며, 실패는 벤더 중립 `PlayerError`로 옵니다. 받는 경로가 두 가지라는 점을 기억하세요.
+
+```swift
+// ① 명령 경로 — 사용자가 시킨 일이 즉시 실패
+do {
+    try await module.core.execute(command: .play)
+} catch let error as PlayerError {
+    switch error {
+    case .licenseRenewalRequired:  showRenewButton()       // 갱신하면 복구 가능
+    case .licenseExpired:          showExpiredNotice()
+    case .networkError:            showRetry()
+    case .deviceNotSupported:      showUnsupportedNotice()
+    default:                       showToast(error.localizedDescription)
+    }
+}
+
+// ② 신호 경로 — 재생 중 비동기로 발생한 문제
+for await state in module.core.stateStream {
+    if case .failed(let error) = state.status {
+        showErrorScreen(error)
     }
 }
 ```
 
 ## Example 앱
 
-라이브러리만으로는 화면 흐름·SDK 호출 순서·세부 컨트롤 동작을 가늠하기 어렵습니다. 그래서 같은 레포에 Tuist 기반의 iOS 데모 앱을 함께 둡니다. 라이브러리는 host 앱(SmartLearning)의 wrapper 없이 **`PlayerModuleWiring.makeModule` / `KollusPlayerModuleFactory`를 직접 호출**하는 가장 얇은 형태로 사용합니다.
-
-### 부트스트랩
+같은 레포의 Tuist 기반 데모 앱이 전체 와이어링(모듈 + Skin + 제스처 + 다운로드 + Observer 로그)을 보여줍니다.
 
 ```bash
 # 1) Kollus 자격증명 plist 준비 (gitignored)
 cp Example/Resources/kollus.local.plist.example Example/Resources/kollus.local.plist
 # applicationKey / applicationBundleID / applicationExpireDate / mediaContentKey 입력
-# (선택) fpsCertificateURL / fpsDRMURL / liveChat* 입력
 
-# 2) Xcode 프로젝트 생성
+# 2) 생성 + 실행
 tuist generate
-
-# 3) VideoPlayerExample scheme으로 실행
-open VideoPlayerExample.xcworkspace
+open VideoPlayerExample.xcworkspace   # VideoPlayerExample scheme
 ```
 
-`Example/Resources/kollus.local.plist`는 `.gitignore`에 등록되어 있어 자격증명이 git history에 남지 않습니다. 템플릿은 `.example`을 커밋된 채로 둡니다.
-
-### 데모 화면
-
-| 진입 | 기능 |
+| 화면 | 보여주는 것 |
 | --- | --- |
-| **RootViewController** | 일반 URL / 샘플 HLS 2종(Apple BipBop, Big Buck Bunny) / Kollus 데모 진입 메뉴 |
-| **AVPlayer 셸** | `AVPlayerAdapter` + `PlayerModuleWiring.makeModule` 호출. Play / Pause / Stop 만의 최소 컨트롤 |
-| **Kollus 데모 (KollusConfigViewController)** | `kollus.local.plist` 로드 상태 표시, mediaContentKey 입력, Player / Download / Observer 로그 진입 |
-| **KollusPlayerShellViewController** | smartlearning Learning Shell 시각적 동일 UI: 상태/시간/시킹 슬라이더, 배속 segmented control, AI 자막 토글, 자막 크기 stepper, 화면 잠금, 에러 라벨. 내부는 `KollusPlayerModuleFactory.makeModule()` + `KollusPlayerAdapter` 직접 호출 |
-| **KollusDownloadListViewController** | `KollusDownloadCenter.contents` AsyncStream 구독. 다운로드 start / cancel / remove + 고급 액션(clearStreamingCache, updateDRM, sendStoredLMS, setBackgroundDownload) |
-| **KollusObserverLogViewController** | `KollusObserver`(DRM resolve / LMS post / stored LMS) + `KollusDiagnosticsSink`(23종 `KollusEngineSignal`)를 in-memory ring buffer(max 500 entries)에 합쳐 시간순 표시. Clear / Marker 액션 |
+| Root | URL 입력 + 샘플 HLS + Kollus 데모 진입 |
+| Player | 모듈 + Skin + 제스처 풀 와이어링 (따라 만들기 좋은 레퍼런스) |
+| Download | `KollusDownloadCenter` 구독 + 다운로드/라이선스 액션 |
+| Observer 로그 | DRM/LMS/진단 신호를 시간순 표시 — 실기기 디버깅의 출발점 |
 
-같은 `KollusPlayerModuleFactory` 인스턴스를 Player / Download / Log 화면이 공유하므로, factory가 보유한 `KollusSessionBootstrapper` + `KollusDownloadCenter` + Observer chain이 단일 인스턴스로 묶입니다. `KollusConfigViewController.ensureFactory()`가 그 lazy 보장 지점입니다.
-
-### 한계
-
-데모는 라이브러리 API 와이어링과 화면 흐름을 보여줍니다. 다음 항목은 사용자 환경에 의존합니다.
-
-- 실제 Kollus 재생은 유효한 `applicationKey` + 라이센스가 만료되지 않은 `mediaContentKey`가 필요합니다.
-- DRM 데모는 PallyCon FairPlay 인증서 URL과 라이센스가 적용된 콘텐츠가 있어야 의미가 있습니다.
-- Live chat은 room/server/user 4개 필드를 모두 채워야 활성화되며, 실 채팅 서버 백엔드가 동작해야 합니다.
-
-위 환경이 갖춰지지 않으면 화면은 정상적으로 push 되지만 SDK가 에러를 반환하고, 그 흐름은 Observer 로그 화면에서 그대로 관측할 수 있습니다.
-
-## 왜 `async throws`인가
-
-재생 명령은 겉으로는 단순하지만 실제로는 실패할 수 있습니다.
-
-- `prepare`는 네트워크, DRM, source 형식, SDK 초기화에 실패할 수 있습니다.
-- `play`와 `pause`도 엔진이 아직 준비되지 않았거나 SDK가 명령을 거부할 수 있습니다.
-- `seek`는 target time 보정, pending seek 취소, SDK completion 실패가 있습니다.
-- `stop`은 surface detach, item cleanup, SDK session 정리와 연결됩니다.
-
-그래서 `PlayerPlaybackEngine`은 `prepare`, `play`, `pause`, `seek`, `stop`을 모두 `async throws`로 둡니다. 앱은 실패를 이벤트나 사용자 메시지로 바꿀 수 있고, 테스트는 실패 경로를 명확히 검증할 수 있습니다.
-
-## Kollus SDK 운영 규칙
-
-Kollus/PallyCon SDK는 일반 SPM source가 아니라 binary target으로 배포합니다. 이 저장소에서는 다음 규칙을 지킵니다.
-
-- vendor 산출물은 직접 수정하지 않습니다.
-- XCFramework packaging은 스크립트로 재현 가능해야 합니다.
-- SDK 교체 시 checksum과 packaging 문서를 함께 갱신합니다.
-- SmartLearning 앱 코드는 Kollus SDK를 직접 import하지 않고 이 패키지의 engine/product만 사용합니다.
-
-자세한 절차는 [docs/kollus-sdk-packaging.md](docs/kollus-sdk-packaging.md)를 기준으로 합니다. Kollus 공식 문서에서 정리한 API/옵션 요약은 [docs/kollus-ios-sdk-reference.md](docs/kollus-ios-sdk-reference.md)에 있습니다.
-
-Kollus SDK를 host 앱에서 실제로 어떻게 붙이는지, 어떤 기능을 사용할 수 있는지, 어떤 기능이 host 책임으로 남는지는 [docs/kollus-sdk-implementation-guide.md](docs/kollus-sdk-implementation-guide.md)에 따로 정리했습니다.
+실제 Kollus 재생·DRM·다운로드는 유효한 자격증명과 **실기기**가 필요합니다.
 
 ## 테스트와 검증
 
-기본 검증은 Swift Package 테스트입니다.
-
 ```bash
-swift test
-```
+swift test                                # 전체 테스트 (Swift Testing, macOS 가능)
+swift test --filter PlaybackStateReducerTests
+./scripts/verify_kollus_packaging.sh      # Kollus binary packaging 변경 시
 
-Kollus binary packaging을 건드렸다면 packaging 검증도 같이 실행합니다.
-
-```bash
-./scripts/verify_kollus_packaging.sh
-```
-
-Example 앱을 함께 검증하려면 Tuist 생성 후 시뮬레이터 빌드를 한 번 돌립니다.
-
-```bash
+# Example 앱 빌드 검증
 tuist generate
-xcodebuild build \
-    -workspace VideoPlayerExample.xcworkspace \
-    -scheme VideoPlayerExample \
-    -configuration Debug \
-    -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild build -workspace VideoPlayerExample.xcworkspace -scheme VideoPlayerExample \
+    -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
-Kollus 실제 재생, DRM, 다운로드 완료, 백그라운드 다운로드는 시뮬레이터만으로 닫기 어렵습니다. 해당 변경은 실기기 검증 결과를 별도로 남겨야 합니다.
+Kollus 실제 재생/DRM/다운로드는 시뮬레이터로 닫기 어려우므로, 해당 변경은 실기기 검증 결과를 별도로 남깁니다.
 
 ## 이 패키지가 하지 않는 일
 
-이 패키지는 플레이어 엔진과 공통 상태 흐름에 집중합니다. 다음 책임은 host 앱이 가집니다.
+다음은 host 앱 책임입니다.
 
 - 화면 전환, 강의실 라우팅, navigation 정책
-- Firebase Remote Config fetch와 rollout 결정
-- LMS 진도 전송, 학습 분석, 비즈니스 이벤트
-- 사용자-facing 문구와 에러 표시 방식
+- Remote Config fetch와 rollout 결정
+- LMS 진도 전송, 학습 분석, 비즈니스 이벤트 (`KollusObserver` hook으로 전달만 받음)
+- 사용자-facing 에러 문구와 표시 방식
 - 앱별 feature flag와 A/B 테스트
 
-경계가 분명해야 엔진을 바꿔도 앱 전체가 흔들리지 않습니다. 이 저장소의 목표는 “모든 플레이어 기능을 한 파일에 모으는 것”이 아니라, 앱이 의도를 말하면 엔진이 안전하게 수행하는 구조를 유지하는 것입니다.
+## 더 읽을 것
+
+| 문서 | 내용 |
+| --- | --- |
+| [docs/HANDOVER/](docs/HANDOVER/README.md) | **인수인계 시리즈** — 내부 구조, 설계 배경, 플로우, 작업 레시피 (유지보수자 필독) |
+| [docs/kollus-sdk-implementation-guide.md](docs/kollus-sdk-implementation-guide.md) | Kollus SDK를 host에 붙이는 방법과 책임 경계 |
+| [docs/kollus-ios-sdk-reference.md](docs/kollus-ios-sdk-reference.md) | Kollus 공식 문서 기반 API/옵션 요약 |
+| [docs/kollus-sdk-packaging.md](docs/kollus-sdk-packaging.md) | SDK binary packaging / 교체 절차 |
+| [docs/example-app-rebuild-plan.md](docs/example-app-rebuild-plan.md) | Example 앱 설계·구현 상태·실기기 QA 체크리스트 |

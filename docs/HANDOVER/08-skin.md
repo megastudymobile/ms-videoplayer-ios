@@ -1,0 +1,230 @@
+# 8편 — Skin: 플레이어 UI 조립 시스템
+
+> [← 7편: ShellSupport](07-shell-support.md) · [시리즈 목차](README.md) · [다음: 전체 플로우 →](09-full-flow.md)
+
+`Sources/VideoPlayerSkin/`은 재사용 가능한 플레이어 UI입니다. Rx/ReactorKit/SnapKit 의존이 **없고**, 엔진도 모릅니다. host와는 두 타입으로만 통신합니다.
+
+- **들어가는 것**: `PlayerSkinState` — "지금 이렇게 생겨야 해" (host → skin, `render()` 호출)
+- **나오는 것**: `PlayerSkinAction` — "사용자가 이걸 눌렀어" (skin → host, `onAction` 클로저)
+
+```mermaid
+flowchart LR
+    Host[Host 화면] -- "skin.render(PlayerSkinState)" --> Skin[AssembledPlayerSkin]
+    Skin -- "onAction(PlayerSkinAction)" --> Host
+    Host -- PlaybackCommand --> Core[PlayerCore]
+    Core -- PlaybackState --> Host
+```
+
+즉 Skin은 **단방향 데이터 흐름**입니다. Skin 내부에 재생 상태가 없습니다. host가 `PlaybackState`를 `PlayerSkinState`로 번역해 매번 통째로 render합니다.
+
+## 조립 모델: Blueprint → Slot → Block
+
+화면 구성은 레고와 같습니다.
+
+| 개념 | 역할 | 파일 |
+| --- | --- | --- |
+| `PlayerSkinSlot` | 화면의 고정 영역 9곳 (topLeading, centerControls, bottomBar…) | `Assembly/PlayerSkinSlot.swift` |
+| `PlayerSkinBlock` | 슬롯에 끼우는 UI 조각 (재생 버튼, 진행바…) | `Assembly/PlayerSkinBlock.swift` |
+| `PlayerSkinBlueprint` | "어느 슬롯에 어떤 블록을, 어떤 모드에서 보여줄지" 선언 | `Assembly/PlayerSkinBlueprint.swift` |
+| `AssembledPlayerSkin` | Blueprint를 소비해 실제 뷰 계층을 조립한 결과물 | `Assembly/AssembledPlayerSkin.swift` |
+
+슬롯 배치를 그림으로:
+
+```text
+┌─────────────────────────────────────────────┐
+│ topLeading      topCenter       topTrailing │  ← 닫기 / 제목 / 잠금·더보기
+│                                             │
+│ leftRail      centerControls      rightRail │  ← 구간반복 / 재생·스킵 / (옵션)
+│                          floatingCenterTrailing │  ← 배속 패널
+│                                             │
+│ sectionRepeatRange                          │
+│ bottomBar                 floatingBottomTrailing │  ← 진행바 / 플로팅 버튼
+└─────────────────────────────────────────────┘
+```
+
+기본 Blueprint는 이렇게 선언되어 있습니다.
+
+```swift
+// Sources/VideoPlayerSkin/Assembly/PlayerSkinBlueprint.swift
+static var `default`: PlayerSkinBlueprint {
+    PlayerSkinBlueprint(
+        blocks: [
+            .topLeading:      [{ CloseButtonBlock() }],
+            .topCenter:       [{ TitleBlock() }],
+            .topTrailing:     [{ TopMenuExtraControlsBlock() }, { DisplayScaleBlock() },
+                               { LockButtonBlock() }, { MoreButtonBlock() }],
+            .centerControls:  [{ CenterPlaybackControlsBlock() }],
+            .leftRail:        [{ SectionRepeatBlock() }, { ExtraControlsRailBlock() }, { SettingButtonBlock() }],
+            .bottomBar:       [{ ProgressBarBlock() }],
+            .sectionRepeatRange:     [{ SectionRepeatRangeBlock() }],
+            .floatingCenterTrailing: [{ RateControlBlock() }],
+            .floatingBottomTrailing: [{ ExtraFloatingBlock() }]
+        ],
+        visibleSlots: [
+            .verticalSplit:   [.topLeading, .topTrailing, .centerControls, .bottomBar /* … */],
+            .horizontalSplit: [/* … */],
+            .fullScreen:      Set(PlayerSkinSlot.allCases)   // 풀스크린은 전부 노출
+        ]
+    )
+}
+```
+
+host는 기본 Blueprint를 변형해서 씁니다 — 블록을 빼거나 끼우거나:
+
+```swift
+// Example 앱의 실제 커스터마이즈
+extension PlayerSkinBlueprint {
+    @MainActor static var example: PlayerSkinBlueprint {
+        var blueprint = PlayerSkinBlueprint.default
+        blueprint.blocks[.topCenter, default: []].append { LiveBadgeBlock() }   // 라이브 배지 추가
+        return blueprint
+    }
+}
+
+let skin = AssembledPlayerSkin(blueprint: .example)
+```
+
+## 통신 타입 둘
+
+```swift
+// Sources/VideoPlayerSkin/PlayerSkinAction.swift — skin → host
+public enum PlayerSkinAction: Equatable {
+    case closeRequested
+    case togglePlayPause
+    case seekBegan                          // 스크러버 터치 시작
+    case seekPreviewChanged(TimeInterval)   // 드래그 중
+    case seekEnded(TimeInterval)            // 릴리스
+    case skipBackward, skipForward
+    case rateSelected(Double)
+    case rateStepUp, rateStepDown
+    case ratePanelRequested
+    case toggleDisplayScaling, toggleScreenMode
+    case holdToggleRequested                // 화면 잠금
+    case sectionRepeatToggleRequested
+    case extraControlTapped(String)         // host가 정의한 추가 버튼
+    // …
+}
+
+// Sources/VideoPlayerSkin/PlayerSkinState.swift — host → skin
+public struct PlayerSkinState: Equatable {
+    public var isPlaying: Bool
+    public var isLoading: Bool
+    public var currentTime: TimeInterval
+    public var duration: TimeInterval
+    public var progress: Float              // 0~1
+    public var playbackRate: Double
+    public var controlsVisible: Bool        // 컨트롤 표시/자동숨김
+    public var isFullScreenMode: Bool
+    public var displayScaleMode: PlayerDisplayScaleMode
+    public var isLocked: Bool               // 화면 잠금
+    public var sectionRepeat: SectionRepeatState
+    public var layoutMode: PlayerSkinLayoutMode  // verticalSplit / horizontalSplit / fullScreen
+    // …
+}
+```
+
+## Block 하나 해부: ProgressBarBlock
+
+Block 구현 패턴의 표준 예시입니다. 모든 Block이 이 모양입니다: **UIView + `PlayerSkinBlock` 프로토콜, `render`로 상태 반영, `onAction`으로 입력 발행.**
+
+```swift
+// Sources/VideoPlayerSkin/Blocks/ProgressBarBlock.swift
+public final class ProgressBarBlock: UIView, PlayerSkinBlock {
+    public var view: UIView { self }
+    public var onAction: ((PlayerSkinAction) -> Void)?
+
+    private let slider = PlayerPlaybackSlider()
+    private var isSeeking = false
+    // 드래그 중 seek를 너무 자주 보내면 메인스레드 디코드와 thumb 애니메이션이 경쟁
+    // → preview는 throttle, 최종 위치는 touchUp에서 보장
+    private var lastPreviewEmit: CFTimeInterval = 0
+    private static let previewThrottleInterval: CFTimeInterval = 0.12
+
+    // ① 상태 반영 — host가 매 상태 변화마다 호출
+    public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+        slider.minimumTrackTintColor = theme.color(.progressFill)
+        if !isSeeking {                                  // 드래그 중엔 외부 갱신이 thumb을 끌고가지 않게
+            slider.value = state.progress
+            currentTimeLabel.text = PlayerSkinState.formatTime(state.currentTime)
+        }
+        durationLabel.text = PlayerSkinState.formatTime(state.duration)
+        slider.isEnabled = !state.isLocked               // 잠금이면 조작 차단
+    }
+
+    // ② 사용자 입력 → 액션 발행
+    @objc private func seekBegan() {
+        isSeeking = true
+        onAction?(.seekBegan)
+    }
+
+    @objc private func seekChanged() {
+        let time = PlayerSkinState.previewTime(for: slider.value, duration: latestDuration)
+        let now = CACurrentMediaTime()
+        guard now - lastPreviewEmit >= Self.previewThrottleInterval else { return }  // 0.12초 throttle
+        lastPreviewEmit = now
+        onAction?(.seekPreviewChanged(time))
+    }
+
+    @objc private func seekEnded() {
+        isSeeking = false
+        onAction?(.seekEnded(time))                      // 최종 위치는 throttle 무시하고 정확히
+    }
+}
+```
+
+새 Block을 만들 때 체크리스트:
+
+1. `UIView` 상속 + `PlayerSkinBlock` 채택 (`view`, `onAction`, `render(_:theme:)`)
+2. `render`에서 상태/테마만 읽어 그린다 — Block이 자체 상태를 누적하지 않는다 (스크럽 중 `isSeeking` 같은 일시적 입력 상태만 예외)
+3. `state.isLocked`를 존중한다
+4. 색/폰트/아이콘은 직접 하드코딩하지 말고 `theme.color(.role)` / `theme.icon(.name)` 사용
+5. Blueprint에 끼운다
+
+## Theme — 색/폰트/아이콘의 role 시스템
+
+`Theme/` 디렉터리의 `PlayerSkinColorRole`, `PlayerSkinFontRole`, `PlayerSkinIcon`이 시맨틱 role을 정의하고, host가 `PlayerSkinTheme`으로 실제 값을 주입합니다. Block은 role만 알고 실제 색은 모릅니다. 아이콘 에셋은 `Resources/PlayerSkin.xcassets`에 들어 있습니다.
+
+## 오버레이: 자막, 제스처 HUD, 로딩
+
+슬롯 시스템 밖에 전역 오버레이가 몇 개 있습니다.
+
+- `PlayerCaptionView` — 자막 표시. `skin.setCaptionFontSize(_:)`, `setCaptionBottomInset(_:)`
+- `PlayerGestureHUDView` — 더블탭/롱프레스 제스처 피드백. `skin.showGestureHUD(icon:title:)` (2초 자동 숨김)
+- `PlayerLoadingIndicatorView` — `state.isLoading` 기반 로딩 표시
+- `PlayerNowPlayingCenter` — 잠금화면/제어센터 Now Playing 정보 갱신
+
+## host 쪽 와이어링 (요약)
+
+```swift
+let skin = AssembledPlayerSkin(blueprint: .default)
+view.addSubview(skin)   // renderSurfaceView 위에 전체 화면으로
+
+// 1회 설정
+skin.configure(title: "강의 제목", maxPlaybackRate: policy.maxPlaybackRate)
+
+// 액션 라우팅: PlayerSkinAction → PlaybackCommand
+skin.onAction = { [weak self] action in
+    switch action {
+    case .togglePlayPause:       self?.interactor.togglePlayPause()
+    case .seekBegan:             self?.interactor.send(.pause)       // 스크럽 동안 일시정지
+    case .seekEnded(let time):   self?.interactor.send(.seek(to: time)); self?.interactor.send(.play)
+    case .rateSelected(let r):   self?.interactor.send(.setPlaybackRate(r))
+    case .closeRequested:        self?.dismiss(animated: true)
+    // …
+    default: break
+    }
+}
+
+// 상태 반영: PlaybackState → PlayerSkinState → render
+func render(_ playbackState: PlaybackState) {
+    let skinState = PlayerSkinState(playbackState: playbackState, playbackRate: currentRate,
+                                    controlsVisible: controlsVisible, /* … */)
+    skin.render(skinState)
+}
+```
+
+전체 와이어링의 실제 코드는 Example 앱 `PlayerViewController`에 있습니다. → [9편](09-full-flow.md)
+
+---
+
+> [← 7편: ShellSupport](07-shell-support.md) · [시리즈 목차](README.md) · [다음: 전체 플로우 →](09-full-flow.md)
