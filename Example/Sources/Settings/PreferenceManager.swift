@@ -179,10 +179,6 @@ enum PreferenceManager {
     @UserDefault("useGesture", defaultValue: true)
     static var useGesture: Bool
 
-    /// 더블탭 동작 모드 — false: 재생/일시정지, true: 좌/우 스킵.
-    @UserDefault("player.useDoubleTapSkip", defaultValue: false)
-    static var useDoubleTapSkip: Bool
-
     // MARK: 파생 값 (패키지 적용 지점 — 문서 §6 세팅 매핑)
 
     /// 코덱 설정 → KollusEnvironment.hardwareDecoderPreferred

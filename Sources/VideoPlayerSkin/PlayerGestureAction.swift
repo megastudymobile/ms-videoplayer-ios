@@ -21,6 +21,5 @@ public enum PlayerGestureAction: Equatable {
     case panMove(translation: CGPoint)
     case longPressBegan
     case longPressEnded
-    case doubleTapTogglePlayPause
     case doubleTapSkip(forward: Bool)
 }

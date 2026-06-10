@@ -258,22 +258,16 @@ final class PlayerViewController: UIViewController {
         guard viewModel.state.isLocked == false else { return }
         resetControlsAutoHideTimer()
 
-        if PreferenceManager.useDoubleTapSkip {
-            let isForward = recognizer.location(in: view).x >= view.bounds.midX
-            let interval = TimeInterval(PreferenceManager.seekRangeSeconds)
-            interactor.seekBy(isForward ? interval : -interval)
-            skin.showGestureHUD(
-                icon: isForward ? "PlayerForwardGestureNormal" : "PlayerBackwardGestureNormal",
-                title: "\(isForward ? "+" : "-")\(PreferenceManager.seekRangeSeconds)초"
-            )
-        } else {
-            let willPause = viewModel.state.isPlaying
-            interactor.togglePlayPause()
-            skin.showGestureHUD(
-                icon: willPause ? "pause.fill" : "play.fill",
-                title: willPause ? "일시정지" : "재생"
-            )
-        }
+        let delta = PlayerGesturePolicy.doubleTapSeekDelta(
+            locationX: recognizer.location(in: view).x,
+            boundsWidth: view.bounds.width
+        )
+        let isForward = delta > 0
+        interactor.seekBy(delta)
+        skin.showGestureHUD(
+            icon: isForward ? "PlayerForwardGestureNormal" : "PlayerBackwardGestureNormal",
+            title: "\(isForward ? "+" : "-")\(Int(abs(delta)))초"
+        )
     }
 
     @objc private func didLongPressSurface(_ recognizer: UILongPressGestureRecognizer) {
