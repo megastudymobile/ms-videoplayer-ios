@@ -49,7 +49,11 @@ public struct DownloadedContent: Sendable, Hashable, Identifiable {
     public let id: String
     public let title: String
     public let synopsis: String?
+    /// 시크 프리뷰용 이미지 경로 — 벤더에 따라 전 프레임을 타일링한 스프라이트 시트일 수
+    /// 있으므로 단일 포스터가 필요한 곳(NowPlaying artwork 등)에는 `snapshotPath`를 쓴다.
     public let thumbnailPath: String?
+    /// 단일 프레임 스냅샷 이미지 경로.
+    public let snapshotPath: String?
     public let duration: TimeInterval
     /// 이어보기 위치
     public let lastPosition: TimeInterval
@@ -66,6 +70,7 @@ public struct DownloadedContent: Sendable, Hashable, Identifiable {
         title: String = "",
         synopsis: String? = nil,
         thumbnailPath: String? = nil,
+        snapshotPath: String? = nil,
         duration: TimeInterval = 0,
         lastPosition: TimeInterval = 0,
         download: DownloadStatus = .notDownloaded,
@@ -78,6 +83,7 @@ public struct DownloadedContent: Sendable, Hashable, Identifiable {
         self.title = title
         self.synopsis = synopsis
         self.thumbnailPath = thumbnailPath
+        self.snapshotPath = snapshotPath
         self.duration = duration
         self.lastPosition = lastPosition
         self.download = download

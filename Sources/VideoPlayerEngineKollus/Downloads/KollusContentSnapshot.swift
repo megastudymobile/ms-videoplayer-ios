@@ -118,6 +118,7 @@ extension KollusContentSnapshot {
             title: title,
             synopsis: synopsis,
             thumbnailPath: thumbnailPath,
+            snapshotPath: snapshotPath,
             duration: duration,
             lastPosition: position,
             download: neutralDownloadStatus,

@@ -174,7 +174,8 @@ public final class PlayerNowPlayingCoordinator {
                 info[MPMediaItemPropertyTitle] = content.title
                 MPNowPlayingInfoCenter.default().nowPlayingInfo = info
             }
-            if let path = content.thumbnailPath, path.isEmpty == false {
+            // thumbnailPath는 시크 프리뷰용 스프라이트 시트일 수 있어 artwork로 쓰지 않는다.
+            if let path = content.snapshotPath, path.isEmpty == false {
                 await self.loadArtwork(from: path)
             }
         }
