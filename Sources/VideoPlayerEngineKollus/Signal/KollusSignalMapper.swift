@@ -16,7 +16,7 @@ import VideoPlayerCore
 /// `nil`을 반환한다. 상태 전이 자체는 매퍼가 결정하지 않고 Core의 `PlaybackStateReducer`가 한다.
 ///
 /// polling 시작/정지, prepare continuation resume, next-episode 검사 같은 부수효과는 매퍼가 아니라
-/// `KollusPlayerAdapter`가 수행한다. (설계 문서 §5.3 / §5.4)
+/// `KollusPlayerAdapter`가 수행한다.
 enum KollusSignalMapper {
     /// - Parameters:
     ///   - signal: vendor 신호.

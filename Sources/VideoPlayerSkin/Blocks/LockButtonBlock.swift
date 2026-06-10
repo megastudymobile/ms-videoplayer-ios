@@ -15,7 +15,7 @@ public final class LockButtonBlock: UIView, PlayerSkinBlock {
             icon: state.isLocked ? .lock : .unlock,
             fallbackTitle: state.isLocked ? "Lock" : "Unlock", theme: theme)
         button.accessibilityLabel = state.isLocked ? "화면 잠금 해제" : "화면 잠금"
-        // lock 버튼은 lock 중에도 활성 (현 동작).
+        // lock 버튼은 해제 입력을 받아야 하므로 lock 중에도 활성.
     }
     @objc private func tap() { onAction?(.holdToggleRequested) }
     private func pin(_ subview: UIView) {

@@ -70,6 +70,13 @@ VideoPlayerCore  (의존 없음 — SDK/UIKit 모름)
 
 재사용 가능한 플레이어 UI (Rx/ReactorKit/SnapKit 의존 없음). `Blocks/`(ProgressBar 등 UI 조각), `Contract/`, `Assembly/`, `Theme/`, `Resources/PlayerSkin.xcassets`. host와는 `PlayerSkinAction` / `PlayerSkinState`로 통신.
 
+## 주석 규칙
+
+- 유지: 코드로 표현 불가한 "왜" 주석(SDK 비동기 특성, 크래시 방어, 동시성 순서 보장, 정책 이유), public API `///` doc, 비자명한 internal `///` doc, `// MARK:`, 파일 상단 Xcode 헤더 보일러플레이트
+- 금지: spec/설계 문서 참조(`spec §x.x`, `spec-064`, `lecture-ui-parity` 등), 레거시 코드 참조(`MoviePlayerController.m:NNNN`, "1:1 대응", "parity"), 이슈/태스크 ID 접두(`H1 —`, `T053` 등), 설계안 코드네임("B안"), 코드 재진술 주석, 단계 번호 주석(`// 1)`)
+- 참조와 실제 제약이 섞인 주석은 참조 토막만 떼고 제약 설명을 자연문으로 남긴다
+- 비직관적 가드/early return에는 한 줄 "왜" 주석을 추가하되 이유가 확실한 경우만 최소한으로
+
 ## 경계 규칙
 
 - `Core`는 SDK를 모른다. Kollus/PallyCon import는 `VideoPlayerEngineKollus` 안에서만

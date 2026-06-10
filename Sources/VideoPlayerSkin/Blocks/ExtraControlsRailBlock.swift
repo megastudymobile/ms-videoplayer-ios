@@ -1,7 +1,7 @@
 import UIKit
 
 /// leftRail 의 host 주입 추가버튼들(placement .leftMenu): 강의 인덱스/해설/북마크 등.
-/// legacy 는 fullscreen 에서 좌측 메뉴를 표시한다. hiddenExtraControlIDs 로 개별 숨김.
+/// fullscreen 에서만 표시되며 hiddenExtraControlIDs 로 개별 숨김.
 public final class ExtraControlsRailBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?

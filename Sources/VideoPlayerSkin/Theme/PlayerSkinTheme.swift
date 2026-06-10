@@ -24,7 +24,6 @@ public struct PlayerSkinTheme {
         self.icons = icons
     }
 
-    /// 현 PlayerSkinControlView 하드코딩 룩과 1:1인 기본 테마.
     public static let `default` = PlayerSkinTheme(
         colors: [
             .controlTint: .white,

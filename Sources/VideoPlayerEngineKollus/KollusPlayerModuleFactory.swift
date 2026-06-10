@@ -12,8 +12,8 @@ import VideoPlayerShellSupport
 public struct KollusPlayerModuleFactory {
     private let engineFactory: () -> PlayerEngineAdapter
     private let engineCapabilities: EngineCapabilities
-    /// Phase 6: 모든 makeModule() 호출과 공유되는 단일 KollusDownloadCenter.
-    /// 신규 init(environment:) path에서만 사용 가능. legacy init에서는 nil.
+    /// 모든 makeModule() 호출과 공유되는 단일 KollusDownloadCenter.
+    /// init(environment:) path에서만 사용 가능. test-only init에서는 nil.
     public let downloads: KollusDownloadCenter?
 
     /// 신규 권장 진입점.
@@ -32,7 +32,6 @@ public struct KollusPlayerModuleFactory {
                 diagnostics: diagnostics
             )
         }
-        // T054 — environment.audioBackgroundPlayPolicy=true이면 .continuesWithoutSurface OR-in.
         var caps = KollusPlayerAdapter.capabilities
         if environment.audioBackgroundPlayPolicy {
             caps.insert(.continuesWithoutSurface)
@@ -44,8 +43,7 @@ public struct KollusPlayerModuleFactory {
         )
     }
 
-    /// Test-only initializer: 외부 공개 표면에서 제거됨(T062, gate 0.3.0).
-    /// `@testable import`만 접근 가능. downloads는 nil.
+    /// Test-only initializer. `@testable import`만 접근 가능. downloads는 nil.
     internal init(
         engineFactory: @escaping () -> PlayerEngineAdapter,
         engineCapabilities: EngineCapabilities = KollusPlayerAdapter.capabilities

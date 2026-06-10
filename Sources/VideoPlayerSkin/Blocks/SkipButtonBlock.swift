@@ -1,6 +1,6 @@
 import UIKit
 
-/// 10초 뒤로/앞으로. 버튼 위 "10" 오버레이 포함 (현 PlayerSkinControlView C6 parity).
+/// 10초 뒤로/앞으로. 버튼 위 "10" 오버레이 포함.
 public final class SkipButtonBlock: UIView, PlayerSkinBlock {
     public enum Direction { case backward, forward }
     public var view: UIView { self }

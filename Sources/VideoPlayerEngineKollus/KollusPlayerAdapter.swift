@@ -19,7 +19,7 @@ import VideoPlayerShellSupport
 // swiftlint:disable force_unwrapping
 extension KollusPlayerType {
     /// PlayerTypeNative (rawValue 1) — PiP 가능 여부 판단에 사용.
-    static let native = KollusPlayerType(rawValue: 1)! // PlayerTypeNative
+    static let native = KollusPlayerType(rawValue: 1)!
 }
 // swiftlint:enable force_unwrapping
 
@@ -37,7 +37,7 @@ public actor KollusPlayerAdapter:
     PlayerEngineOutputProducing {
     // emitsObservedCommandState: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
     // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의
-    // .stateInput만 신뢰한다(이중 적용 방지). (설계 §5.2.1)
+    // .stateInput만 신뢰한다(이중 적용 방지).
     public nonisolated static let capabilities: EngineCapabilities = [.emitsObservedCommandState]
 
     public var currentState: PlaybackState {
@@ -46,8 +46,8 @@ public actor KollusPlayerAdapter:
 
     public let eventStream: AsyncStream<PlayerEvent>
 
-    /// B안 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
-    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다. (설계 §8 4단계)
+    /// 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
+    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다.
     public let outputStream: AsyncStream<PlayerEngineOutput>
 
     private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
@@ -75,7 +75,7 @@ public actor KollusPlayerAdapter:
     private var nextEpisodeEmitter = KollusNextEpisodeEmitter()
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
 
-    /// H1 — SDK delegate(bridge) 신호를 단일 FIFO 스트림으로 직렬 소비한다.
+    /// SDK delegate(bridge) 신호를 단일 FIFO 스트림으로 직렬 소비한다.
     /// 매 신호마다 `Task`를 새로 만들면 actor 도달 순서가 비결정적이라 `stopStarted` 뒤
     /// 늦게 도착한 `positionChanged`가 상태를 되살리는 등 상태 꼬임이 발생한다.
     /// bridge 콜백은 MainActor에서 continuation에 동기 yield만 하고, 단일 consumer가 순서대로 소비.
@@ -126,8 +126,7 @@ public actor KollusPlayerAdapter:
         startSignalConsumerIfNeeded()
     }
 
-    /// Test-only init: 외부 공개 표면에서 제거됨(T062, gate 0.3.0).
-    /// `@testable import`로만 접근. 새 wiring(인증/26 콜백) 미사용.
+    /// Test-only init. `@testable import`로만 접근. 새 wiring(인증/26 콜백) 미사용.
     internal init() {
         self.init(
             storage: KollusStorage(),
@@ -173,7 +172,7 @@ public actor KollusPlayerAdapter:
         outputContinuation.finish()
     }
 
-    /// H1 — bridge 신호를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
+    /// bridge 신호를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
     private func startSignalConsumerIfNeeded() {
         guard signalConsumerTask == nil else { return }
         signalConsumerTask = Task { [weak self] in
@@ -212,7 +211,7 @@ public actor KollusPlayerAdapter:
 
     public func seek(to time: TimeInterval) async throws {
         let clampedTime = max(0, time)
-        // H6 — playerView가 없으면(idle 등) 옵셔널 체이닝으로 조용히 무시하지 않고 throw한다.
+        // playerView가 없으면(idle 등) 옵셔널 체이닝으로 조용히 무시하지 않고 throw한다.
         // 과거엔 seek가 무시되고도 가짜 timeDidChange를 emit해 상태를 오염시켰다.
         try await MainActor.run {
             guard let playerView else {
@@ -319,7 +318,6 @@ public actor KollusPlayerAdapter:
 
     public func setSubtitleVisible(_ isVisible: Bool) async throws {
         // KollusSDK는 자막 가시성 직접 API를 노출하지 않는다. 정책 다운그레이드 이벤트로 surfacing.
-        // (M12 — 과거 저장만 하고 읽지 않던 isSubtitleVisible 필드 제거.)
         publish(event: .policyDowngraded(reason: .custom("Kollus SDK는 자막 가시성 토글을 지원하지 않습니다. isVisible=\(isVisible)")))
     }
 
@@ -372,7 +370,6 @@ public actor KollusPlayerAdapter:
     // MARK: - PlayerSynchronousZoomEngine
 
     /// 핀치 `.changed` 마다 main thread 에서 동기 적용 — actor async hop 없이 연속 추적.
-    /// dev `MegaKollusMoviePlayerController.zoomScreen:` → `playerView.zoom:recognizer` 동기 호출 parity.
     /// host(shell)가 main thread 에서만 호출하므로 `MainActor.assumeIsolated` 로 @MainActor playerView 에
     /// 동기 접근한다(actor 격리/init MainActor 전파 회피 위해 nonisolated).
     public nonisolated func applyZoomGesture(_ recognizer: UIPinchGestureRecognizer) {
@@ -447,8 +444,8 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // H9 — PiP는 미구현이므로 `PlayerPiPCapability`를 채택하지 않는다.
-    // 채택 + 가짜 구현은 capability 협상(P3 availability probe)이 거짓 보고를 하게 만든다.
+    // PiP는 미구현이므로 `PlayerPiPCapability`를 채택하지 않는다.
+    // 채택 + 가짜 구현은 capability 협상(availability probe)이 거짓 보고를 하게 만든다.
     // 실 구현 시 host AVPictureInPictureController 통합과 함께 채택을 복원한다.
 
     // MARK: - PlayerDisplayScalingEngine
@@ -546,7 +543,7 @@ public actor KollusPlayerAdapter:
             guard let self else { return }
             // 재진입(다음 강의/강의 선택) 시 이전 playerView 를 stop 없이 폐기하면 KollusProxyPlayerView 의
             // releaseServerAndStop(NSTimer) 가 해제 메모리에서 발화해 크래시한다. discard 전 stop 으로
-            // proxy 를 동기 해제한다(dev `stop` 후 재 prepareToPlay 정렬).
+            // proxy 를 동기 해제한다.
             if let previous = self.playerView {
                 try? previous.stop()
                 previous.removeFromSuperview()
@@ -557,8 +554,8 @@ public actor KollusPlayerAdapter:
                 throw PlayerError.engineError("KollusPlayerView 초기화에 실패했습니다.")
             }
 
-            // 1) bridge 생성 + 4종 delegate 부착 (prepareToPlay 호출 전 필수)
-            // H1 — 콜백은 단일 FIFO 스트림에 동기 yield만. 순서 보장은 consumer가 담당.
+            // bridge 생성 + 4종 delegate 부착은 prepareToPlay 호출 전에 끝나야 한다.
+            // 콜백은 단일 FIFO 스트림에 동기 yield만. 순서 보장은 consumer가 담당.
             let bridgeEventContinuation = self.bridgeEventContinuation
             let bridge = KollusDelegateBridge(
                 onSignal: { signal in
@@ -575,7 +572,7 @@ public actor KollusPlayerAdapter:
             playerView.lmsDelegate = bridge
             playerView.bookmarkDelegate = bridge
 
-            // 2) storage / DRM 설정 주입 (KollusStorageAdapter는 @MainActor — 본 블록 안에서 안전 접근)
+            // KollusStorageAdapter는 @MainActor — 본 블록 안에서 안전 접근.
             playerView.storage = storageAdapter.storage
             playerView.debug = false
             if let proxyPort = environment.proxyPort, proxyPort > 0 {
@@ -594,7 +591,6 @@ public actor KollusPlayerAdapter:
                 playerView.extraDrmParam = json
             }
 
-            // 2b) T053 — 확장 환경 옵션 주입 (Phase 7).
             playerView.aiRateEnable = environment.aiPlaybackRateEnabled
             playerView.setDecoder(environment.hardwareDecoderPreferred)
             if let skin = environment.customSkinJSON {
@@ -603,7 +599,6 @@ public actor KollusPlayerAdapter:
             playerView.setPauseOnForeground(environment.pauseOnForeground)
             playerView.audioBackgroundPlay = environment.audioBackgroundPlayPolicy
 
-            // 3) render surface 부착 (있을 때만)
             if let boundSurface {
                 self.attach(playerView: playerView, to: boundSurface)
             }
@@ -618,7 +613,7 @@ public actor KollusPlayerAdapter:
 
         // 신규 path에서는 상태 전이를 SDK delegate(prepareToPlayCompleted)에 의존한다.
         // prepare(source:) 자체도 delegate 완료까지 반환하지 않아야 PlayerCore autoplay가
-        // 레거시와 동일하게 준비 완료 이후에 play를 호출한다.
+        // 준비 완료 이후에 play를 호출한다.
         transition(to: state.updating(status: .preparing, isBuffering: false))
 
         try await withTaskCancellationHandler {
@@ -636,7 +631,7 @@ public actor KollusPlayerAdapter:
                             guard let playerView else {
                                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
                             }
-                            // 4) prepareToPlay 호출 — 이후 SDK가 prepareToPlayWithError delegate 호출
+                            // 이후 SDK가 prepareToPlayWithError delegate를 호출한다.
                             try playerView.prepareToPlay(withMode: playerType)
                         }
                     } catch {
@@ -651,7 +646,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    /// H2/M13 — **test-only 경로**. `init(storage:)`/`internal init()`로만 진입하며 bridge/delegate를
+    /// **test-only 경로**. `init(storage:)`/`internal init()`로만 진입하며 bridge/delegate를
     /// 배선하지 않는다(SDK `prepareToPlayWithError` 완료 콜백을 받지 못함). 따라서 프로덕션
     /// 완료-대기 계약을 의도적으로 지키지 않고 `prepareToPlay` 동기 호출 직후 `.readyToPlay`로 전이한다.
     /// 이는 SDK 콜백 없이 동작하는 단위 테스트 스캐폴딩 전용이며, **프로덕션은 반드시 bootstrapped 경로**
@@ -730,15 +725,15 @@ public actor KollusPlayerAdapter:
         }
         guard let snapshot, !snapshot.isSeeking else { return }
         let polled = snapshot.time
-        // 레거시 주석(LegacyMoviePlayerController.m:5603/5627) — play 직후/pause 시 SDK가
-        // currentPlaybackTime을 0으로 반환하는 이슈. 기존 위치가 있으면 0 회귀를 무시한다.
+        // play 직후/pause 시 SDK가 currentPlaybackTime을 0으로 반환하는 이슈가 있다.
+        // 기존 위치가 있으면 0 회귀를 무시한다.
         if polled <= 0, state.currentTime > 0 { return }
         guard polled != state.currentTime else { return }
         let nextState = state.updating(currentTime: polled)
         transition(to: nextState, emitStateEvent: false)
         publish(event: .timeDidChange(currentTime: polled, duration: nextState.duration))
         // Core 권위 경로: polling 위치는 handleSignal 밖이라 별도로 outputStream에 발행해야
-        // Core(outputStream 소비)가 재생바를 갱신한다. (device QA B2에서 발견)
+        // Core(outputStream 소비)가 재생바를 갱신한다.
         outputContinuation.yield(.stateInput(.positionChanged(time: polled, duration: nextState.duration)))
         #if DEBUG
         NSLog("[Kollus.out] poll positionChanged time=%.3f", polled)
@@ -747,7 +742,7 @@ public actor KollusPlayerAdapter:
     }
 
     func handleSignal(_ signal: KollusEngineSignal) async {
-        // B안 권위 경로: 신호를 매퍼로 정규화해 outputStream에 발행한다(Core가 reducer로 소비).
+        // 권위 경로: 신호를 매퍼로 정규화해 outputStream에 발행한다(Core가 reducer로 소비).
         // 아래 switch는 전환기 mirror(eventStream/state) + 부수효과(polling/prepare continuation/
         // next-episode)를 그대로 유지한다.
         await emitOutput(signal)
@@ -763,7 +758,6 @@ public actor KollusPlayerAdapter:
                     publish(event: .didFail(pe))
                 }
             } else {
-                // 레거시 host 앱 MoviePlayerController `completePreparationToPlay` parity —
                 // Kollus SDK 는 prepare 완료 시점에 audioBackgroundPlay 를 내부 player 에 latch 한다.
                 // view-config(prepare 진입) 시점 1회 설정은 SDK 내부 player 준비 전이라 누락되어
                 // 백그라운드 진입 시 SDK 가 강제 pause(userInteraction:false) 를 낸다.
@@ -798,7 +792,7 @@ public actor KollusPlayerAdapter:
                 handleFailure(playerError(from: error, operation: "buffering"))
                 return
             }
-            // M3 — terminal 상태(.finished/.failed)는 늦은 buffering 이벤트로 되살리지 않는다.
+            // terminal 상태(.finished/.failed)는 늦은 buffering 이벤트로 되살리지 않는다.
             if case .finished = state.status {
                 publish(event: .bufferingDidChange(isBuffering: buffering))
                 return
@@ -835,7 +829,7 @@ public actor KollusPlayerAdapter:
             let nextState = state.updating(currentTime: time)
             transition(to: nextState, emitStateEvent: false)
             publish(event: .timeDidChange(currentTime: time, duration: nextState.duration))
-            // T056 — 다음 회차 진입 시간 도달 검사 (컨텐츠당 1회). 캐시된 메타로 산술 비교만 — MainActor 왕복 없음.
+            // 다음 회차 진입 시간 도달 검사 (컨텐츠당 1회). 캐시된 메타로 산술 비교만 — MainActor 왕복 없음.
             emitNextEpisodeIfNeeded(currentTime: time)
 
         case .unknownError(let error):
@@ -906,7 +900,7 @@ public actor KollusPlayerAdapter:
             return
         }
         #if DEBUG
-        // device QA: Kollus 신호 → outputStream 발행 추적. (followup-spec §6)
+        // 실기기 QA용 — Kollus 신호 → outputStream 발행 추적.
         NSLog("[Kollus.out] %@ -> %@", String(describing: signal), String(describing: output))
         #endif
         outputContinuation.yield(output)
@@ -944,7 +938,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    /// T056 — 다음 회차 진입 시간 도달 검사. 판정은 KollusNextEpisodeEmitter(동기·산술 전용).
+    /// 다음 회차 진입 시간 도달 검사. 판정은 KollusNextEpisodeEmitter(동기·산술 전용).
     private func emitNextEpisodeIfNeeded(currentTime: TimeInterval) {
         guard let info = nextEpisodeEmitter.takeDueInfo(currentTime: currentTime) else { return }
 #if DEBUG
@@ -952,7 +946,7 @@ public actor KollusPlayerAdapter:
         NSLog("[Kollus.out] event nextEpisodeAvailable showAt=%.3f", info.showAt)
 #endif
         publish(event: .nextEpisodeAvailable(info))
-        // Core 권위 경로 (device QA B6에서 발견 — handleSignal 밖 emit).
+        // Core 권위 경로 — handleSignal 밖 emit이라 별도 발행이 필요하다.
         outputContinuation.yield(.event(.nextEpisodeAvailable(info)))
     }
 
@@ -992,7 +986,7 @@ public actor KollusPlayerAdapter:
             params: snap.nextEpisodeParams,
             showsButton: snap.nextEpisodeShowsButton
         )
-        // T055 — isLive/liveDuration 캡처. liveDuration 0이면 nil 표기(타임쉬프트 길이 unknown).
+        // liveDuration 0이면 nil 표기(타임쉬프트 길이 unknown).
         let liveDurationValue: TimeInterval? = snap.liveDuration > 0 ? snap.liveDuration : nil
         return state.updating(
             status: .readyToPlay,
@@ -1004,7 +998,7 @@ public actor KollusPlayerAdapter:
         )
     }
 
-    /// T057 — 현재 컨텐츠 메타데이터 (중립 모델).
+    /// 현재 컨텐츠 메타데이터 (중립 모델).
     public func currentContent() async -> DownloadedContent? {
         await MainActor.run {
             guard let content = playerView?.content else { return nil }
@@ -1075,7 +1069,7 @@ public actor KollusPlayerAdapter:
     }
 
     /// SDK 신호 에러 → PlayerError. 사용자 메시지는 SDK `localizedDescription`을 그대로 노출한다
-    /// (레거시 `SLKollusManager.errorMessageWithError:` parity — "Kollus X 실패:" 같은 dev 접두 없음).
+    /// ("Kollus X 실패:" 같은 접두를 붙이지 않는다).
     /// 네트워크/인증/디코딩은 classify가 분류(NSURLErrorDomain 등), 그 외는 접두 없는 engineError.
     /// 실패한 작업(operation)은 DEBUG 로그에만 남긴다.
     private static let errorChain = PlayerErrorClassifierChain(classifiers: [KollusErrorClassifier()])

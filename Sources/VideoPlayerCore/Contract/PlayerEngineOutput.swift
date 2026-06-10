@@ -15,7 +15,7 @@ import Foundation
 ///
 /// - Important: 이 타입에는 `Error` existential을 싣지 않는다. vendor 신호의 `Error`는
 ///   actor/stream 경계를 넘기 전에 `PlayerError`로 변환해 Sendable-clean하게 만든다.
-///   (설계 문서 §5.2 / §6 Swift 6 strict concurrency 대비)
+///   (Swift 6 strict concurrency 대비)
 public enum PlayerEngineOutput: Sendable {
     case stateInput(PlaybackStateInput)
     case event(PlayerEvent)

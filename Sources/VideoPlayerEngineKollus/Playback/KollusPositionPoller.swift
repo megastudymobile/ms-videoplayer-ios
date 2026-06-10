@@ -12,7 +12,6 @@ import Foundation
 ///
 /// Kollus `kollusPlayerView:position:error:` delegate는 **seek 시에만** 호출되고 재생 중
 /// 주기 통지를 하지 않는다 — 재생바 currentTime 갱신을 위해 주기 폴링으로 보완한다.
-/// (레거시 `playbackProgressTimer` 1.0s 대응, 본 구현 0.5s)
 ///
 /// adapter actor가 소유하는 actor-isolated 상태로 사용한다 — start/stop은 동기라
 /// 신호 처리 순서(playStarted 시작, pause/stop 중지)가 결정적으로 유지된다.

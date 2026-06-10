@@ -8,11 +8,7 @@
 
 import UIKit
 
-/// spec-052 Phase 4.2 — dev `SLPlayerPlaybackSlider` 의 swift port.
-///
-/// dev parity:
-/// - track height = 3pt (`kSLPlayerPlaybackSliderHeight`)
-/// - minimumTrackTintColor / maximumTrackTintColor / thumbImage 는 외부에서 설정.
+/// track 높이를 고정한 진행 슬라이더. 색상/thumb 이미지는 사용처에서 설정한다.
 final class PlayerPlaybackSlider: UISlider {
     private static let trackHeight: CGFloat = 3
 

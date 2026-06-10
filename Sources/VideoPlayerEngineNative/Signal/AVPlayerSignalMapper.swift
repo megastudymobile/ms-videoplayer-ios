@@ -22,11 +22,11 @@ enum AVPlayerSignal: Sendable {
 /// AVPlayer observer 신호를 Core가 이해하는 `PlayerEngineOutput`으로 번역하는 순수 매퍼.
 ///
 /// Native는 play/pause/seek/prepare를 observer가 아니라 **명령 결과**로 보고한다(권위 콜백 없음).
-/// 따라서 그 경로는 매퍼가 아니라 Core command-origin으로 닫는다(설계 §5.2.1). 매퍼는 observer가
+/// 따라서 그 경로는 매퍼가 아니라 Core command-origin으로 닫는다. 매퍼는 observer가
 /// 실제로 만드는 신호(실패, 버퍼링 상태, 종료, 주기 위치)만 다룬다.
 ///
 /// - Note: `.timeControl(.paused)`는 무시한다(`nil`). AVPlayer는 stop/finish 뒤에도 paused를
-///   늦게 통지할 수 있어, 이를 상태 입력으로 바꾸면 종료된 재생을 되살릴 수 있다. (설계 §6)
+///   늦게 통지할 수 있어, 이를 상태 입력으로 바꾸면 종료된 재생을 되살릴 수 있다.
 enum AVPlayerSignalMapper {
     static func normalize(_ signal: AVPlayerSignal) -> PlayerEngineOutput? {
         switch signal {

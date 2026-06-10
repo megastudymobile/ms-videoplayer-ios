@@ -16,7 +16,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         .continuesWithoutSurface,
         .seamlessSurfaceSwap
         // emitsObservedCommandState 미포함: Native는 play/pause/seek 권위 콜백이 없어
-        // Core command-origin이 그 상태를 닫는다. (설계 §5.2.1)
+        // Core command-origin이 그 상태를 닫는다.
     ]
 
     public var currentState: PlaybackState {
@@ -25,8 +25,8 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
 
     public let eventStream: AsyncStream<PlayerEvent>
 
-    /// B안 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
-    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다. (설계 §8 4단계)
+    /// Core는 이 스트림을 소비해 reducer로 상태를 만든다.
+    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다.
     public let outputStream: AsyncStream<PlayerEngineOutput>
 
     private let player: AVPlayer
@@ -42,7 +42,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
     private var timeObserverToken: Any?
     private var displayScaleMode: PlayerDisplayScaleMode = .aspectFit
 
-    /// H1 — KVO/Notification/periodic observer 콜백을 단일 FIFO 스트림으로 직렬 소비한다.
+    /// KVO/Notification/periodic observer 콜백을 단일 FIFO 스트림으로 직렬 소비한다.
     /// 콜백마다 `Task`를 새로 만들면 임의 스레드에서 도착한 이벤트의 actor 처리 순서가 비결정적이라
     /// `timeControlStatus(.playing)`와 `periodicTime`이 뒤바뀌는 등 상태 역전이 발생한다.
     /// 콜백은 continuation에 동기 yield만 하고, 단일 consumer가 순서대로 처리.
@@ -101,7 +101,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         outputContinuation.finish()
     }
 
-    /// H1 — observer 이벤트를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
+    /// observer 이벤트를 단일 Task에서 FIFO로 소비. self를 약하게 잡아 deinit을 막지 않는다.
     private func startObserverConsumerIfNeeded() {
         guard observerConsumerTask == nil else { return }
         observerConsumerTask = Task { [weak self] in
@@ -149,7 +149,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
             isBuffering: false
         )
         transition(to: nextState)
-        // Core 권위 경로: prepared 스냅샷을 outputStream으로 발행 → Core reducer가 readyToPlay 생성.
+        // Core reducer가 이 prepared 스냅샷을 받아 readyToPlay 상태를 만든다.
         #if DEBUG
         NSLog("[Native.out] prepared duration=%.3f", duration)
         #endif
@@ -399,6 +399,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
     private func handleTimeControlStatus(_ status: AVPlayer.TimeControlStatus) {
         switch status {
         case .paused:
+            // stop/finish 뒤 늦게 도착하는 paused 통지가 종료된 상태를 되살리지 않도록 무시한다.
             break
         case .waitingToPlayAtSpecifiedRate:
             let nextState = state.updating(status: .buffering, isBuffering: true)
@@ -434,14 +435,14 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         eventContinuation.yield(event)
     }
 
-    /// observer 신호를 매퍼로 정규화해 outputStream에 발행한다(Core 권위 경로).
+    /// observer 신호를 매퍼로 정규화해 outputStream에 발행한다.
     /// play/pause/seek/prepare는 명령 결과이므로 여기로 보내지 않는다(Core command-origin이 닫음).
     private func emitOutput(_ signal: AVPlayerSignal) {
         guard let output = AVPlayerSignalMapper.normalize(signal) else {
             return
         }
         #if DEBUG
-        // device QA: AVPlayer observer 신호 → outputStream 발행 추적. (followup-spec §6)
+        // device QA: AVPlayer observer 신호 → outputStream 발행 추적.
         NSLog("[Native.out] %@ -> %@", String(describing: signal), String(describing: output))
         #endif
         outputContinuation.yield(output)

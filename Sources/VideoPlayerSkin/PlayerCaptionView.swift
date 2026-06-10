@@ -12,7 +12,6 @@ public final class PlayerCaptionView: UIView {
     private enum Metric {
         static let primaryBottomOffsetWhenSecondaryVisible: CGFloat = 35
         static let horizontalInset: CGFloat = 10
-        /// dev `MGPlayerViewController.kMGPlayerCaptionBottomInset` parity.
         static let defaultBottomInset: CGFloat = 5
     }
 
@@ -23,7 +22,7 @@ public final class PlayerCaptionView: UIView {
     private var secondaryBottomConstraint: NSLayoutConstraint?
     private var currentState = PlayerCaptionState.initial
 
-    /// 영상 하단으로부터의 자막 여백. dev `captionView.bottom = playerView.bottom - 5` parity.
+    /// 영상 하단으로부터의 자막 여백.
     public var bottomInset: CGFloat = Metric.defaultBottomInset {
         didSet { updateBottomConstraintConstants() }
     }
@@ -55,7 +54,7 @@ public final class PlayerCaptionView: UIView {
         render(currentState.updating(text: text, isSecondary: isSecondary))
     }
 
-    /// spec-063 P13 — settings panel 의 자막 크기 변경 즉시 반영.
+    /// settings panel 의 자막 크기 변경을 즉시 반영한다.
     public func applyFontSize(_ size: Int) {
         var nextState = currentState
         nextState.fontSize = CGFloat(size)

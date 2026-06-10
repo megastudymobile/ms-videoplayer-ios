@@ -8,7 +8,6 @@
 
 import UIKit
 
-/// legacy `sectionRepeatStartButton` / `sectionRepeatEndButton` parity block.
 public final class SectionRepeatRangeBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?

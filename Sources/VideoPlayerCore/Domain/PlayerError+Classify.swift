@@ -9,10 +9,10 @@
 import Foundation
 
 public extension PlayerError {
-    /// H3 — 임의 `Error`를 `PlayerError`의 구체 케이스로 분류한다.
+    /// 임의 `Error`를 `PlayerError`의 구체 케이스로 분류한다.
     ///
-    /// 과거에는 모든 비-`PlayerError`가 `.unknown`으로 평탄화되어 네트워크/인증/디코딩 실패를
-    /// UI에서 구분할 수 없었다. `NSError`의 `domain`/`code`를 검사해 가능한 한 구체 케이스로 매핑한다.
+    /// `NSError`의 `domain`/`code`를 검사해 네트워크/인증/디코딩 실패를 UI가 구분할 수 있는
+    /// 구체 케이스로 매핑한다.
     /// 분류 불가한 도메인은 `.unknown`을 반환한다(엔진 컨텍스트 보강은 호출 측 책임).
     static func classify(_ error: Error) -> PlayerError {
         if let playerError = error as? PlayerError {

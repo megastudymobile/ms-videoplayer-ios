@@ -1,6 +1,6 @@
 import UIKit
 
-/// 영상 우측 floating 회색 원형 배속 버튼 (현 PlayerSkinControlView P7 parity).
+/// 영상 우측 floating 회색 원형 배속 버튼.
 public final class RateButtonBlock: UIView, PlayerSkinBlock {
     private enum Metric {
         static let inactiveBackgroundAlpha: CGFloat = 0.24

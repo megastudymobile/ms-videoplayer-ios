@@ -1,7 +1,5 @@
 import UIKit
 
-/// legacy `SLPlayerRateControlView` parity.
-///
 /// 중앙 배속 버튼과 상/하 step 버튼을 하나의 복합 뷰에서 배치해
 /// 세 버튼의 수직축과 간격을 고정한다.
 public final class RateControlBlock: UIView, PlayerSkinBlock {

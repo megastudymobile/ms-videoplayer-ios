@@ -58,7 +58,6 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         applyLegacyMetrics(state)
         applyVisibility(state)
         blocks.forEach { $0.render(state, theme: theme) }
-        // lecture-ui-parity 05 §4.9 — preparing/buffering(state.isLoading) 시 중앙 ring 표시.
         if state.isLoading {
             loadingOverlay.setLoading(true)
         } else {
@@ -105,7 +104,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         let captionView = captionOverlay.view
         captionView.translatesAutoresizingMaskIntoConstraints = false
         insertSubview(captionView, at: 0)
-        // lecture-ui-parity 05 §4.9 — 로딩 ring 은 배경 위·슬롯(컨트롤) 아래. non-interactive 라 tap 무영향.
+        // 로딩 ring 은 배경 위·슬롯(컨트롤) 아래 z-order. non-interactive 라 tap 에 영향 없음.
         let loadingView = loadingOverlay.view
         loadingView.translatesAutoresizingMaskIntoConstraints = false
         loadingOverlay.configure(theme: theme)
@@ -233,7 +232,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         floatingBottomConstraint?.constant = nextEpisodeOffset
     }
 
-    /// 반응형 슬롯 노출 + controlsVisible/lock 게이트 (legacy `setHiddenWithControl` parity).
+    /// 반응형 슬롯 노출 + controlsVisible/lock 게이트.
     private func applyVisibility(_ state: PlayerSkinState) {
         let visible = blueprint.visibleSlots[state.layoutMode] ?? Set(PlayerSkinSlot.allCases)
         let controlsVisible = state.controlsVisible

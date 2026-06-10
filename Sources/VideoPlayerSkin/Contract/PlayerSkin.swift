@@ -12,10 +12,7 @@ import UIKit
 ///
 /// `view` 를 제공해 UIView 상속 강제는 피하고, UIView / UIViewController wrapper 구현을 모두
 /// 허용한다. host 는 이 프로토콜로 skin 을 통째로 교체할 수 있다(Tier3). 기본 제공 구현은
-/// `PlayerSkinControlView`(추후 `AssembledPlayerSkin`).
-///
-/// spec-064 후속 — VideoPlayerSkin 커스터마이즈 아키텍처
-/// (`docs/player-skin-customization-architecture.md`).
+/// `AssembledPlayerSkin`.
 @MainActor
 public protocol PlayerSkin: AnyObject {
     /// host 가 컨테이너에 add 할 실제 뷰.

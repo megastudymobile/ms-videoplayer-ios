@@ -10,7 +10,7 @@ import Foundation
 import VideoPlayerCore
 
 public extension PlayerError {
-    /// 스펙 §6.5.5 계약 3 — ObjC 호출자가 NSError의 `domain` prefix로 분류할 수 있도록 매핑한다.
+    /// ObjC 호출자가 NSError의 `domain` prefix로 분류할 수 있도록 매핑한다.
     func toNSError() -> NSError {
         let (domain, code, message) = mapping
         return NSError(

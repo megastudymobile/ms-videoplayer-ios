@@ -29,7 +29,7 @@ public struct PlayerSkinBlueprint {
 }
 
 public extension PlayerSkinBlueprint {
-    /// 기본 = 현 PlayerSkinControlView 배치 1:1 (0-config 동일 룩).
+    /// 0-config 으로 표준 룩을 재현하는 기본 배치.
     static var `default`: PlayerSkinBlueprint {
         PlayerSkinBlueprint(
             blocks: [

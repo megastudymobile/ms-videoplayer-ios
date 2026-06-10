@@ -31,7 +31,6 @@ public struct EngineCapabilities: OptionSet, Sendable {
     ///   Core가 명령 성공 직후 command-origin `PlaybackStateInput`을 reducer에 넣어야 한다.
     ///
     /// 이 비트가 없으면 Native에서 play 성공 후 status가 `.playing`에 도달하지 못한다.
-    /// (설계 문서 §5.2.1 명령별 상태 권위 매트릭스)
     public static let emitsObservedCommandState = EngineCapabilities(rawValue: 1 << 3)
 }
 
@@ -48,15 +47,15 @@ public protocol PlayerPlaybackEngine: Actor {
     var eventStream: AsyncStream<PlayerEvent> { get }
 }
 
-/// B안 전환용 병행 계약. 엔진이 상태를 직접 노출(`currentState`/`eventStream`)하는 대신,
+/// 전환용 병행 계약. 엔진이 상태를 직접 노출(`currentState`/`eventStream`)하는 대신,
 /// Core가 해석할 출력 스트림만 제공한다. 전환 기간에는 실제 adapter가
 /// `PlayerPlaybackEngine & PlayerEngineOutputProducing`을 동시에 만족하고, `PlayerCore`만 먼저
-/// `outputStream` 소비로 옮긴다. (설계 문서 §5.4 / §8 2단계)
+/// `outputStream` 소비로 옮긴다.
 ///
 /// - Important: `outputStream`은 adapter lifetime 동안 **동일한 장수명 인스턴스**여야 하고,
 ///   teardown/deinit에서 `finish()`되어야 한다. 또한 `PlaybackStateInput`을 델타로 싣기 때문에
 ///   버퍼링은 **`.unbounded`**여야 한다. `bufferingNewest`로 두면 입력 손실이 영구 상태 desync를
-///   만든다. (설계 문서 §5.1)
+///   만든다.
 public protocol PlayerEngineOutputProducing: Actor {
     var outputStream: AsyncStream<PlayerEngineOutput> { get }
 }
@@ -109,7 +108,7 @@ public protocol PlayerZoomEngine: Actor {
 /// 핀치 줌을 actor 비동기 hop 없이 **동기** 적용한다.
 /// `PlayerZoomEngine.zoom`(async)을 pinch `.changed` 마다 Task 로 호출하면 hop 지연·배칭으로
 /// 연속 추적이 끊겨 "핀치 한 번에 한 단계"처럼 보인다. 제스처 추적은 매 이벤트 동기 적용이 필요하므로
-/// host(shell)는 main thread 에서 본 메서드로 즉시 적용한다(dev `playerView.zoom:recognizer` 동기 parity).
+/// host(shell)는 main thread 에서 본 메서드로 즉시 적용한다.
 /// 구현체는 반드시 main thread 에서 호출되는 것을 전제한다(내부에서 MainActor 단언).
 public protocol PlayerSynchronousZoomEngine {
     func applyZoomGesture(_ recognizer: UIPinchGestureRecognizer)

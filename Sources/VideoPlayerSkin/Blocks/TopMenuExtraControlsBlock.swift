@@ -8,7 +8,7 @@
 
 import UIKit
 
-/// legacy `topMenuStackView` 앞쪽 host 주입 버튼(Q&A 작성 등).
+/// 상단 메뉴 앞쪽의 host 주입 버튼(placement .topMenu): Q&A 작성 등.
 public final class TopMenuExtraControlsBlock: UIView, PlayerSkinBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?

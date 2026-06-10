@@ -94,7 +94,7 @@ final class KollusStorageAdapter: NSObject, KollusStorageProtocol, @preconcurren
         try storage.start()
     }
 
-    // MARK: - Phase 6 surface (T043 implementation)
+    // MARK: - 다운로드/콘텐츠 surface
 
     func loadContentURL(_ url: String) async throws -> String {
         let mck = try storage.loadContentURL(url)

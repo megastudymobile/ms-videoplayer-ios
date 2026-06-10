@@ -6,7 +6,7 @@
 
 import UIKit
 
-/// 블럭들이 공유하는 아이콘 버튼 빌더 (현 PlayerSkinControlView.setButtonImageOrTitle parity).
+/// 블럭들이 공유하는 아이콘 버튼 빌더.
 enum PlayerSkinIconButtonFactory {
     private static let controlInset: CGFloat = 10
     private static let fallbackSize: CGFloat = 48

@@ -12,10 +12,6 @@ import Foundation
 ///
 /// "현재 상태 + 입력 → 다음 상태 + 발행할 이벤트"를 계산하는 순수 함수다. SDK·actor·polling을
 /// 전혀 모른다. 부수효과(continuation resume, position polling 등)는 reducer 밖에서 처리한다.
-///
-/// 이 reducer는 기존 `PlayerCore.consume(engineEvent:)`와 `KollusPlayerAdapter.handleSignal(_:)`,
-/// `AVPlayerAdapter` observer 핸들러에 흩어져 있던 상태 규칙을 한 곳으로 수렴시킨다.
-/// 행위는 그 세 곳의 합과 동일하게 보존한다. (설계 문서 §5.2)
 public struct PlaybackStateReducer: Sendable {
     public init() {}
 
@@ -86,7 +82,7 @@ public struct PlaybackStateReducer: Sendable {
         duration: TimeInterval?,
         state: PlaybackState
     ) -> PlaybackStateReducerOutput {
-        // M4 — 미확정 duration(0)이 이미 확정된 duration을 덮어쓰지 않도록 보호.
+        // 미확정 duration(0)이 이미 확정된 duration을 덮어쓰지 않도록 보호.
         let resolvedDuration: TimeInterval
         if let duration, duration > 0 {
             resolvedDuration = duration
@@ -106,7 +102,7 @@ public struct PlaybackStateReducer: Sendable {
         _ buffering: Bool,
         state: PlaybackState
     ) -> PlaybackStateReducerOutput {
-        // M3 — terminal 상태(.finished/.failed)는 늦게 도착한 buffering 이벤트로 되살리지 않는다.
+        // terminal 상태(.finished/.failed)는 늦게 도착한 buffering 이벤트로 되살리지 않는다.
         // 상태를 바꾸지 않고 bufferingDidChange 이벤트만 흘린다.
         if case .finished = state.status {
             return PlaybackStateReducerOutput(next: state, events: [.bufferingDidChange(isBuffering: buffering)])
@@ -116,9 +112,8 @@ public struct PlaybackStateReducer: Sendable {
         }
 
         // 일시정지/준비완료 중 버퍼링은 status를 유지한다(isBuffering 플래그만 변경).
-        // 과거에는 buffering 종료 시 무조건 `.playing`을 반환해 일시정지가 재생으로 둔갑하는
-        // 잠재버그가 있었다(설계 §5.2 보존 항목 — 2026-06-10 수정). `.playing`에서 시작한
-        // 버퍼링만 `.buffering`으로 전이하고, 종료 시 `.playing`으로 복원한다.
+        // buffering 종료 시 무조건 `.playing`으로 전이하면 일시정지가 재생으로 둔갑한다.
+        // `.playing`에서 시작한 버퍼링만 `.buffering`으로 전이하고, 종료 시 `.playing`으로 복원한다.
         let nextStatus: PlaybackState.Status
         if buffering {
             if case .playing = state.status {
@@ -135,7 +130,7 @@ public struct PlaybackStateReducer: Sendable {
         }
 
         let next = state.updating(status: nextStatus, isBuffering: buffering)
-        // 상태는 갱신하되 stateDidChange가 아니라 bufferingDidChange만 발행(기존 consume과 동일).
+        // 상태는 갱신하되 stateDidChange가 아니라 bufferingDidChange만 발행한다.
         return PlaybackStateReducerOutput(next: next, events: [.bufferingDidChange(isBuffering: buffering)])
     }
 

@@ -28,7 +28,7 @@ public actor PlayerCore {
     private static let seekSettleThreshold: TimeInterval = 3.0
     private var pendingPrepareTask: Task<Void, Error>?
     private var pendingSeekTask: Task<Void, Never>?
-    /// H5/H7 — prepare 작업의 세대(generation). `start` 진입마다 증가하며, await 복귀 후
+    /// prepare 작업의 세대(generation). `start` 진입마다 증가하며, await 복귀 후
     /// `generation == prepareGeneration`인 경우에만 "내가 아직 최신 작업"이다.
     /// 더 새로운 `start`/`.stop`이 끼어들면 generation이 어긋나 stale 정리/실패 surfacing을 막는다.
     private var prepareGeneration: Int = 0
@@ -77,9 +77,9 @@ public actor PlayerCore {
             return
         }
 
-        // B안 전환: 엔진이 `PlayerEngineOutputProducing`을 채택하면 outputStream(권위 입력)을 소비한다.
+        // 엔진이 `PlayerEngineOutputProducing`을 채택하면 outputStream(권위 입력)을 소비한다.
         // 아직 미전환 엔진은 기존 eventStream을 비손실 bridge로 PlayerEngineOutput으로 감싸 소비한다.
-        // (설계 §8 2·3단계) bridge는 full-state `.stateDidChange`를 직접 적용하고 delta 이벤트만
+        // bridge는 full-state `.stateDidChange`를 직접 적용하고 delta 이벤트만
         // reducer 입력으로 번역하므로 현재 동작과 동일하다.
         if let producing = engine as? any PlayerEngineOutputProducing {
             let stream = await producing.outputStream
@@ -110,7 +110,7 @@ public actor PlayerCore {
         pendingSeekTask?.cancel()
         pendingSeekTask = nil
 
-        // H10/M1 — teardown 시 engine.stop을 idempotent하게 선행한다.
+        // teardown 시 engine.stop을 idempotent하게 선행한다.
         // 정상 경로는 viewWillDisappear의 `.stop`이 이미 선행되지만(중복 stop은 무해),
         // 비정상 종료(.stop 누락)에서는 이 호출이 playerView/proxy 세션 잔류와
         // KollusProxyPlayerView 타이머 크래시를 막는 최종 방어선이다.
@@ -159,12 +159,12 @@ public actor PlayerCore {
 
         do {
             try await task.value
-            // H5 — 내가 최신 세대일 때만 pending 정리(진행 중인 새 작업을 nil化하지 않음).
+            // 내가 최신 세대일 때만 pending 정리(진행 중인 새 작업을 nil化하지 않음).
             if generation == prepareGeneration {
                 pendingPrepareTask = nil
             }
         } catch is CancellationError {
-            // H4 — 취소로 끝났고 더 새로운 작업이 상태를 바꾸지 않았으면 .idle로 복원.
+            // 취소로 끝났고 더 새로운 작업이 상태를 바꾸지 않았으면 .idle로 복원.
             // `.stop`은 이미 .idle을 설정하므로 status가 .preparing일 때만 복원해 이중 전이를 피한다.
             if generation == prepareGeneration {
                 pendingPrepareTask = nil
@@ -174,7 +174,7 @@ public actor PlayerCore {
             }
         } catch {
             let playerError = mapToPlayerError(error)
-            // H7 — superseded(더 새로운 start로 교체됨) 실패는 상태/이벤트 스트림에 반영하지 않는다.
+            // superseded(더 새로운 start로 교체됨) 실패는 상태/이벤트 스트림에 반영하지 않는다.
             // 그래야 두 번째 load가 성공해도 첫 load의 실패가 UI에 깜빡이지 않는다.
             if generation == prepareGeneration {
                 pendingPrepareTask = nil
@@ -194,7 +194,7 @@ public actor PlayerCore {
                 try await engine.play()
             }
             // 권위 콜백 엔진(Kollus)은 outputStream `.playStarted`가 상태를 만든다.
-            // 권위 콜백이 없는 엔진(Native)은 Core가 command-origin으로 닫는다. (설계 §5.2.1)
+            // 권위 콜백이 없는 엔진(Native)은 Core가 command-origin으로 닫는다.
             applyCommandOriginIfNeeded(.playStarted)
         case .pause:
             try await executeEngineCommand {
@@ -213,7 +213,7 @@ public actor PlayerCore {
         case .seekWithOrigin(let time, let origin):
             // 연타 skip은 chase 패턴(단일 in-flight)으로 처리한다. actor 재진입 때문에 await-per-tap으로는
             // 직렬화되지 않아 SDK에 seek이 쏟아져 위치 콜백이 진동(롤백)한다. 최신 목표만 chaseTime에
-            // 누적하고 in-flight seek 완료 시 그쪽으로 chase한다. (Apple QA1820)
+            // 누적하고 in-flight seek 완료 시 그쪽으로 chase한다.
             let base = chaseTime ?? seekInProgressValue ?? currentState.currentTime
             requestSeek(to: seekTargetTime(for: time, origin: origin, base: base))
         case .setPlaybackRate(let rate):
@@ -289,7 +289,6 @@ public actor PlayerCore {
             // 목표 근처에 도달하면 pending을 해제하고 통과시켜 로딩을 내린다.
             if case .positionChanged(let time, _) = input, let inProgress = seekInProgressValue {
                 guard abs(time - inProgress) <= Self.seekSettleThreshold else {
-                    // 진행 중 seek이 아직 목표에 도달하지 않음 → stale/echo 위치 무시.
                     #if DEBUG
                     NSLog("[PlayerCore.out] drop stale position %.1f (seek in progress -> %.1f)", time, inProgress)
                     #endif
@@ -311,8 +310,7 @@ public actor PlayerCore {
             // 상태를 움직이는 입력은 reducer가 유일하게 다음 상태를 만든다.
             let reduced = stateReducer.reduce(input, state: currentState)
             #if DEBUG
-            // device QA: stateInput이 어떤 상태 전이를 만드는지 추적. (followup-spec §6)
-            // 특히 `.prepared`가 source 전환 후 늦게 도착해 새 상태를 덮는지(stale, spec §3.4) 관찰.
+            // source 전환 후 늦게 도착한 stale `.prepared`가 새 상태를 덮는지 관찰하기 위한 추적 로그.
             NSLog("[PlayerCore.out] %@ | %@ -> %@ | source=%@",
                   String(describing: input),
                   String(describing: currentState.status),
@@ -345,11 +343,10 @@ public actor PlayerCore {
 
     /// 권위 콜백이 없는 엔진(`!emitsObservedCommandState`, 예: Native)에서만 명령 성공 직후
     /// command-origin 입력을 reducer에 넣는다. 권위 콜백이 있는 엔진(Kollus)은 outputStream의
-    /// `.stateInput`이 상태를 만들므로 여기서 또 넣으면 이중 적용/경합이 된다. (설계 §5.2.1)
+    /// `.stateInput`이 상태를 만들므로 여기서 또 넣으면 이중 적용/경합이 된다.
     private func applyCommandOriginIfNeeded(_ input: PlaybackStateInput) {
         guard !engineCapabilities.contains(.emitsObservedCommandState) else {
             #if DEBUG
-            // device QA: 권위 콜백 엔진(Kollus)은 command-origin을 건너뛰고 outputStream을 신뢰한다.
             NSLog("[PlayerCore.cmd] skip command-origin (engine emits observed state): %@",
                   String(describing: input))
             #endif
@@ -365,7 +362,7 @@ public actor PlayerCore {
     /// 엔진 seek을 1개 시작한다. in-flight 중이면 `chaseTime`만 갱신해 완료 시 chase한다.
     private func requestSeek(to target: TimeInterval) {
         chaseTime = target
-        // 즉시 점프 + 로딩 표시(레거시 parity). 완료 시 positionChanged가 로딩을 내린다.
+        // 즉시 점프 + 로딩 표시. 완료 시 positionChanged가 로딩을 내린다.
         apply(stateReducer.reduce(.seeking(time: target), state: currentState))
         startChaseIfNeeded()
     }
@@ -404,7 +401,7 @@ public actor PlayerCore {
         startChaseIfNeeded()
     }
 
-    /// 미전환 엔진의 `PlayerEvent`를 `PlayerEngineOutput`으로 감싸는 비손실 bridge. (설계 §8 2단계)
+    /// 미전환 엔진의 `PlayerEvent`를 `PlayerEngineOutput`으로 감싸는 비손실 bridge.
     ///
     /// full-state `.stateDidChange`는 `.event`로 통과시켜 `consume`에서 직접 적용하고,
     /// 상태를 움직이는 delta 이벤트만 `.stateInput`으로 번역해 reducer를 거치게 한다.
@@ -622,7 +619,7 @@ public actor PlayerCore {
     }
 
     private func mapToPlayerError(_ error: Error) -> PlayerError {
-        // H3 — network/auth/decoding을 분류해 UI가 실패 원인을 구분할 수 있게 한다.
+        // network/auth/decoding을 분류해 UI가 실패 원인을 구분할 수 있게 한다.
         PlayerError.classify(error)
     }
 }

@@ -10,9 +10,6 @@ import Foundation
 import MediaPlayer
 
 /// 잠금화면 / Control Center 의 NowPlaying 메타데이터 + remote command 설정 utility.
-///
-/// 백그라운드 재생 시 레거시 `MoviePlayerController` 와 호환되게 host app
-/// 의 NowPlaying 상태를 갱신. spec-044 백그라운드 base 위에 spec-044 polish 로 추가.
 @MainActor
 public enum PlayerNowPlayingCenter {
     public struct Handlers {

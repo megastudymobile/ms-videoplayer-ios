@@ -14,7 +14,7 @@ public final class CloseButtonBlock: UIView, PlayerSkinBlock {
 
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         PlayerSkinIconButtonFactory.apply(button, icon: .close, fallbackTitle: "X", theme: theme)
-        // close 는 lock 중에도 사용 가능 (현 동작).
+        // close 는 lock 중에도 사용 가능.
     }
     @objc private func tap() { onAction?(.closeRequested) }
     private func pin(_ subview: UIView) {

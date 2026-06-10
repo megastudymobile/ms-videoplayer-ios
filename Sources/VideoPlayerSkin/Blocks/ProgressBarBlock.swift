@@ -91,7 +91,7 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
         // 드래그 시작 순간엔 첫 프리뷰 seek을 한 interval 미룬다 — touch-down의 pause(Kollus 메인)와
         // 첫 엔진 seek이 겹쳐 시작이 버벅이던 문제 방지. 0으로 리셋하면 첫 seekChanged가 즉시 seek한다.
         lastPreviewEmit = CACurrentMediaTime()
-        // 레거시 parity: 스크러버를 잡는 순간 재생을 멈춘다(host가 pause).
+        // 스크러버를 잡는 순간 host 가 재생을 멈춘다(pause).
         onAction?(.seekBegan)
     }
     @objc private func seekChanged() {

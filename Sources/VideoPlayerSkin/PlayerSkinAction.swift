@@ -11,8 +11,8 @@ import Foundation
 public enum PlayerSkinAction: Equatable {
     case closeRequested
     case togglePlayPause
-    /// 진행바 스크러버 잡기 시작(touchDown). 레거시 `willUpdatePlaybackProgress` parity —
-    /// host가 재생을 일시정지(freeze)해 사용자가 위치를 고르는 동안 화면을 멈춘다.
+    /// 진행바 스크러버 잡기 시작(touchDown). host 가 재생을 일시정지(freeze)해
+    /// 사용자가 위치를 고르는 동안 화면을 멈춘다.
     case seekBegan
     case seekPreviewChanged(TimeInterval)
     case seekEnded(TimeInterval)
@@ -22,9 +22,7 @@ public enum PlayerSkinAction: Equatable {
     case rateStepUp
     case rateStepDown
     case rateToggleCenter
-    /// spec-062 Phase D4 — dev `MGPlayerViewController.showPlaybackRateSetting`
-    /// (`MGPlayerViewController.m:2382-2429`) parity. rate 버튼 tap 시 cycle toggle
-    /// 대신 detailed 배속 패널 (`SLPlayerDetailedPlaybackRateView` 동등) 표시 요청.
+    /// rate 버튼 tap 시 cycle toggle 대신 상세 배속 패널 표시 요청.
     case ratePanelRequested
     case toggleDisplayScaling
     case toggleScreenMode
@@ -34,7 +32,6 @@ public enum PlayerSkinAction: Equatable {
     case sectionRepeatToggleRequested
     case sectionRepeatStartRequested
     case sectionRepeatEndRequested
-    /// spec-064 Phase 1 — host(강의)가 주입한 추가 버튼 tap. skin 은 id 만 전달하고 의미는 모른다.
-    /// dev 의 강의 인덱스 / 북마크 목록 / 다음 강의 버튼이 이 슬롯으로 이전됨.
+    /// host 가 주입한 추가 버튼 tap. skin 은 id 만 전달하고 의미는 모른다.
     case extraControlTapped(id: String)
 }

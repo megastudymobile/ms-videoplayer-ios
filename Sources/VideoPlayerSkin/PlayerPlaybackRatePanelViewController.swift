@@ -5,25 +5,14 @@
 //  Created by 모바일팀_정준영 on 2026/05/29.
 //  Copyright © 2026 megastudyedu. All rights reserved.
 //
-//  spec-062 Phase D4 — dev `SLPlayerDetailedPlaybackRateView` (slider + ± + preset row)
-//  1:1 port. parity 기준 문서:
-//  `docs/lecture-ui-parity/20-sheets/03-playback-rate.md` §3 / §0.
-//
-//  - 패널 크기 phone 343x166 / pad 420x186, radius 6.7
-//  - 컨테이너 배경 `Grey11`, 슬라이더 thumb 16pt 원, min/max caption AppleSDGothicNeo Regular
-//  - rate label AppleSDGothicNeo Bold 22/24pt
-//  - ± 0.1 step, slider min=0.5 / max=2.0(일반) | 4.0(4x 강의)
-//  - preset (2x) [0.8,1.0,1.2,1.5,2.0] / (4x) [1.0,1.2,1.5,2.0,3.0]
-//  - 배경 tap dismiss, preset 선택 시 dismiss, slider/± 시 dismiss 보류
 
 import UIKit
 
-/// 신 모듈에서 사용할 배속 상세 패널.
-/// dev `SLPlayerDetailedPlaybackRateView` 의 시각 + 동작을 자체 VC 로 호스팅.
+/// 배속 상세 패널. 슬라이더 + ±0.1 스텝 + preset 버튼으로 배속을 변경한다.
+/// 배경 tap·preset 선택 시 dismiss, slider/± 조작 시에는 dismiss 하지 않는다.
 @MainActor
 public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
-    /// 패널 표시 모드.
     public enum Mode {
         /// 2배속 상한 — preset `[0.8, 1.0, 1.2, 1.5, 2.0]`, max 2.0.
         case standard
@@ -126,7 +115,6 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
             dimmingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // dev `SLPlayerDetailedPlaybackRateView` 의 contentView 폭/높이 (Metrics.panelWidth/Height).
         let panelWidth = isPadDevice ? Metrics.padPanelWidth : Metrics.phonePanelWidth
         let panelHeight = isPadDevice ? Metrics.padPanelHeight : Metrics.phonePanelHeight
 
@@ -153,7 +141,6 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
         }
         NSLayoutConstraint.activate(cardConstraints)
 
-        // mainColumn: topRow (rate label + - / +) → middleColumn (slider + caption row) → preset row.
         let topRow = UIView()
         topRow.translatesAutoresizingMaskIntoConstraints = false
         topRow.addSubview(minusButton)
@@ -188,7 +175,6 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
             mainColumn.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
             mainColumn.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
 
-            // topRow inner layout (dev SnapKit: centerY, minus.trailing=centerX-60, plus.leading=centerX+60, height=25).
             rateLabel.centerXAnchor.constraint(equalTo: topRow.centerXAnchor),
             rateLabel.centerYAnchor.constraint(equalTo: topRow.centerYAnchor),
 
@@ -214,22 +200,19 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
     private func configureAppearance() {
         dimmingView.backgroundColor = UIColor.black.withAlphaComponent(0.3)
 
-        // dev `ColorResource.grey11.uiColor` + radius 6.7.
         cardView.backgroundColor = UIColor(named: "Grey11") ?? UIColor(white: 0.1, alpha: 1.0)
         cardView.layer.cornerRadius = Metrics.contentCornerRadius
         cardView.layer.masksToBounds = true
 
-        // dev rate label: AppleSDGothicNeo Bold 22/24pt, color white03.
         let rateFontSize = isPadDevice ? Metrics.rateLabelPadFontSize : Metrics.rateLabelPhoneFontSize
         rateLabel.font = UIFont(name: "AppleSDGothicNeo-Bold", size: rateFontSize)
             ?? .systemFont(ofSize: rateFontSize, weight: .bold)
         rateLabel.textColor = UIColor(named: "White-03") ?? UIColor.white.withAlphaComponent(0.9)
         rateLabel.textAlignment = .center
 
-        // dev minus/plus 버튼 = `PlayerRateMinusButton`/`PlayerRatePlusButton` Asset.
         minusButton.setImage(UIImage(named: "PlayerRateMinusButton"), for: .normal)
         plusButton.setImage(UIImage(named: "PlayerRatePlusButton"), for: .normal)
-        // Asset 미존재 시 text fallback.
+        // 호스트 앱 번들에 asset 이 없을 수 있어 text fallback 을 둔다.
         if minusButton.image(for: .normal) == nil {
             minusButton.setTitle("−", for: .normal)
             minusButton.setTitleColor(.white, for: .normal)
@@ -356,7 +339,6 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
             return
         }
         playbackRate = snapped
-        // preset 선택은 dev parity 로 패널 dismiss.
         onSelectRate?(Double(snapped), true)
     }
 
@@ -381,7 +363,6 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
     // MARK: - Static helpers
 
-    /// dev `SLPlayerManager.playbackRateText(_:)` (`%.1fx`) parity.
     private static func rateText(for rate: Float) -> String {
         String(format: "%.1fx", roundOneDecimal(rate))
     }
@@ -414,7 +395,6 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
 private extension PlayerPlaybackRatePanelViewController {
     enum Metrics {
-        // dev `SLPlayerDetailedPlaybackRateView.Metrics`.
         static let phonePanelWidth: CGFloat = 343
         static let phonePanelHeight: CGFloat = 166
         static let padPanelWidth: CGFloat = 420
@@ -450,7 +430,6 @@ private extension PlayerPlaybackRatePanelViewController {
         static let maxRateStandard: Float = 2.0
         static let maxRateExtended: Float = 4.0
 
-        // dev `SLPlayerDetailedPlaybackRateView.swift:131-134`.
         static let presetRatesUpTo2x: [Float] = [0.8, 1.0, 1.2, 1.5, 2.0]
         static let presetRatesUpTo4x: [Float] = [1.0, 1.2, 1.5, 2.0, 3.0]
 

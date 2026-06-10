@@ -11,9 +11,8 @@ import UIKit
 
 /// `PlayerTypeNative`(AVPlayer 백엔드) 모드에서 백그라운드 오디오 재생을 유지하는 keeper.
 ///
-/// 레거시 host 앱의 MoviePlayerController + BackgroundPlayerManager 동작 1:1 대응:
 /// AVPlayer 는 자신이 부착된 `AVPlayerLayer` 가 백그라운드된 뷰 계층에 있으면 iOS 가 강제로 일시정지한다
-/// (오디오 세션 권한과 무관한 iOS 기본 동작). 레거시는 `willResignActive` 에서 KollusPlayerView 내부
+/// (오디오 세션 권한과 무관한 iOS 기본 동작). 그래서 `willResignActive` 에서 KollusPlayerView 내부
 /// `AVPlayerLayer` 를 찾아 `player` 를 분리(`layer.player = nil`)하고 AVPlayer 를 강하게 보관해 오디오를
 /// 끊김 없이 유지한 뒤, `didBecomeActive` 에서 다시 부착한다.
 ///
@@ -74,7 +73,7 @@ final class KollusBackgroundAudioKeeper {
         tokens.forEach(center.removeObserver(_:))
     }
 
-    /// 레거시 `getCurrentPlayerLayer` 대응: KollusPlayerView 의 첫 subview → 첫 sublayer 가 AVPlayerLayer.
+    /// KollusPlayerView 의 첫 subview 의 첫 sublayer 가 AVPlayerLayer 라는 SDK 뷰 구조에 의존한다.
     private func currentAVPlayerLayer() -> AVPlayerLayer? {
         guard
             let firstSubview = playerView?.subviews.first,
@@ -85,7 +84,6 @@ final class KollusBackgroundAudioKeeper {
         return firstSublayer
     }
 
-    /// 레거시 `setBackgroundPlaySetting:` ON 경로 대응 — AVPlayer 를 layer 에서 분리해 보관.
     private func enterBackground() {
         guard
             detachedPlayer == nil,
@@ -96,7 +94,7 @@ final class KollusBackgroundAudioKeeper {
             return
         }
 
-        // 레거시 `enterBackgroundMode(with:)` 대응 — 세션을 .playback active 로 재확인.
+        // 백그라운드에서 오디오가 유지되려면 분리 시점에 세션이 .playback active 여야 한다.
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, options: [])
         try? session.setActive(true)
@@ -105,7 +103,6 @@ final class KollusBackgroundAudioKeeper {
         layer.player = nil
     }
 
-    /// 레거시 `setEnterForgroundSetting` 대응 — 보관한 AVPlayer 를 layer 에 재부착.
     private func enterForeground() {
         guard let player = detachedPlayer else { return }
         defer { detachedPlayer = nil }

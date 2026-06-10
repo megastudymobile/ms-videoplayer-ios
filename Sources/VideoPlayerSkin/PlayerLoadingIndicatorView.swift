@@ -6,13 +6,11 @@
 
 import UIKit
 
-/// dev `MGPlayerLoadingView` + `M13ProgressViewRing` parity 중앙 ring indicator.
+/// 중앙 ring 로딩 indicator.
 /// skin 이 소유하므로 lecture/cast 등 모든 host 가 동일 로딩 표시를 공유한다.
-///
-/// dev 상수: diameter 50, ring width 4. ring 색은 host theme 의 `progressFill`(=primarySkyBlue) 주입.
 @MainActor
 public final class PlayerLoadingIndicatorView: UIView {
-    /// dev `MGPlayerLoadingViewMode` parity. clear=투명 배경, black=검은 overlay.
+    /// clear=투명 배경, black=검은 overlay.
     enum Mode {
         case clear
         case black
@@ -69,7 +67,6 @@ public final class PlayerLoadingIndicatorView: UIView {
         ringLayer.path = UIBezierPath(ovalIn: rect).cgPath
     }
 
-    /// ring 색 주입. host theme 의 `progressFill`(primarySkyBlue) 사용.
     func setRingColor(_ color: UIColor) {
         ringLayer.strokeColor = color.cgColor
     }

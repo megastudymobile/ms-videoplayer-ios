@@ -34,7 +34,7 @@ public actor KollusSessionBootstrapper {
         self.storageFactory = storageFactory
     }
 
-    /// M8 — 캐시된 storage를 폐기해 다음 `resolveStorage()`가 재부트스트랩(재인증)하도록 한다.
+    /// 캐시된 storage를 폐기해 다음 `resolveStorage()`가 재부트스트랩(재인증)하도록 한다.
     /// `applicationExpireDate` 만료/세션 손상/`removeCache` 후 강제 갱신 경로가 필요할 때 호출.
     /// 진행 중인 부트스트랩(`inFlightTask`)도 취소해 stale 결과가 캐시되지 않게 한다.
     /// vendor `KollusStorage`는 명시적 stop API가 없어 실제 정리는 ARC dealloc에 의존한다(참조 해제로 시점 앞당김).

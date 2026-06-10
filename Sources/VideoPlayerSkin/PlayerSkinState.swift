@@ -10,8 +10,7 @@ import Foundation
 
 import VideoPlayerCore
 
-/// spec-063 P1 — `PlayerSkinControlView` chrome 분기용 layout mode.
-/// dev `MGPlayerSkinView` 의 가로/세로/split 분기와 1:1 매핑.
+/// skin chrome 분기용 layout mode.
 /// - verticalSplit: iPhone portrait — title/leftMenu/rightMenu hidden, center 컨트롤 좌측 정렬.
 /// - horizontalSplit: iPad landscape split — title visible, leftMenu visible, rightMenu hidden.
 /// - fullScreen: phone landscape / iPad fullscreen toggle — 모든 chrome 노출, center 컨트롤 중앙 정렬.
@@ -41,12 +40,12 @@ public struct PlayerSkinState: Equatable {
     public var isFullScreenMode: Bool
     public var displayScaleMode: PlayerDisplayScaleMode
     public var isDisplayScaled: Bool { displayScaleMode.isScaled }
-    /// spec-064 Phase 1 — host 주입 추가 버튼(ExtraControl) 중 현재 숨길 id 집합.
-    /// 다음 강의 버튼 등 동적 가시성을 generic 하게 표현 (구 `nextEpisodeButtonVisible` 대체).
+    /// host 주입 추가 버튼(ExtraControl) 중 현재 숨길 id 집합.
+    /// 다음 강의 버튼 등 동적 가시성을 generic 하게 표현.
     public var hiddenExtraControlIDs: Set<String>
     public var isLocked: Bool
     public var sectionRepeat: SectionRepeatState
-    /// spec-063 P1 — Shell `viewWillTransition` 에서 size+traits 기반 resolve 후 emit.
+    /// Shell 이 `viewWillTransition` 에서 size+traits 기반으로 resolve 해 emit 한다.
     public var layoutMode: PlayerSkinLayoutMode
 
     public static let initial = PlayerSkinState(
