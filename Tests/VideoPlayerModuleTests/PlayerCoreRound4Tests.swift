@@ -459,9 +459,9 @@ private actor RecordedValues<Value: Sendable> {
 
 private extension PlaybackSource {
     var testKey: String {
-        switch self {
-        case .kollus(let mediaContentKey):
-            return "kollus:\(mediaContentKey)"
+        switch kind {
+        case .mediaKey(let key):
+            return "mediaKey:\(key)"
         case .url(let url):
             return "url:\(url.absoluteString)"
         }

@@ -178,11 +178,11 @@ final class PlayerTestConsoleContainerViewController: UIViewController {
     // MARK: - Helper
 
     private static func describe(_ source: PlaybackSource) -> String {
-        switch source {
+        switch source.kind {
         case .url(let url):
             return url.absoluteString
-        case .kollus(let mediaContentKey):
-            return "kollus: \(mediaContentKey)"
+        case .mediaKey(let key):
+            return "mediaKey: \(key)"
         }
     }
 }

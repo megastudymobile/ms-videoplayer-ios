@@ -64,7 +64,7 @@ struct KollusPlayerAdapterPrepareTests {
         let adapter = KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
 
         await #expect {
-            try await adapter.prepare(source: .kollus(mediaContentKey: "mck-1"))
+            try await adapter.prepare(source: .mediaKey("mck-1"))
         } throws: { error in
             guard case let PlayerError.engineError(message) = error else { return false }
             return message.contains("startStorage")
@@ -100,7 +100,7 @@ struct KollusPlayerAdapterPrepareTests {
         let adapter = KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
 
         await #expect {
-            try await adapter.prepare(source: .kollus(mediaContentKey: "mck-1"))
+            try await adapter.prepare(source: .mediaKey("mck-1"))
         } throws: { error in
             guard case let PlayerError.engineError(message) = error else { return false }
             return message.contains("KollusStorageAdapter가 아닌")

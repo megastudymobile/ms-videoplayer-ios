@@ -1192,8 +1192,8 @@ public actor KollusPlayerAdapter:
 
     @MainActor
     private static func makePlayerView(for source: PlaybackSource) -> KollusPlayerView? {
-        switch source {
-        case .kollus(let key):
+        switch source.kind {
+        case .mediaKey(let key):
             return KollusPlayerView(mediaContentKey: key)
         case .url(let url):
             return KollusPlayerView(contentURL: url.absoluteString)

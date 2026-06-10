@@ -128,11 +128,11 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
 
     public func prepare(source: PlaybackSource) async throws {
         let url: URL
-        switch source {
+        switch source.kind {
         case .url(let sourceURL):
             url = sourceURL
-        case .kollus(let mediaContentKey):
-            throw PlayerError.engineError("AVPlayerAdapter는 url source만 지원합니다. source=\(mediaContentKey)")
+        case .mediaKey(let key):
+            throw PlayerError.engineError("AVPlayerAdapter는 url source만 지원합니다. source=\(key)")
         }
 
         cleanupCurrentItemObservers()

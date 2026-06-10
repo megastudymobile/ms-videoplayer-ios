@@ -15,7 +15,9 @@ struct PlayerModuleBoundaryTests {
             "RemoteConfig",
             "QnA",
             "Megaling",
-            "AISummary"
+            "AISummary",
+            // Core 도메인에 벤더 케이스 재유입 금지 (PlaybackSource는 .mediaKey로 중립화됨)
+            "case kollus"
         ]
         let swiftFiles = FileManager.default.enumerator(
             at: sourceRoot,
