@@ -46,6 +46,8 @@ final class PlayerViewController: UIViewController {
     private var panSeekStartTime: TimeInterval = 0
     private var panSeekTargetTime: TimeInterval = 0
     private weak var doubleTapRecognizer: UITapGestureRecognizer?
+    private weak var longPressRecognizer: UILongPressGestureRecognizer?
+    private var longPressPreviousRate: Double?
 
     // MARK: - Embed seam (split 컨테이너 호스팅용)
 
@@ -128,6 +130,7 @@ final class PlayerViewController: UIViewController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        restoreLongPressPlaybackRateIfNeeded()
         cancelControlsAutoHideTimer()
         if isBeingDismissed || isMovingFromParent {
             interactor.tearDown()
@@ -237,6 +240,13 @@ final class PlayerViewController: UIViewController {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(didPan))
         pan.delegate = self
         view.addGestureRecognizer(pan)
+
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(didLongPressSurface))
+        longPress.minimumPressDuration = 0.35
+        longPress.cancelsTouchesInView = true
+        longPress.delegate = self
+        longPressRecognizer = longPress
+        view.addGestureRecognizer(longPress)
     }
 
     @objc private func didTapSurface() {
@@ -263,6 +273,26 @@ final class PlayerViewController: UIViewController {
                 icon: willPause ? "pause.fill" : "play.fill",
                 title: willPause ? "일시정지" : "재생"
             )
+        }
+    }
+
+    @objc private func didLongPressSurface(_ recognizer: UILongPressGestureRecognizer) {
+        guard PreferenceManager.useGesture else { return }
+        guard viewModel.state.isLocked == false else { return }
+
+        switch recognizer.state {
+        case .began:
+            guard longPressPreviousRate == nil else { return }
+            resetControlsAutoHideTimer()
+            longPressPreviousRate = viewModel.state.playbackRate
+            applyPlaybackRate(PlaybackRate.max)
+            skin.presentRateGestureHUD(PlaybackRate.max)
+        case .ended, .cancelled, .failed:
+            restoreLongPressPlaybackRateIfNeeded()
+            skin.hideGestureHUD()
+            resetControlsAutoHideTimer()
+        default:
+            break
         }
     }
 
@@ -389,6 +419,12 @@ final class PlayerViewController: UIViewController {
     private func applyPlaybackRate(_ rate: Double) {
         interactor.send(.setPlaybackRate(rate))
         emitRender(viewModel.setPlaybackRate(rate))
+    }
+
+    private func restoreLongPressPlaybackRateIfNeeded() {
+        guard let previousRate = longPressPreviousRate else { return }
+        longPressPreviousRate = nil
+        applyPlaybackRate(previousRate)
     }
 
     /// 화면 모드 버튼 — 세로/가로 전환 요청 (iOS 16+: 지오메트리 요청, 이하: 시스템 회전 유도).
@@ -630,7 +666,7 @@ extension PlayerViewController: PlayerControlChannel {
 
 extension PlayerViewController: UIGestureRecognizerDelegate {
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if gestureRecognizer === doubleTapRecognizer {
+        if gestureRecognizer === doubleTapRecognizer || gestureRecognizer === longPressRecognizer {
             return PreferenceManager.useGesture && viewModel.state.isLocked == false
         }
         return true
@@ -638,7 +674,7 @@ extension PlayerViewController: UIGestureRecognizerDelegate {
 
     /// 블록 버튼(UIControl) 터치는 토글/팬 제스처에서 제외 — 컨트롤 조작이 우선.
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        if gestureRecognizer === doubleTapRecognizer {
+        if gestureRecognizer === doubleTapRecognizer || gestureRecognizer === longPressRecognizer {
             return true
         }
         return (touch.view?.hasControlAncestor ?? false) == false
