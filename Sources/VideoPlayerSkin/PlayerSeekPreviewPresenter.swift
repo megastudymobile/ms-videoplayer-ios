@@ -33,7 +33,12 @@ final class PlayerSeekPreviewPresenter {
         static let edgeMargin: CGFloat = 8
         static let anchorGap: CGFloat = 8
         static let fadeDuration: TimeInterval = 0.15
+        /// 연속 nil 응답이 이 횟수에 도달해야 placeholder를 컴팩트로 축소한다 —
+        /// 공급 준비 지연(스프라이트 다운로드/디코드 중)을 실패로 단정하지 않기 위한 유예.
+        static let nilCollapseThreshold = 4
     }
+
+    private var consecutiveNilResponses = 0
 
     init() {
         view.alpha = 0
@@ -43,6 +48,7 @@ final class PlayerSeekPreviewPresenter {
     func begin() {
         guard isEnabled else { return }
         isActive = true
+        consecutiveNilResponses = 0
         view.beginSession(showsPlaceholder: imageProvider != nil)
         view.isHidden = false
         UIView.animate(withDuration: Metric.fadeDuration) { self.view.alpha = 1 }
@@ -80,9 +86,19 @@ final class PlayerSeekPreviewPresenter {
                 self.pendingRequestTime = nil
                 return
             }
-            self.view.setImage(image)
-            // placeholder ↔ 이미지/컴팩트 전환 시 크기가 바뀐다 — 같은 anchor로 재배치.
-            self.reposition()
+            if image == nil {
+                self.consecutiveNilResponses += 1
+                // 유예 도달 전의 nil은 view에 전달하지 않는다 — placeholder 유지.
+                if self.consecutiveNilResponses >= Metric.nilCollapseThreshold {
+                    self.view.setImage(nil)
+                    self.reposition()
+                }
+            } else {
+                self.consecutiveNilResponses = 0
+                self.view.setImage(image)
+                // placeholder ↔ 이미지/컴팩트 전환 시 크기가 바뀐다 — 같은 anchor로 재배치.
+                self.reposition()
+            }
             if let pending = self.pendingRequestTime {
                 self.pendingRequestTime = nil
                 self.startImageRequest(at: pending)

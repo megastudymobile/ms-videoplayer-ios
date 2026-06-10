@@ -75,6 +75,7 @@ public actor KollusPlayerAdapter:
     private var seekPreviewSource: KollusSeekPreviewSource?
     /// 스크럽 hot path에서 SDK 조회를 피하기 위한 (스프라이트 경로, duration) 캐시.
     private var seekPreviewSnapshot: (path: String, duration: TimeInterval)?
+    private var seekPreviewWarmUpTask: Task<Void, Never>?
     private var currentZoom: CGFloat = 0
     private var nextEpisodeEmitter = KollusNextEpisodeEmitter()
     private var pendingPrepareContinuation: CheckedContinuation<Void, Error>?
@@ -234,12 +235,13 @@ public actor KollusPlayerAdapter:
     // MARK: - PlayerSeekPreviewEngine
 
     public func seekPreviewImage(at time: TimeInterval) async -> UIImage? {
-        // 스크럽 hot path — SDK 조회(MainActor 왕복)는 warm-up이 캐시한 스냅샷으로 대체한다.
-        // 캐시가 없을 때(워밍업 전 드래그)만 1회 조회한다.
-        if seekPreviewSnapshot == nil {
-            seekPreviewSnapshot = await resolveSeekPreviewSnapshot()
+        // 스크럽 hot path에서는 SDK를 절대 조회하지 않는다 — 썸네일이 아직 준비되지 않은
+        // 동안 SDK getter(MainActor)가 느리게 돌면 슬라이더 터치 추적까지 멈춘다.
+        // 스냅샷은 워밍업(prepare-ready/thumbnailReady/아래 트리거)만 채운다.
+        guard let snapshot = seekPreviewSnapshot, snapshot.duration > 0 else {
+            scheduleSeekPreviewWarmUp()
+            return nil
         }
-        guard let snapshot = seekPreviewSnapshot, snapshot.duration > 0 else { return nil }
         if seekPreviewSource?.path != snapshot.path {
             seekPreviewSource = KollusSeekPreviewSource(thumbnailPath: snapshot.path)
         }
@@ -258,8 +260,21 @@ public actor KollusPlayerAdapter:
         }
     }
 
+    /// 워밍업 fire-and-forget 트리거 — 동시 1건만 유지해 SDK 조회가 폭주하지 않게 한다.
+    private func scheduleSeekPreviewWarmUp() {
+        guard seekPreviewWarmUpTask == nil else { return }
+        seekPreviewWarmUpTask = Task { [weak self] in
+            await self?.warmUpSeekPreview()
+            await self?.finishSeekPreviewWarmUp()
+        }
+    }
+
+    private func finishSeekPreviewWarmUp() {
+        seekPreviewWarmUpTask = nil
+    }
+
     /// 스프라이트를 스크럽 전에 미리 디코드한다 — 첫 드래그가 디코드 지연으로
-    /// 라벨-only로 머무는 시간을 없앤다. 실패해도 스크럽 경로가 다시 시도한다.
+    /// 라벨-only로 머무는 시간을 없앤다. 실패해도 다음 트리거가 다시 시도한다.
     private func warmUpSeekPreview() async {
         seekPreviewSnapshot = await resolveSeekPreviewSnapshot()
         guard let snapshot = seekPreviewSnapshot else { return }
@@ -816,7 +831,7 @@ public actor KollusPlayerAdapter:
                 let snapshot = await readyStateSnapshot()
                 transition(to: snapshot)
                 completePendingPrepare(with: .success(()))
-                Task { [weak self] in await self?.warmUpSeekPreview() }
+                scheduleSeekPreviewWarmUp()
             }
 
         case .playStarted(_, let error):
@@ -927,10 +942,12 @@ public actor KollusPlayerAdapter:
 
         case .thumbnailReady:
             // 스프라이트가 비동기 다운로드로 뒤늦게 도착할 수 있다 — 캐시를 무효화하고
-            // 즉시 다시 디코드해 다음 드래그에서 바로 이미지가 나오게 한다.
+            // 다시 디코드해 다음 프리뷰 요청에서 바로 이미지가 나오게 한다.
+            // 워밍업이 이미 진행 중이면 건너뛴다 — 스냅샷이 비어 있는 한
+            // 다음 스크럽 요청이 다시 트리거하므로 자가 회복된다.
             seekPreviewSource = nil
             seekPreviewSnapshot = nil
-            Task { [weak self] in await self?.warmUpSeekPreview() }
+            scheduleSeekPreviewWarmUp()
 
         case .scrollChanged,
              .zoomChanged,
