@@ -11,6 +11,8 @@ import Foundation
 public actor PlayerCore {
     public nonisolated let stateStream: AsyncStream<PlaybackState>
     public nonisolated let eventStream: AsyncStream<PlayerEvent>
+    /// 엔진의 optional protocol 채택으로 산출한 가용 기능 — UI 버튼 사전 게이트용.
+    public nonisolated let availableFeatures: PlayerFeatureAvailability
 
     private let engine: PlayerPlaybackEngine
     private let engineCapabilities: EngineCapabilities
@@ -54,6 +56,7 @@ public actor PlayerCore {
 
         self.engine = engine
         self.engineCapabilities = engineCapabilities
+        self.availableFeatures = PlayerFeatureAvailability.probe(engine)
         self.currentState = .idle
         self.currentPolicy = initialPolicy
         self.stateStream = stateStream
