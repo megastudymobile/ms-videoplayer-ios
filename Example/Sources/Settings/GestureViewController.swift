@@ -5,9 +5,9 @@
 //  Created by JunyoungJung on 2026/06/05.
 //
 //  화면 제스처 설정 — SLGestureSettingViewController 디자인 parity.
-//  흰 스크롤뷰(paleGrey 배경) + 상단 10pt 구분 + "플레이 제스처" 마스터 행 + 제스처별 항목
-//  (제목 SemiBold17 / 우측 스위치 / 일러스트 81x46 / 안내문구 + 화살표 / 하단 0.5 hairline).
-//  마스터 스위치는 PreferenceManager.useGesture(라이브 detail 표시)와 연동, 개별 항목은 데모상 시각 parity.
+//  흰 스크롤뷰(paleGrey 배경) + 상단 10pt 구분 + "플레이 제스처" 마스터 행
+//  + 더블탭 전용 2옵션 행 + 제스처별 항목 구성.
+//  실제 더블탭 동작은 Example 정책상 좌/우 10초 이동만 허용한다.
 //
 
 import UIKit
@@ -23,8 +23,6 @@ final class GestureViewController: UIViewController {
     }
 
     private static let items: [GestureItem] = [
-        .init(title: "더블탭", imageName: "MyPlayerScreenGestureDoubleTap",
-              guidePrefix: "화면 양쪽 더블탭", guideSuffix: "10초 뒤로/앞으로 이동"),
         .init(title: "2배속 재생", imageName: "MyPlayerScreenGestureLongPress",
               guidePrefix: "롱 탭(꾹 누르기)", guideSuffix: "2배속 재생"),
         .init(title: "화면 확대/축소", imageName: "MyPlayerScreenGestureWide",
@@ -37,6 +35,14 @@ final class GestureViewController: UIViewController {
               guidePrefix: "우측 상/하 드래그", guideSuffix: "볼륨 조절")
     ]
 
+    private enum Metric {
+        static let masterRowHeight: CGFloat = 60
+        static let doubleTapRowHeight: CGFloat = 180
+        static let radioSize: CGFloat = 22
+        static let gestureImageWidth: CGFloat = 81
+        static let gestureImageHeight: CGFloat = 46
+    }
+
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
 
@@ -44,7 +50,23 @@ final class GestureViewController: UIViewController {
         super.viewDidLoad()
         title = "플레이어 제스처"
         view.backgroundColor = SLPalette.paleGrey
+        configureNavigation()
         configure()
+    }
+
+    private func configureNavigation() {
+        let home = UIBarButtonItem(
+            image: UIImage(systemName: "house"),
+            style: .plain,
+            target: self,
+            action: #selector(didTapHome)
+        )
+        home.tintColor = .label
+        navigationItem.rightBarButtonItem = home
+    }
+
+    @objc private func didTapHome() {
+        navigationController?.popToRootViewController(animated: true)
     }
 
     private func configure() {
@@ -72,8 +94,8 @@ final class GestureViewController: UIViewController {
             contentStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
         ])
 
-        // 마스터 "플레이 제스처" 행 — useGesture 연동.
         contentStack.addArrangedSubview(makeMasterRow())
+        contentStack.addArrangedSubview(makeDoubleTapRow())
         for item in Self.items {
             contentStack.addArrangedSubview(makeItemRow(item))
         }
@@ -84,15 +106,20 @@ final class GestureViewController: UIViewController {
     /// 플레이 제스처 마스터 (60h): 제목 + 스위치.
     private func makeMasterRow() -> UIView {
         let row = UIView()
+        row.backgroundColor = SLPalette.cardWhite
         let title = makeTitleLabel("플레이 제스처")
-        let toggle = UISwitch()
-        toggle.translatesAutoresizingMaskIntoConstraints = false
+        let toggle = makeSwitch(isOn: PreferenceManager.useGesture)
         toggle.isOn = PreferenceManager.useGesture
         toggle.addAction(UIAction { _ in PreferenceManager.useGesture = toggle.isOn }, for: .valueChanged)
+        let topLine = makeHairline()
         let line = makeHairline()
-        [title, toggle, line].forEach { row.addSubview($0) }
+        [topLine, title, toggle, line].forEach { row.addSubview($0) }
         NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: 60),
+            row.heightAnchor.constraint(equalToConstant: Metric.masterRowHeight),
+            topLine.topAnchor.constraint(equalTo: row.topAnchor),
+            topLine.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            topLine.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            topLine.heightAnchor.constraint(equalToConstant: 0.5),
             title.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
             title.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             toggle.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
@@ -105,17 +132,97 @@ final class GestureViewController: UIViewController {
         return row
     }
 
+    /// 더블탭 전용 행 — 원본 SLDoubleTapGestureView와 동일한 2옵션 구성.
+    /// Example 정책상 재생/일시정지는 선택 불가 안내, 좌/우 10초 이동만 선택 상태로 표시한다.
+    private func makeDoubleTapRow() -> UIView {
+        let row = UIView()
+        row.backgroundColor = SLPalette.cardWhite
+        let title = makeTitleLabel("더블탭")
+        let toggle = makeSwitch(isOn: true)
+        let playPauseOption = makeDoubleTapOptionRow(
+            isSelected: false,
+            isEnabled: false,
+            imageName: "MyPlayerScreenGesturePlayPause",
+            prefix: "중앙 더블 탭",
+            suffix: "재생/일시정지"
+        )
+        let forwardBackwardOption = makeDoubleTapOptionRow(
+            isSelected: true,
+            isEnabled: true,
+            imageName: "MyPlayerScreenGestureDoubleTap",
+            prefix: "좌 우 더블 탭",
+            suffix: "10초 뒤로/빨리 가기"
+        )
+        let line = makeHairline()
+        [title, toggle, playPauseOption, forwardBackwardOption, line].forEach { row.addSubview($0) }
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: Metric.doubleTapRowHeight),
+            title.topAnchor.constraint(equalTo: row.topAnchor, constant: 16),
+            title.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            toggle.topAnchor.constraint(equalTo: row.topAnchor, constant: 16),
+            toggle.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+
+            playPauseOption.topAnchor.constraint(equalTo: toggle.bottomAnchor, constant: 8),
+            playPauseOption.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            playPauseOption.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            playPauseOption.heightAnchor.constraint(equalToConstant: Metric.gestureImageHeight),
+
+            forwardBackwardOption.topAnchor.constraint(equalTo: playPauseOption.bottomAnchor, constant: 16),
+            forwardBackwardOption.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            forwardBackwardOption.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            forwardBackwardOption.heightAnchor.constraint(equalToConstant: Metric.gestureImageHeight),
+
+            line.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            line.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            line.bottomAnchor.constraint(equalTo: row.bottomAnchor),
+            line.heightAnchor.constraint(equalToConstant: 0.5)
+        ])
+        return row
+    }
+
+    private func makeDoubleTapOptionRow(
+        isSelected: Bool,
+        isEnabled: Bool,
+        imageName: String,
+        prefix: String,
+        suffix: String
+    ) -> UIView {
+        let option = UIView()
+        option.translatesAutoresizingMaskIntoConstraints = false
+        option.backgroundColor = SLPalette.cardWhite
+
+        let radio = RadioIndicatorView(isSelected: isSelected, isEnabled: isEnabled)
+        radio.translatesAutoresizingMaskIntoConstraints = false
+        let image = makeGestureImageView(imageName)
+        let guide = makeGuideLabel(prefix: prefix, suffix: suffix, isEnabled: isEnabled)
+        [radio, image, guide].forEach { option.addSubview($0) }
+
+        NSLayoutConstraint.activate([
+            radio.widthAnchor.constraint(equalToConstant: Metric.radioSize),
+            radio.heightAnchor.constraint(equalToConstant: Metric.radioSize),
+            radio.leadingAnchor.constraint(equalTo: option.leadingAnchor, constant: 12),
+            radio.centerYAnchor.constraint(equalTo: option.centerYAnchor),
+
+            image.widthAnchor.constraint(equalToConstant: Metric.gestureImageWidth),
+            image.heightAnchor.constraint(equalToConstant: Metric.gestureImageHeight),
+            image.leadingAnchor.constraint(equalTo: radio.trailingAnchor, constant: 10),
+            image.centerYAnchor.constraint(equalTo: option.centerYAnchor),
+
+            guide.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 12),
+            guide.trailingAnchor.constraint(equalTo: option.trailingAnchor, constant: -12),
+            guide.centerYAnchor.constraint(equalTo: option.centerYAnchor)
+        ])
+        return option
+    }
+
     /// 제스처 항목 (SL SLGestureItemView parity): 제목 + 스위치 + 일러스트 81x46 + 안내문구 + 하단선.
     private func makeItemRow(_ item: GestureItem) -> UIView {
         let row = UIView()
+        row.backgroundColor = SLPalette.cardWhite
         let title = makeTitleLabel(item.title)
-        let toggle = UISwitch()
-        toggle.translatesAutoresizingMaskIntoConstraints = false
-        toggle.isOn = true   // 데모상 시각 parity(개별 제스처 제어 미지원) — persist 안 함.
-        let image = UIImageView(image: UIImage(named: item.imageName))
-        image.contentMode = .scaleAspectFit
-        image.translatesAutoresizingMaskIntoConstraints = false
-        let guide = makeGuideLabel(prefix: item.guidePrefix, suffix: item.guideSuffix)
+        let toggle = makeSwitch(isOn: true)
+        let image = makeGestureImageView(item.imageName)
+        let guide = makeGuideLabel(prefix: item.guidePrefix, suffix: item.guideSuffix, isEnabled: true)
         let line = makeHairline()
         [title, toggle, image, guide, line].forEach { row.addSubview($0) }
 
@@ -125,8 +232,8 @@ final class GestureViewController: UIViewController {
             toggle.topAnchor.constraint(equalTo: row.topAnchor, constant: 16),
             toggle.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
 
-            image.widthAnchor.constraint(equalToConstant: 81),
-            image.heightAnchor.constraint(equalToConstant: 46),
+            image.widthAnchor.constraint(equalToConstant: Metric.gestureImageWidth),
+            image.heightAnchor.constraint(equalToConstant: Metric.gestureImageHeight),
             image.topAnchor.constraint(equalTo: toggle.bottomAnchor, constant: 10),
             image.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 48),
             image.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -16),
@@ -155,6 +262,23 @@ final class GestureViewController: UIViewController {
         return label
     }
 
+    private func makeSwitch(isOn: Bool) -> UISwitch {
+        let toggle = UISwitch()
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+        toggle.isOn = isOn
+        toggle.tintColor = SLPalette.hairline
+        toggle.onTintColor = SLPalette.skyBlue
+        toggle.thumbTintColor = SLPalette.cardWhite
+        return toggle
+    }
+
+    private func makeGestureImageView(_ imageName: String) -> UIImageView {
+        let image = UIImageView(image: UIImage(named: imageName))
+        image.contentMode = .scaleAspectFit
+        image.translatesAutoresizingMaskIntoConstraints = false
+        return image
+    }
+
     private func makeHairline() -> UIView {
         let line = UIView()
         line.backgroundColor = SLPalette.hairline
@@ -163,13 +287,16 @@ final class GestureViewController: UIViewController {
     }
 
     /// "prefix [→] suffix" — SL firstGuideLabel.setAttributedTextWithImage parity (ic_arrow_ss 삽입).
-    private func makeGuideLabel(prefix: String, suffix: String) -> UILabel {
+    private func makeGuideLabel(prefix: String, suffix: String, isEnabled: Bool) -> UILabel {
         let label = UILabel()
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let color = isEnabled ? UIColor.label : SLPalette.grey58
         let attributes: [NSAttributedString.Key: Any] = [
             .font: SLFont.description(),
-            .foregroundColor: SLPalette.grey58
+            .foregroundColor: color
         ]
         let result = NSMutableAttributedString(string: prefix + " ", attributes: attributes)
         if let arrow = UIImage(named: "ic_arrow_ss") {
@@ -181,5 +308,39 @@ final class GestureViewController: UIViewController {
         result.append(NSAttributedString(string: " " + suffix, attributes: attributes))
         label.attributedText = result
         return label
+    }
+}
+
+@MainActor
+private final class RadioIndicatorView: UIView {
+    private let isSelectedState: Bool
+    private let isEnabledState: Bool
+
+    init(isSelected: Bool, isEnabled: Bool) {
+        self.isSelectedState = isSelected
+        self.isEnabledState = isEnabled
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ rect: CGRect) {
+        let lineWidth: CGFloat = 4
+        let outer = rect.insetBy(dx: lineWidth / 2, dy: lineWidth / 2)
+        let strokeColor = isSelectedState && isEnabledState ? SLPalette.skyBlue : SLPalette.hairline
+        strokeColor.setStroke()
+        let path = UIBezierPath(ovalIn: outer)
+        path.lineWidth = lineWidth
+        path.stroke()
+
+        guard isSelectedState else { return }
+        let fillColor = isEnabledState ? SLPalette.skyBlue : SLPalette.grey58
+        fillColor.setFill()
+        UIBezierPath(ovalIn: rect.insetBy(dx: 7, dy: 7)).fill()
     }
 }
