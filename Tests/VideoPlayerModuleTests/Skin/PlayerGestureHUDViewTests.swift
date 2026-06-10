@@ -29,5 +29,23 @@ struct PlayerGestureHUDViewTests {
 
         #expect(hud.isHidden == false)
     }
+
+    @Test("2배속 HUD는 상단 캡슐 배지로 표시한다")
+    func presentRateUsesHeaderBadge() {
+        let hud = PlayerGestureHUDView()
+        hud.presentRate(2.0)
+
+        let badge = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeView")
+        let label = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeLabel") as? UILabel
+        let image = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeImageView") as? UIImageView
+
+        #expect(hud.isHidden == false)
+        #expect(badge?.isHidden == false)
+        #expect(label?.attributedText?.string == "2배속")
+        #expect(image?.image != nil)
+
+        hud.show(icon: "PlayerBrightnessNormal", title: "50%")
+        #expect(badge?.isHidden == true)
+    }
 }
 #endif

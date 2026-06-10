@@ -14,6 +14,9 @@ public final class PlayerGestureHUDView: UIView {
     private let iconLabel = UILabel()
     private let titleLabel = UILabel()
     private let detailLabel = UILabel()
+    private let rateBadgeView = UIView()
+    private let rateBadgeLabel = UILabel()
+    private let rateBadgeImageView = UIImageView()
 
     private var hideWorkItem: DispatchWorkItem?
     public var displayDuration: TimeInterval = 2.0
@@ -36,6 +39,7 @@ public final class PlayerGestureHUDView: UIView {
     ) {
         hideWorkItem?.cancel()
         layer.removeAllAnimations()
+        rateBadgeView.layer.removeAllAnimations()
 
         applyIcon(icon)
         titleLabel.text = title
@@ -47,6 +51,8 @@ public final class PlayerGestureHUDView: UIView {
 
         isHidden = false
         alpha = 1
+        contentView.isHidden = false
+        rateBadgeView.isHidden = true
 
         guard displayDuration > 0 else { return }
         let workItem = DispatchWorkItem { [weak self] in
@@ -59,31 +65,53 @@ public final class PlayerGestureHUDView: UIView {
     public func presentRate(_ rate: Double) {
         hideWorkItem?.cancel()
         layer.removeAllAnimations()
+        rateBadgeView.layer.removeAllAnimations()
 
-        applyIcon("▶")
-        titleLabel.text = String(format: "%.1f배속", rate)
-        detailLabel.text = nil
-        detailLabel.isHidden = true
-        titleLabel.font = UIFont(name: "AppleSDGothicNeo-Bold", size: 40) ?? .systemFont(ofSize: 40, weight: .bold)
+        rateBadgeLabel.attributedText = NSAttributedString(
+            string: "\(Int(rate))배속",
+            attributes: [
+                .font: UIFont(name: "AppleSDGothicNeo-Regular", size: UIDevice.current.userInterfaceIdiom == .pad ? 16 : 14)
+                    ?? .systemFont(ofSize: UIDevice.current.userInterfaceIdiom == .pad ? 16 : 14, weight: .regular),
+                .foregroundColor: UIColor.white,
+                .kern: -0.38
+            ]
+        )
+        rateBadgeImageView.image = UIImage(
+            named: UIDevice.current.userInterfaceIdiom == .pad ? "PlayerFast2xGuideIconForPad" : "PlayerFast2xGuideIconForPhone",
+            in: .module,
+            with: nil
+        )
 
         isHidden = false
         alpha = 1
+        contentView.isHidden = true
+        rateBadgeView.isHidden = false
+        rateBadgeView.alpha = 1
     }
 
     public func hide() {
+        hideWorkItem?.cancel()
         UIView.animate(
             withDuration: 0.2,
             delay: 0,
             options: [.curveEaseOut],
             animations: {
                 self.alpha = 0
+                self.rateBadgeView.alpha = 0
             },
             completion: { finished in
                 if finished {
                     self.isHidden = true
+                    self.rateBadgeView.isHidden = true
+                    self.contentView.isHidden = false
                 }
             }
         )
+    }
+
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        rateBadgeView.layer.cornerRadius = rateBadgeView.bounds.height * 0.5
     }
 }
 
@@ -99,6 +127,10 @@ private extension PlayerGestureHUDView {
         isUserInteractionEnabled = false
 
         contentView.backgroundColor = .clear
+        rateBadgeView.accessibilityIdentifier = "lecturePlayer.gestureHUD.rateBadgeView"
+        rateBadgeView.backgroundColor = UIColor.black.withAlphaComponent(0.55)
+        rateBadgeView.isHidden = true
+        rateBadgeView.clipsToBounds = true
 
         iconLabel.textColor = .white
         iconLabel.font = UIFont(name: "AppleSDGothicNeo-SemiBold", size: 28) ?? .systemFont(ofSize: 28, weight: .semibold)
@@ -117,18 +149,31 @@ private extension PlayerGestureHUDView {
         detailLabel.numberOfLines = 1
         detailLabel.adjustsFontSizeToFitWidth = true
         detailLabel.minimumScaleFactor = 0.75
+        rateBadgeLabel.accessibilityIdentifier = "lecturePlayer.gestureHUD.rateBadgeLabel"
+        rateBadgeLabel.backgroundColor = .clear
+        rateBadgeLabel.textAlignment = .center
+        rateBadgeLabel.numberOfLines = 1
+        rateBadgeImageView.accessibilityIdentifier = "lecturePlayer.gestureHUD.rateBadgeImageView"
+        rateBadgeImageView.backgroundColor = .clear
+        rateBadgeImageView.contentMode = .scaleAspectFit
 
         addSubview(contentView)
+        addSubview(rateBadgeView)
         contentView.addSubview(imageView)
         contentView.addSubview(iconLabel)
         contentView.addSubview(titleLabel)
         contentView.addSubview(detailLabel)
+        rateBadgeView.addSubview(rateBadgeLabel)
+        rateBadgeView.addSubview(rateBadgeImageView)
 
         contentView.translatesAutoresizingMaskIntoConstraints = false
+        rateBadgeView.translatesAutoresizingMaskIntoConstraints = false
         imageView.translatesAutoresizingMaskIntoConstraints = false
         iconLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         detailLabel.translatesAutoresizingMaskIntoConstraints = false
+        rateBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        rateBadgeImageView.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
             contentView.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -153,7 +198,22 @@ private extension PlayerGestureHUDView {
             detailLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
             detailLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             detailLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            detailLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
+            detailLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
+
+            rateBadgeView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 37),
+            rateBadgeView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            rateBadgeView.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
+
+            rateBadgeLabel.leadingAnchor.constraint(equalTo: rateBadgeView.leadingAnchor, constant: 14),
+            rateBadgeLabel.topAnchor.constraint(greaterThanOrEqualTo: rateBadgeView.topAnchor, constant: 6),
+            rateBadgeLabel.bottomAnchor.constraint(lessThanOrEqualTo: rateBadgeView.bottomAnchor, constant: -6),
+            rateBadgeLabel.centerYAnchor.constraint(equalTo: rateBadgeView.centerYAnchor),
+            rateBadgeLabel.trailingAnchor.constraint(equalTo: rateBadgeImageView.leadingAnchor, constant: -6),
+
+            rateBadgeImageView.centerYAnchor.constraint(equalTo: rateBadgeView.centerYAnchor),
+            rateBadgeImageView.widthAnchor.constraint(equalToConstant: 18),
+            rateBadgeImageView.heightAnchor.constraint(equalToConstant: 18),
+            rateBadgeImageView.trailingAnchor.constraint(equalTo: rateBadgeView.trailingAnchor, constant: -14)
         ])
     }
 
