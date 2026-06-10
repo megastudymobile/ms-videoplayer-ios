@@ -26,6 +26,7 @@ final class MainViewController: UIViewController {
     private let playerButton = UIButton(configuration: .filled())
     private let jwtURLField = UITextField()
     private let jwtPlayerButton = UIButton(configuration: .filled())
+    private let downloadCenterButton = UIButton(configuration: .tinted())
     private let resolver = ShortURLResolver()
 
     override func viewDidLoad() {
@@ -58,11 +59,16 @@ final class MainViewController: UIViewController {
         jwtPlayerButton.accessibilityIdentifier = "main.jwtPlayerButton"
         jwtPlayerButton.addTarget(self, action: #selector(didTapJWTPlayer), for: .touchUpInside)
 
+        downloadCenterButton.configuration?.title = "다운로드 센터"
+        downloadCenterButton.accessibilityIdentifier = "main.downloadCenterButton"
+        downloadCenterButton.addTarget(self, action: #selector(didTapDownloadCenter), for: .touchUpInside)
+
         let stack = UIStackView(arrangedSubviews: [
             urlField,
             playerButton,
             jwtURLField,
-            jwtPlayerButton
+            jwtPlayerButton,
+            downloadCenterButton
         ])
         stack.axis = .vertical
         stack.spacing = 16
@@ -141,6 +147,14 @@ final class MainViewController: UIViewController {
                 self.presentAlert(message: "JWT 재생 준비 실패: \(error.localizedDescription)")
             }
         }
+    }
+
+    @objc private func didTapDownloadCenter() {
+        guard navigationController?.topViewController === self else { return }
+        let controller = DownloadCenterViewController(
+            center: PlayerModuleProvider.shared.downloadCenter
+        )
+        navigationController?.pushViewController(controller, animated: true)
     }
 
     private func presentAlert(message: String) {

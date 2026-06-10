@@ -50,6 +50,12 @@ final class PlayerModuleProvider: PlayerModuleProviding {
         #endif
     }
 
+    /// 엔진 중립 다운로드 계약 — 다운로드 센터 화면은 이 추상에만 의존한다.
+    /// SDK 교체 시에도 화면 코드는 수정 불필요 (Kollus 타입은 위 `downloads`로만 노출).
+    var downloadCenter: (any PlayerDownloadCenter)? {
+        downloads
+    }
+
     func makeModule() async throws -> PlayerModule {
         #if targetEnvironment(simulator)
         // Kollus 실재생은 실기기 한정 — 렌더 표면에 미지원 안내만 표시하는 no-op 엔진.
