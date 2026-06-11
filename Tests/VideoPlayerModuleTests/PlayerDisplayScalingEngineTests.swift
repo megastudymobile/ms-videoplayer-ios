@@ -41,7 +41,7 @@ struct PlayerDisplayScalingEngineTests {
 }
 
 private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, EngineDisplayScalingAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 

@@ -27,7 +27,7 @@ enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
     static var maxPreparationSeconds: TimeInterval { 3 }
     static var isSupportedInCurrentEnvironment: Bool { true }
     static var expectedCapabilities: EngineRuntimeTraits {
-        [.continuesWithoutSurface, .seamlessSurfaceSwap]
+        .avPlayer
     }
 }
 

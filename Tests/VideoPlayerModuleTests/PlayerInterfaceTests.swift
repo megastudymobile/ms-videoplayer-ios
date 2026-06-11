@@ -418,7 +418,7 @@ struct PlayerInterfaceTests {
 }
 
 private actor CoreOnlyEngine: PlayerPlaybackEngine {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -430,7 +430,7 @@ private actor CoreOnlyEngine: PlayerPlaybackEngine {
 }
 
 private actor RateControllableEngine: PlayerPlaybackEngine, EnginePlaybackRateAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -457,7 +457,7 @@ private actor RateControllableEngine: PlayerPlaybackEngine, EnginePlaybackRateAb
 }
 
 private actor SubtitleControllableEngine: PlayerPlaybackEngine, EngineSubtitleAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -485,7 +485,7 @@ private actor SubtitleControllableEngine: PlayerPlaybackEngine, EngineSubtitleAb
 }
 
 private actor DisplayControllableEngine: PlayerPlaybackEngine, EngineDisplayAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -522,7 +522,7 @@ private actor DisplayControllableEngine: PlayerPlaybackEngine, EngineDisplayAbil
 }
 
 private actor BookmarkControllableEngine: PlayerPlaybackEngine, EngineBookmarkAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -540,7 +540,7 @@ private actor BookmarkControllableEngine: PlayerPlaybackEngine, EngineBookmarkAb
 }
 
 private actor SeekRecordingEngine: PlayerPlaybackEngine {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput>
 

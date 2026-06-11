@@ -35,10 +35,10 @@ public actor KollusPlayerAdapter:
     EngineAdaptiveStreamingAbility,
     EngineContentMetadataAbility,
     EngineSeekPreviewAbility {
-    // emitsAuthoritativeStateEvents: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
-    // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의
-    // .stateInput만 신뢰한다(이중 적용 방지).
-    public nonisolated static let runtimeTraits: EngineRuntimeTraits = [.emitsAuthoritativeStateEvents]
+    // stateAuthority = .engineEventsAreAuthoritative: Kollus는 playStarted/pauseStarted/stopStarted
+    // 권위 콜백을 낸다. 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고
+    // outputStream의 .stateInput만 신뢰한다(이중 적용 방지).
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = .kollus
 
     /// 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
     public let outputStream: AsyncStream<PlayerEngineOutput>

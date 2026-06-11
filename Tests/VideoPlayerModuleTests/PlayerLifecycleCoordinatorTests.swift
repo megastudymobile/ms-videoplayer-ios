@@ -17,7 +17,7 @@ struct PlayerLifecycleCoordinatorTests {
         let coordinator = PlayerLifecycleCoordinator(
             sendCommand: { commandRecorder.append($0) },
             policy: .default,
-            engineRuntimeTraits: [],
+            engineRuntimeTraits: .default,
             notificationCenter: notificationCenter
         )
 
@@ -41,7 +41,7 @@ struct PlayerLifecycleCoordinatorTests {
                 allowedPlaybackRates: [1.0, 2.0],
                 allowsAutoplay: true
             ),
-            engineRuntimeTraits: [],
+            engineRuntimeTraits: .default,
             notificationCenter: notificationCenter,
             onEvent: { event in
                 eventRecorder.append(event)
@@ -72,7 +72,7 @@ struct PlayerLifecycleCoordinatorTests {
                 allowedPlaybackRates: [1.0, 2.0],
                 allowsAutoplay: true
             ),
-            engineRuntimeTraits: [.continuesWithoutSurface],
+            engineRuntimeTraits: .default.withSurface(continuesWithoutSurface: true),
             notificationCenter: notificationCenter,
             onEvent: { event in
                 eventRecorder.append(event)
@@ -95,7 +95,7 @@ struct PlayerLifecycleCoordinatorTests {
         let coordinator = PlayerLifecycleCoordinator(
             sendCommand: { commandRecorder.append($0) },
             policy: .default,
-            engineRuntimeTraits: [],
+            engineRuntimeTraits: .default,
             notificationCenter: notificationCenter
         )
 
@@ -120,7 +120,7 @@ struct PlayerLifecycleCoordinatorTests {
         let coordinator = PlayerLifecycleCoordinator(
             sendCommand: { commandRecorder.append($0) },
             policy: .default,
-            engineRuntimeTraits: [],
+            engineRuntimeTraits: .default,
             notificationCenter: notificationCenter
         )
 

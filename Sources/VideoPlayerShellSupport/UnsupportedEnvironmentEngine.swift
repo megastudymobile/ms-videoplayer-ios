@@ -16,7 +16,7 @@ import VideoPlayerCore
 /// 재생 관련 명령(`prepare`/`play`/`seek` 등)은 상태를 바꾸지 않는 no-op 으로 처리한다.
 /// 호스트 앱은 시뮬레이터 + Kollus 소스 조합에서 본 엔진으로 라우팅한다.
 public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
-    public nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     public let outputStream: AsyncStream<PlayerEngineOutput>
 

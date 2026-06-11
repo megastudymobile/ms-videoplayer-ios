@@ -93,7 +93,7 @@ public final class PlayerLifecycleCoordinator {
             return
         }
 
-        guard engineRuntimeTraits.contains(.continuesWithoutSurface) else {
+        guard engineRuntimeTraits.surface.continuesWithoutSurface else {
             onEvent?(.policyDowngraded(reason: .missingContinuesWithoutSurface))
             pauseForLifecycleTransition()
             return

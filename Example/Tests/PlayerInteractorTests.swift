@@ -206,7 +206,7 @@ private final class FakeModuleProvider: PlayerModuleProviding {
 }
 
 private actor BareTestEngine: PlayerEngineAdapter {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var prepareCount = 0
 
@@ -220,7 +220,7 @@ private actor BareTestEngine: PlayerEngineAdapter {
 }
 
 private actor RecordingEngine: PlayerEngineAdapter {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput>
     private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private(set) var commands: [String] = []
@@ -269,7 +269,7 @@ private actor RecordingEngine: PlayerEngineAdapter {
 }
 
 private actor ScrollTestEngine: PlayerEngineAdapter, EngineScrollAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var events: [String] = []
 

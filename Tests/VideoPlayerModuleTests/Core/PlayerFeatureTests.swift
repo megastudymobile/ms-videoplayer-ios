@@ -37,7 +37,7 @@ struct PlayerFeatureTests {
 
     @Test("PlayerCore는 init 시점에 availability를 산출한다")
     func playerCore_probesAtInit() {
-        let core = PlayerCore(engine: RichEngine(), engineRuntimeTraits: [])
+        let core = PlayerCore(engine: RichEngine(), engineRuntimeTraits: .default)
 
         #expect(core.availableFeatures.contains(.playbackRate))
         #expect(!core.availableFeatures.contains(.pictureInPicture))
@@ -61,7 +61,7 @@ struct PlayerFeatureTests {
 // MARK: - Fakes
 
 private actor BareEngine: PlayerPlaybackEngine {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
@@ -76,7 +76,7 @@ private actor RichEngine: PlayerPlaybackEngine,
     EngineSubtitleAbility,
     EngineTitledBookmarkAbility,
     EngineAdaptiveStreamingAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
@@ -110,7 +110,7 @@ extension PlayerFeatureTests {
 }
 
 private actor SeekPreviewEngine: PlayerPlaybackEngine, EngineSeekPreviewAbility {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}

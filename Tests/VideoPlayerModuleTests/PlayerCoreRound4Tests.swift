@@ -308,7 +308,7 @@ final class PlayerCoreRound4Tests {
 }
 
 private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
-    nonisolated static let runtimeTraits: EngineRuntimeTraits = [.continuesWithoutSurface]
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = .default.withSurface(continuesWithoutSurface: true)
 
     let outputStream: AsyncStream<PlayerEngineOutput>
 

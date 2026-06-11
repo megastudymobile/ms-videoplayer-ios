@@ -16,7 +16,7 @@ public struct PlayerEngineDescriptor: Sendable {
     public let runtimeTraits: EngineRuntimeTraits
 
     /// 환경/정책에 따라 엔진 타입 선언과 다른 traits를 쓰는 factory용
-    /// (예: Kollus의 백그라운드 재생 정책이 `.continuesWithoutSurface`를 추가).
+    /// (예: Kollus의 백그라운드 재생 정책이 `surface.continuesWithoutSurface`를 켠다).
     public init(engine: PlayerEngineAdapter, runtimeTraits: EngineRuntimeTraits) {
         self.engine = engine
         self.runtimeTraits = runtimeTraits

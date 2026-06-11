@@ -10,24 +10,57 @@ import Foundation
 
 /// Core가 정책 판단에 쓰는 엔진 동작 특성. UI 기능 목록이 아니다 —
 /// 그쪽은 ability protocol 채택을 조사하는 `PlayerFeature.available(for:)`가 담당한다.
-public struct EngineRuntimeTraits: OptionSet, Sendable {
-    public let rawValue: Int
+public struct EngineRuntimeTraits: Equatable, Sendable {
+    public let surface: EngineSurfaceRuntimeTraits
+    public let stateAuthority: EngineStateEventAuthority
 
-    public init(rawValue: Int) {
-        self.rawValue = rawValue
+    public static let `default` = EngineRuntimeTraits()
+
+    /// AVPlayer는 surface 분리 후에도 재생이 유지된다.
+    public static let avPlayer = EngineRuntimeTraits(
+        surface: EngineSurfaceRuntimeTraits(continuesWithoutSurface: true),
+        stateAuthority: .commandSuccessClosesState
+    )
+
+    public static let kollus = EngineRuntimeTraits(
+        stateAuthority: .engineEventsAreAuthoritative
+    )
+
+    public init(
+        surface: EngineSurfaceRuntimeTraits = .default,
+        stateAuthority: EngineStateEventAuthority = .commandSuccessClosesState
+    ) {
+        self.surface = surface
+        self.stateAuthority = stateAuthority
     }
 
-    public static let continuesWithoutSurface = EngineRuntimeTraits(rawValue: 1 << 0)
-    public static let seamlessSurfaceSwap = EngineRuntimeTraits(rawValue: 1 << 1)
-    public static let nativePiP = EngineRuntimeTraits(rawValue: 1 << 2)
+    /// 환경/정책이 surface 특성만 바꿔야 할 때 사용 — 나머지 trait는 보존한다.
+    public func withSurface(continuesWithoutSurface: Bool) -> EngineRuntimeTraits {
+        EngineRuntimeTraits(
+            surface: EngineSurfaceRuntimeTraits(continuesWithoutSurface: continuesWithoutSurface),
+            stateAuthority: stateAuthority
+        )
+    }
+}
 
-    /// 엔진이 play/pause/seek 성공을 별도 observer 신호(권위 콜백)로 다시 통지하는가.
-    ///
-    /// - Kollus = `true`: `playStarted`/`pauseStarted` 등 콜백이 상태를 만든다. Core는 명령 성공 후
-    ///   상태를 만들지 않고 outputStream의 `.stateInput`만 신뢰한다.
-    /// - Native = `false`: `timeControlStatus(.playing)`은 play-started 상태 입력을 만들지 않으므로,
-    ///   Core가 명령 성공 직후 command-origin `PlaybackStateInput`을 reducer에 넣어야 한다.
-    ///
-    /// 이 비트가 없으면 Native에서 play 성공 후 status가 `.playing`에 도달하지 못한다.
-    public static let emitsAuthoritativeStateEvents = EngineRuntimeTraits(rawValue: 1 << 3)
+public struct EngineSurfaceRuntimeTraits: Equatable, Sendable {
+    /// 렌더 surface가 분리(백그라운드 진입 등)되어도 재생이 유지되는가.
+    public let continuesWithoutSurface: Bool
+
+    public static let `default` = EngineSurfaceRuntimeTraits()
+
+    public init(continuesWithoutSurface: Bool = false) {
+        self.continuesWithoutSurface = continuesWithoutSurface
+    }
+}
+
+/// 엔진 명령 성공 후 `PlaybackState`를 누가 확정하는가.
+///
+/// - `engineEventsAreAuthoritative`: Kollus처럼 `playStarted`/`pauseStarted` 등 권위 콜백이
+///   상태를 만든다. Core는 command-origin 입력을 추가하지 않는다.
+/// - `commandSuccessClosesState`: Native처럼 권위 콜백이 부족한 엔진이다. Core가 명령 성공 직후
+///   command-origin `PlaybackStateInput`을 reducer에 넣어 상태를 닫는다.
+public enum EngineStateEventAuthority: Equatable, Sendable {
+    case engineEventsAreAuthoritative
+    case commandSuccessClosesState
 }

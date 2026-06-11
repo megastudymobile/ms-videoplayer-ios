@@ -12,12 +12,8 @@ import VideoPlayerCore
 import VideoPlayerShellSupport
 
 public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, EngineDisplayScalingAbility, EngineSeekPreviewAbility {
-    public nonisolated static let runtimeTraits: EngineRuntimeTraits = [
-        .continuesWithoutSurface,
-        .seamlessSurfaceSwap
-        // emitsAuthoritativeStateEvents 미포함: Native는 play/pause/seek 권위 콜백이 없어
-        // Core command-origin이 그 상태를 닫는다.
-    ]
+    // Native는 play/pause/seek 권위 콜백이 부족해 Core command-origin이 상태를 닫는다.
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = .avPlayer
 
     /// Core는 이 스트림을 소비해 reducer로 상태를 만든다.
     public let outputStream: AsyncStream<PlayerEngineOutput>

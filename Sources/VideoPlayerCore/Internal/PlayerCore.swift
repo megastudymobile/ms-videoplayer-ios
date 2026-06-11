@@ -322,11 +322,11 @@ public actor PlayerCore {
         output.events.forEach { publish(event: $0) }
     }
 
-    /// 권위 콜백이 없는 엔진(`!emitsAuthoritativeStateEvents`, 예: Native)에서만 명령 성공 직후
+    /// 권위 콜백이 없는 엔진(`.commandSuccessClosesState`, 예: Native)에서만 명령 성공 직후
     /// command-origin 입력을 reducer에 넣는다. 권위 콜백이 있는 엔진(Kollus)은 outputStream의
     /// `.stateInput`이 상태를 만들므로 여기서 또 넣으면 이중 적용/경합이 된다.
     private func applyCommandOriginIfNeeded(_ input: PlaybackStateInput) {
-        guard !engineRuntimeTraits.contains(.emitsAuthoritativeStateEvents) else {
+        guard engineRuntimeTraits.stateAuthority == .commandSuccessClosesState else {
             #if DEBUG
             NSLog("[PlayerCore.cmd] skip command-origin (engine emits observed state): %@",
                   String(describing: input))
@@ -400,7 +400,7 @@ public actor PlayerCore {
             return (policy, nil)
         }
 
-        guard engineRuntimeTraits.contains(.continuesWithoutSurface) else {
+        guard engineRuntimeTraits.surface.continuesWithoutSurface else {
             return (
                 PlayerFeaturePolicy(
                     allowsBackgroundPlayback: false,
