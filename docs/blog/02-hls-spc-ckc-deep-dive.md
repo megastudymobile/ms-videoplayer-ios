@@ -113,7 +113,7 @@ flowchart TB
 
 ### 그래서 무엇을 쓰는가
 
-우리 모듈이 직접 FairPlay를 다뤘다면 콘텐츠 키 전용 API인 `AVContentKeySession`을 먼저 검토했을 것이다. 하지만 현실에선 PallyCon SDK가 관련 키 처리 API를 내부적으로 감싸고, Kollus는 그 위에 또 한 겹을 얹어 두었다. 그래서 우리 앱 코드 어디에도 `AVContentKeySession`이 직접 등장하지 않는다. **PallyCon이 디테일을 감추고, Kollus가 PallyCon을 감추고, 우리 모듈이 Kollus를 감춘다.** 3단 추상화의 끝에서 우리는 `PlaybackSource`에 MCK나 URL을 담아 use case로 넘긴다.
+우리 모듈이 직접 FairPlay를 다뤘다면 콘텐츠 키 전용 API인 `AVContentKeySession`을 먼저 검토했을 것이다. 하지만 현실에선 PallyCon SDK가 관련 키 처리 API를 내부적으로 감싸고, Kollus는 그 위에 또 한 겹을 얹어 두었다. 그래서 우리 앱 코드 어디에도 `AVContentKeySession`이 직접 등장하지 않는다. **PallyCon이 디테일을 감추고, Kollus가 PallyCon을 감추고, 우리 모듈이 Kollus를 감춘다.** 3단 추상화의 끝에서 우리는 `PlaybackSource`에 MCK나 URL을 담아 `PlaybackCommand.load`로 넘긴다.
 
 이 3단 추상화가 정당화되는 이유는 5편에서 자세히 본다. 일단 지금은 "두 가지 길이 있다, 새 길이 권장이다, 그러나 우리는 길 자체를 가린다"는 결론만 가져가자.
 
@@ -302,24 +302,33 @@ flowchart TB
 대신 우리 모듈에는 이런 인터페이스가 있다.
 
 ```swift
-public enum PlaybackSource: Sendable {
-    case kollus(mediaContentKey: String)       // Kollus MCK 기반 재생
-    case url(URL)                              // 엔진별 URL 기반 재생
+public struct PlaybackSource: Sendable {
+    public enum Kind: Sendable {
+        case url(URL)
+        case mediaKey(String)
+    }
+
+    public let kind: Kind
+    public let options: [String: String]
+
+    public static func url(_ url: URL) -> PlaybackSource
+    public static func mediaKey(_ key: String) -> PlaybackSource
 }
 ```
 
 <details>
 <summary>용어 토글: 우리 모듈 코드에서 보이는 단어</summary>
 
-- **`PlaybackSource`**: 플레이어가 어떤 입력으로 재생을 시작할지 표현하는 enum이다.
-- **`case kollus(mediaContentKey:)`**: Kollus VOD를 MCK로 시작하는 경로다. 내부에는 DRM, m3u8 발급, 라이선스 처리가 포함될 수 있다.
-- **`case url(URL)`**: URL로 식별되는 콘텐츠 진입 경로다. Native 엔진에서는 AVPlayer 직접 URL이 되고, Kollus 엔진에서는 Kollus SDK의 contentURL 진입점으로 번역된다.
+- **`PlaybackSource`**: 플레이어가 어떤 입력으로 재생을 시작할지 표현하는 값 타입이다.
+- **`kind.mediaKey` / `.mediaKey(_:)`**: 엔진 고유 콘텐츠 키로 시작하는 경로다. Kollus 엔진에서는 MCK로 해석되며, 내부에는 DRM, m3u8 발급, 라이선스 처리가 포함될 수 있다.
+- **`kind.url` / `.url(_:)`**: URL로 식별되는 콘텐츠 진입 경로다. Native 엔진에서는 AVPlayer 직접 URL이 되고, Kollus 엔진에서는 Kollus SDK의 contentURL 진입점으로 번역된다.
+- **`options`**: 엔진별 부가 힌트다. 모르는 키는 엔진이 무시한다.
 - **`Sendable`**: Swift Concurrency에서 동시성 경계를 넘어 안전하게 전달될 수 있음을 나타내는 프로토콜이다.
-- **MCK(mediaContentKey)**: Kollus 쪽 콘텐츠를 식별하는 키다. FairPlay 콘텐츠 키와는 다른, 서비스 레벨의 콘텐츠 식별자라고 보면 된다.
+- **MCK(Media Content Key)**: Kollus 쪽 콘텐츠를 식별하는 키다. FairPlay 콘텐츠 키와는 다른, 서비스 레벨의 콘텐츠 식별자라고 보면 된다.
 
 </details>
 
-대부분의 강의 재생에서 소비자(앱 ViewModel)는 `.kollus(mediaContentKey: "MCK-...")`를 던진다. 외부 링크나 URL로 식별되는 Kollus 콘텐츠라면 같은 추상화 안에서 `.url(...)`을 던질 수도 있다. 어느 쪽이든 그 뒤에 일어나는 일은 다음과 같다.
+대부분의 강의 재생에서 소비자(앱 ViewModel)는 `.mediaKey("MCK-...")`를 `PlaybackCommand.load`에 담아 던진다. 외부 링크나 URL로 식별되는 Kollus 콘텐츠라면 같은 추상화 안에서 `.url(...)`을 던질 수도 있다. 어느 쪽이든 그 뒤에 일어나는 일은 다음과 같다.
 
 `PlayerCore`라는 actor가 명령을 받아 `KollusPlayerAdapter`라는 엔진에게 위임한다. 어댑터는 입력에 따라 Kollus SDK의 `KollusPlayerView(mediaContentKey:)` 또는 `KollusPlayerView(contentURL:)`를 만들고 재생 준비를 시킨다. 그 뒤 m3u8 발급, FairPlay 키 요청, PallyCon 라이선스 처리 같은 vendor 세부 흐름은 Kollus/PallyCon SDK 내부로 들어간다. 우리 코드에는 `AVContentKeySessionDelegate`도, SPC/CKC HTTP 호출도 없다. 우리 코드는 이 모든 과정에서 단 한 줄도 직접 짜지 않았다.
 
@@ -337,7 +346,7 @@ flowchart TB
     License --> FPS[AVFoundation/FPS 응답 처리]
 ```
 
-만약 우리가 직접 했다면, `Sources/VideoPlayerModule/Engine/Kollus/KollusPlayerAdapter.swift` 안에 키 처리 delegate 채택과 SPC/CKC 호출 코드가 들어 있었을 것이다. 지금 그 자리에는 "입력을 Kollus 뷰 생성 방식으로 번역하고, 명령과 이벤트를 우리 도메인 모델로 연결하라"는 어댑터 로직이 있다. 무게가 어디로 갔는지 보이는가? **Kollus SDK 안으로 갔다.** 그리고 그게 Kollus SDK를 살 만한 가치가 있다고 결정한 이유다. 다음 편에서 이 의사결정을 정면으로 다룬다.
+만약 우리가 직접 했다면, `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift` 안에 키 처리 delegate 채택과 SPC/CKC 호출 코드가 들어 있었을 것이다. 지금 그 자리에는 "입력을 Kollus 뷰 생성 방식으로 번역하고, SDK 콜백을 `PlayerEngineOutput`으로 연결하라"는 어댑터 로직이 있다. 무게가 어디로 갔는지 보이는가? **Kollus SDK 안으로 갔다.** 그리고 그게 Kollus SDK를 살 만한 가치가 있다고 결정한 이유다. 다음 편에서 이 의사결정을 정면으로 다룬다.
 
 ---
 
@@ -347,7 +356,7 @@ flowchart TB
 
 m3u8 안의 `#EXT-X-KEY`가 `KEYFORMAT="com.apple.streamingkeydelivery"`와 `skd://` URI를 담고 있으면 FairPlay 키 요청 흐름이 시작된다. AVFoundation은 그 신호를 키 처리 delegate에게 넘기고, 우리 또는 SDK의 delegate가 호출된다. 우리는 AVFoundation/FPS에 SPC 생성을 요청하고, 받은 SPC를 라이선스 서버에 보내고, 응답으로 CKC를 받아 다시 AVFoundation에 전달한다. 그 뒤 콘텐츠 키 응답 처리는 보호된 재생 경로 안에서 이뤄지고, 앱 코드는 평문 콘텐츠 키를 직접 보지 않는다.
 
-오프라인 재생을 위해서는 persistent license가 필요하고, 그 라이선스의 생애 주기를 디스크에 안전하게 저장하고 추적하는 데 또 한 겹의 복잡도가 든다. 이 모든 복잡도를 우리 앱 코드가 직접 짊어지지 않는다. PallyCon SDK가 라이선스 처리와 저장소를 가지고, Kollus SDK가 PallyCon을 감추며, 우리 모듈이 Kollus를 한 번 더 가린다. 우리는 `module.startPlaybackUseCase.execute(source: .kollus(mediaContentKey: ...))` 또는 URL 기반 진입에서는 `.url(...)`을 적는다.
+오프라인 재생을 위해서는 persistent license가 필요하고, 그 라이선스의 생애 주기를 디스크에 안전하게 저장하고 추적하는 데 또 한 겹의 복잡도가 든다. 이 모든 복잡도를 우리 앱 코드가 직접 짊어지지 않는다. PallyCon SDK가 라이선스 처리와 저장소를 가지고, Kollus SDK가 PallyCon을 감추며, 우리 모듈이 Kollus를 한 번 더 가린다. 우리는 `PlaybackCommand.load(.mediaKey(...))` 또는 URL 기반 진입에서는 `.load(.url(...))`을 적는다.
 
 이제 다음 편에서, **왜 우리가 직접 Kollus를 짜지 않고 Kollus SDK를 쓰는지**를 정면으로 다룬다. Build-vs-Buy 의사결정, 콘텐츠 호스팅 인프라의 현실, 그리고 우리 회사가 이미 내렸던 결정이 지금의 코드를 어떻게 만들었는지를 본다.
 
@@ -361,5 +370,5 @@ m3u8 안의 `#EXT-X-KEY`가 `KEYFORMAT="com.apple.streamingkeydelivery"`와 `skd
 - Apple, [AVContentKeyRequest.makeStreamingContentKeyRequestData](https://developer.apple.com/documentation/avfoundation/avcontentkeyrequest/makestreamingcontentkeyrequestdata%28forapp%3Acontentidentifier%3Aoptions%3Acompletionhandler%3A%29)
 - Apple, [HLS Authoring Specification for Apple Devices](https://developer.apple.com/documentation/http_live_streaming/hls_authoring_specification_for_apple_devices)
 - WWDC 2017 Session 502, *HLS Authoring Update*
-- 사내 코드: `Sources/VideoPlayerModule/Engine/Kollus/KollusPlayerAdapter.swift`
+- 사내 코드: `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift`
 - 이전 편: [1편 DRM과 FairPlay Streaming부터 이해하기](./01-drm-fairplay-streaming-basics.md)

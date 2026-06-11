@@ -80,13 +80,18 @@ Kollus는 **Catenoid(카테노이드)** 가 운영하는 클라우드 VOD 플랫
 
 ```swift
 // 우리 코드에서 Kollus 콘텐츠 하나를 지칭하는 대표 경로
-public enum PlaybackSource: Sendable {
-    case kollus(mediaContentKey: String)   // "MCK-abc123def456..."
-    case url(URL)                          // URL로 식별되는 Kollus 콘텐츠 진입
+public struct PlaybackSource: Sendable {
+    public enum Kind: Sendable {
+        case mediaKey(String)   // "MCK-abc123def456..."
+        case url(URL)           // URL로 식별되는 Kollus 콘텐츠 진입
+    }
+
+    public let kind: Kind
+    public let options: [String: String]
 }
 ```
 
-대부분의 강의는 MCK 한 문자열로 시작한다. 일부 외부 링크나 미리보기처럼 URL로 식별되는 Kollus 콘텐츠는 `.url(URL)` 경로로 들어올 수 있다. 어느 쪽이든 SDK는 Kollus 쪽 재생 흐름을 시작하고, 서비스 설정에 따라 재생 URL, 인증, DRM, 다운로드 같은 세부 처리를 vendor 내부 흐름으로 넘긴다. 우리 앱은 m3u8 URL이나 DRM 라이선스 요청을 직접 조립하지 않는다. 시리즈 2편에서 본 SPC/CKC 흐름이 필요하다면 그 지점도 SDK 내부에서 처리된다.
+대부분의 강의는 MCK 한 문자열로 시작한다. 현재 모듈에서는 `PlaybackSource.mediaKey("MCK-...")`로 표현한다. 일부 외부 링크나 미리보기처럼 URL로 식별되는 Kollus 콘텐츠는 `.url(URL)` 경로로 들어올 수 있다. 어느 쪽이든 SDK는 Kollus 쪽 재생 흐름을 시작하고, 서비스 설정에 따라 재생 URL, 인증, DRM, 다운로드 같은 세부 처리를 vendor 내부 흐름으로 넘긴다. 우리 앱은 m3u8 URL이나 DRM 라이선스 요청을 직접 조립하지 않는다. 시리즈 2편에서 본 SPC/CKC 흐름이 필요하다면 그 지점도 SDK 내부에서 처리된다.
 
 <details>
 <summary>용어 토글: Kollus, MCK, 재생 토큰</summary>
@@ -215,7 +220,7 @@ flowchart LR
 
 가장 먼저 `Vendor/KollusSDK/` 디렉토리가 있다. 여기에 Kollus가 우리에게 던져 준 원본 SDK가 그대로 들어가 있다. `include/` 폴더에 헤더 파일들이 있고, `lib/` 폴더에 정적 라이브러리가 있다. 우리는 이 디렉토리를 절대 손대지 않는다. Kollus가 새 버전을 던져 주면 `scripts/sync_kollus_vendor.sh`로 통째로 갈아 끼우기만 한다.
 
-그다음 `Binaries/KollusSDK.xcframework/`가 있다. 이건 우리가 `Vendor/KollusSDK/`를 재가공해 SwiftPM이 이해하는 `xcframework` 포맷으로 묶은 결과물이다. `scripts/rebuild_kollus_xcframework.sh`가 이 작업을 자동화한다. 그 안에서 시뮬레이터용 stub slice도 함께 만들어 붙인다(`Packaging/Kollus/Stub/`). 시뮬레이터에서 빌드는 통과해야 하니까, DRM이 작동하지 않아도 컴파일은 되는 stub이 필요하다. 이 packaging 파이프라인 자체가 별도 문서(`docs/kollus-sdk-packaging.md`)에 정리될 만큼 디테일이 많다.
+그다음 `Binaries/KollusSDK.xcframework/`가 있다. 이건 우리가 `Vendor/KollusSDK/`를 재가공해 SwiftPM이 이해하는 `xcframework` 포맷으로 묶은 결과물이다. `scripts/rebuild_kollus_xcframework.sh`가 이 작업을 자동화한다. 그 안에서 시뮬레이터용 stub slice도 함께 만들어 붙인다(`Packaging/Kollus/Stub/`). 시뮬레이터에서 빌드는 통과해야 하니까, DRM이 작동하지 않아도 컴파일은 되는 stub이 필요하다. 이 vendoring 파이프라인 자체가 별도 문서(`docs/kollus/kollus-sdk-vendoring.md`)에 정리될 만큼 디테일이 많다.
 
 `Package.swift`에서는 이렇게 등장한다.
 
@@ -228,7 +233,7 @@ flowchart LR
 .target(
     name: "VideoPlayerEngineKollus",
     dependencies: [
-        "VideoPlayerCore",
+        "VideoPlayerShellSupport",
         "VideoPlayerKollusBinary",
         "VideoPlayerPallyConBinary"   // PallyCon은 다음 편에서
     ],
@@ -236,7 +241,7 @@ flowchart LR
 ),
 ```
 
-`VideoPlayerEngineKollus`라는 별도 product가 있다는 점이 핵심이다. 소비자가 `VideoPlayerCore`, `VideoPlayerShellSupport`, `VideoPlayerEngineNative`처럼 필요한 product만 골라 링크하면 Kollus 바이너리와 PallyCon 바이너리를 피할 수 있다. 반대로 umbrella 성격의 `VideoPlayerModule` product는 Kollus 엔진까지 포함하므로, 앱에서 어떤 product를 선택하느냐가 중요하다. **vendor 격리**라는 원칙이 SPM product 경계로 명시되어 있는 것이다.
+`VideoPlayerEngineKollus`라는 별도 product가 있다는 점이 핵심이다. 소비자가 `VideoPlayerCore`, `VideoPlayerShellSupport`, `VideoPlayerEngineNative`, `VideoPlayerSkin`처럼 필요한 product만 골라 링크하면 Kollus 바이너리와 PallyCon 바이너리를 피할 수 있다. 반대로 `VideoPlayerEngineKollus`를 선택하면 두 binary target이 함께 들어온다. **vendor 격리**라는 원칙이 SPM product 경계로 명시되어 있는 것이다.
 
 <details>
 <summary>용어 토글: repo 구조와 패키징 단어</summary>
@@ -262,7 +267,7 @@ flowchart TB
     Core["VideoPlayerCore"] --> Product
 ```
 
-마지막으로 `Sources/VideoPlayerModule/Engine/Kollus/KollusPlayerAdapter.swift`가 있다. 여기가 Kollus SDK 바이너리 모듈을 직접 import하고 호출하는 핵심 파일이다. 다른 도메인 코드에는 vendor SDK 호출이 퍼져 있지 않다. 이 어댑터는 우리 도메인의 `PlayerPlaybackEngine` 계열 프로토콜을 채택하고, Kollus SDK의 호출을 그 프로토콜의 메서드 호출로 번역한다.
+마지막으로 `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift`가 있다. 여기가 Kollus SDK 바이너리 모듈을 직접 import하고 호출하는 핵심 파일이다. 다른 도메인 코드에는 vendor SDK 호출이 퍼져 있지 않다. 이 어댑터는 우리 도메인의 `PlayerPlaybackEngine` 계열 프로토콜을 채택하고, Kollus SDK의 호출과 콜백을 `PlayerEngineOutput` 스트림으로 번역한다.
 
 ```swift
 // 단순화한 모양 (실제 코드보다 짧게 보여 줌)
@@ -273,23 +278,26 @@ actor KollusPlayerAdapter: PlayerPlaybackEngine {
     private let playerType: KollusPlayerType
 
     func prepare(source: PlaybackSource) async throws {
-        guard case let .kollus(mediaContentKey) = source else {
-            throw PlayerError.engineError("Kollus 엔진은 MCK만 지원합니다.")
-        }
-
         let storage = try await bootstrapper.resolveStorage()
         guard let storageAdapter = storage as? KollusStorageAdapter else {
             throw PlayerError.engineError("Kollus storage가 준비되지 않았습니다.")
         }
 
-        let view = KollusPlayerView(mediaContentKey: mediaContentKey)
+        let view: KollusPlayerView?
+        switch source.kind {
+        case .mediaKey(let key):
+            view = KollusPlayerView(mediaContentKey: key)
+        case .url(let url):
+            view = KollusPlayerView(contentURL: url.absoluteString)
+        }
+
         view?.storage = storageAdapter.storage
         view?.fpsCertURL = environment.drm.fpsCertificateURL?.absoluteString
         view?.fpsDrmURL = environment.drm.fpsDRMURL?.absoluteString
         try view?.prepareToPlay(withMode: playerType)
         playerView = view
 
-        // 실제 코드는 여기서 PlaybackState와 PlayerEvent로 변환한다.
+        // 실제 코드는 delegate bridge와 signal mapper를 거쳐 PlayerEngineOutput으로 변환한다.
     }
 
     func play() async throws { try playerView?.play() }
@@ -300,7 +308,7 @@ actor KollusPlayerAdapter: PlayerPlaybackEngine {
 }
 ```
 
-이 어댑터의 길이는 상대적으로 짧다. 무거운 로직은 Kollus SDK 안에 있다. 우리가 짠 건 "Kollus SDK 객체를 만들고, 우리 도메인의 `PlaybackState`와 `PlayerEvent`로 번역해 흘리는 어댑터"다. 그 위에 앉은 `PlayerCore`나 ViewModel은 Kollus라는 단어를 직접 만나지 않는다.
+이 어댑터는 SDK 부트스트랩, surface 부착, delegate bridge, 다운로드 상태와 오류 매핑까지 품고 있어 작지 않다. 다만 무거운 DRM 라이선스 처리와 m3u8 발급 로직은 Kollus SDK 안에 있다. 우리가 짠 건 "Kollus SDK 객체를 만들고, SDK 콜백을 우리 도메인의 `PlayerEngineOutput`으로 번역해 흘리는 어댑터"다. 그 위에 앉은 `PlayerCore`나 ViewModel은 Kollus라는 단어를 직접 만나지 않는다.
 
 <details>
 <summary>용어 토글: 어댑터 코드에서 중요한 단어</summary>
@@ -321,7 +329,7 @@ flowchart TB
     Protocol --> Fake[테스트 대역 엔진]
     KollusAdapter --> SDK[Kollus SDK]
     SDK --> VendorLogic[DRM, m3u8, 재생 콜백]
-    KollusAdapter --> Stream[PlaybackState AsyncStream]
+    KollusAdapter --> Stream[PlayerEngineOutput AsyncStream]
     Stream --> Core
 ```
 
@@ -345,9 +353,9 @@ flowchart TB
 
 ### 참고
 
-- 사내 코드: `Sources/VideoPlayerModule/Engine/Kollus/KollusPlayerAdapter.swift`
+- 사내 코드: `Sources/VideoPlayerEngineKollus/KollusPlayerAdapter.swift`
 - 사내 코드: `Package.swift`의 `VideoPlayerEngineKollus` target
-- 사내 문서: `docs/kollus-sdk-packaging.md`
+- 사내 문서: `docs/kollus/kollus-sdk-vendoring.md`
 - Catenoid, [Kollus Video Player](https://www.catenoid.net/en/streaming/kollus-player.php)
 - Kollus, [Kollus Documentation](https://docs.kollus.com/)
 - 이전 편: [2편 HLS 암호화와 SPC/CKC 키 교환 심층 분석](./02-hls-spc-ckc-deep-dive.md)

@@ -190,8 +190,8 @@ $ # (출력 없음)
 
 ```mermaid
 flowchart LR
-    App[강의 앱] -->|import| Module[VideoPlayerModule]
-    Module -->|호출| KollusAdapter[KollusPlayerAdapter]
+    App[강의 앱] -->|필요할 때 선택| Product[VideoPlayerEngineKollus]
+    Product -->|포함| KollusAdapter[KollusPlayerAdapter]
     KollusAdapter -->|호출| KollusBin[KollusSDK<br/>바이너리]
     KollusBin -->|link 의존| PallyBin[PallyConFPSSDK<br/>바이너리]
     PallyBin -.->|네트워크| PallyServer[PallyCon 라이선스 서버]
@@ -199,7 +199,7 @@ flowchart LR
 
 첫째, **추상화 경계가 얼마나 잘 그어졌는지**가 한눈에 드러난다. PallyCon은 Kollus의 구현 디테일이고, Kollus는 우리 모듈의 구현 디테일이다. 우리 도메인 코드는 두 단어 다 모른다. 추상화가 깨지지 않은 채 의존성 그래프 맨 아래에 PallyCon이 묻혀 있다.
 
-둘째, PallyCon 바이너리는 product 선택에 따라 빌드 그래프에서 빠질 수 있다. `VideoPlayerCore`, `VideoPlayerShellSupport`, `VideoPlayerEngineNative`처럼 필요한 product만 선택하면 Kollus와 PallyCon binary target을 피할 수 있다. 반대로 umbrella 성격의 `VideoPlayerModule`이나 `VideoPlayerEngineKollus`를 선택하면 PallyCon도 함께 들어온다. vendor 격리는 자동 마법이 아니라 **SPM product 경계로 선택지를 만든 설계**다.
+둘째, PallyCon 바이너리는 product 선택에 따라 빌드 그래프에서 빠질 수 있다. `VideoPlayerCore`, `VideoPlayerShellSupport`, `VideoPlayerEngineNative`, `VideoPlayerSkin`처럼 필요한 product만 선택하면 Kollus와 PallyCon binary target을 피할 수 있다. 반대로 `VideoPlayerEngineKollus`를 선택하면 PallyCon도 함께 들어온다. vendor 격리는 자동 마법이 아니라 **SPM product 경계로 선택지를 만든 설계**다.
 
 ---
 
@@ -259,7 +259,7 @@ sequenceDiagram
 
 ## 6. 패키징의 디테일 — Kollus와 PallyCon이 짝으로 묶이는 이유
 
-마지막으로 우리 레포의 `docs/kollus-sdk-packaging.md` 문서가 왜 "Kollus와 PallyCon" 두 vendor를 함께 다루는지 짚고 가자. 디테일에 진짜 의미가 있다.
+마지막으로 우리 레포의 `docs/kollus/kollus-sdk-vendoring.md` 문서가 왜 "Kollus와 PallyCon" 두 vendor를 함께 다루는지 짚고 가자. 디테일에 진짜 의미가 있다.
 
 이 문서를 보면 vendor SDK 동기화 스크립트가 두 개로 짝지어 있다. `sync_kollus_vendor.sh`와 `sync_pallycon_vendor.sh`. 빌드 스크립트도 짝이다. `rebuild_kollus_xcframework.sh`와 `rebuild_pallycon_xcframework.sh`. 검증 스크립트는 하나(`verify_kollus_packaging.sh`)지만 그 안에서 두 vendor를 함께 본다.
 
@@ -312,5 +312,5 @@ flowchart LR
 - DoveRunner: [Multi-DRM License Service](https://doverunner.com/kr/content-security/license-service/)
 - 사내 코드: `Vendor/PallyConFPSSDK.framework/Headers/PallyConFPSSDK-ObjC.h`
 - 사내 코드: `Package.swift`의 `VideoPlayerPallyConBinary` target
-- 사내 문서: `docs/kollus-sdk-packaging.md`
+- 사내 문서: `docs/kollus/kollus-sdk-vendoring.md`
 - 이전 편: [3편 우리는 왜 KollusSDK를 쓰는가](./03-why-kollus-sdk.md)
