@@ -1107,6 +1107,12 @@ swift test
 - [x] 시뮬레이터 스모크 — 앱 부팅 + 메인 화면 표시
 - [x] 코드 리뷰 — HIGH 3건(setUp/start 경쟁·tearDown actor·toast 강참조)·MEDIUM 3건(팬 좌우 고정·HTTP 상태 검증·라이브 배지 조건) 수정 반영 (`fcab3fb`). 잔여 기록: 동시 재생 진입 방어는 메인 버튼 비활성으로 1차 처리(Example에 외부 트리거 없음), factory 세션 공유는 의도된 설계
 
+### 토스트 (2026-06-11)
+
+- 토스트는 host 책임으로 결정 — 패키지(Sources)에 토스트 계약/구현을 두지 않는다
+- Example 공용 `ToastPresenter`(`Example/Sources/Support/`)가 레거시 host 앱과 동일 룩 재현: #424242 배경, cornerRadius 8, AppleSDGothicNeo-Regular 14pt(폰)/17pt(패드), 하단 inset 56/60, 3초 표시 후 0.3초 페이드아웃, 새 메시지가 기존 토스트 즉시 교체
+- anchor view의 `window`에 attach — 플레이어가 화면 일부에 embed 돼도 화면 전체 기준 하단 중앙에 표시. `PlayerViewController`/`DownloadCenterViewController`의 inline UILabel 토스트를 대체
+
 ### 실기기 QA 체크리스트 (시뮬레이터 검증 불가 항목)
 
 - [ ] short URL → scheme_uri → 실제 재생 성공 (1순위 — `.url()` 서명 URL 수용 검증)

@@ -16,7 +16,7 @@ final class PlayerViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        configureHierarchy()        // 아래→위: renderSurfaceView → skin → toast
+        configureHierarchy()        // 아래→위: renderSurfaceView → skin (토스트는 window에 별도 표시)
         skin.onAction = { [weak self] action in self?.route(action) }
         skin.configure(title: "VideoPlayer Example", maxPlaybackRate: policy.maxPlaybackRate)
 

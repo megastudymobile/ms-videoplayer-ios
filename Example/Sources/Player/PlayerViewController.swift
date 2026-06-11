@@ -23,7 +23,7 @@ final class PlayerViewController: UIViewController {
     private let skin = AssembledPlayerSkin(blueprint: .example)
     /// 스크린샷·녹화 결과물에서 영상/컨트롤을 제외하는 secure 캔버스 래퍼.
     private let secureContainer = PlayerSecureDisplayContainerView()
-    private let toastLabel = UILabel()
+    private let toastPresenter = ToastPresenter()
 
     private enum Metric {
         static let captionBottomInset: CGFloat = 5
@@ -40,7 +40,6 @@ final class PlayerViewController: UIViewController {
 
     private var hasResolvedInitialLayout = false
     private var bookmarks: [Bookmark] = []
-    private var toastDismissTask: Task<Void, Never>?
     private var controlsAutoHideTask: Task<Void, Never>?
     /// 팬 제스처 시작 시점의 좌/우 — 도중 중심선 통과로 밝기↔음량이 바뀌지 않도록 고정.
     private var panIsLeftSide = false
@@ -242,26 +241,11 @@ final class PlayerViewController: UIViewController {
         skin.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(skin)
 
-        toastLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(toastLabel)
-        toastLabel.textColor = .white
-        toastLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        toastLabel.textAlignment = .center
-        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-        toastLabel.layer.cornerRadius = 8
-        toastLabel.clipsToBounds = true
-        toastLabel.alpha = 0
-
         NSLayoutConstraint.activate([
             skin.topAnchor.constraint(equalTo: view.topAnchor),
             skin.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             skin.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            skin.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            toastLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            toastLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -100),
-            toastLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
-            toastLabel.heightAnchor.constraint(equalToConstant: 36)
+            skin.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
 
@@ -589,16 +573,7 @@ final class PlayerViewController: UIViewController {
     }
 
     private func showToast(_ message: String) {
-        toastLabel.text = "  \(message)  "
-        view.bringSubviewToFront(toastLabel)
-        UIView.animate(withDuration: 0.2) { [weak self] in self?.toastLabel.alpha = 1 }
-        // 연속 토스트 시 이전 dismiss 예약을 취소 — 새 메시지가 2초를 온전히 보장받는다.
-        toastDismissTask?.cancel()
-        toastDismissTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard Task.isCancelled == false else { return }
-            UIView.animate(withDuration: 0.3) { self?.toastLabel.alpha = 0 }
-        }
+        toastPresenter.show(message, from: view)
     }
 
     @objc private func userDidTakeScreenshot() {

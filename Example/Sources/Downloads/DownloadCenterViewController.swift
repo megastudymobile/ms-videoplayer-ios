@@ -21,12 +21,11 @@ final class DownloadCenterViewController: UIViewController {
     private let downloadButton = UIButton(configuration: .filled())
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private let metricsLabel = UILabel()
-    private let toastLabel = UILabel()
+    private let toastPresenter = ToastPresenter()
 
     private var rows: [DownloadCenterViewModel.Row] = []
     private var contentsTask: Task<Void, Never>?
     private var eventsTask: Task<Void, Never>?
-    private var toastDismissTask: Task<Void, Never>?
 
     init(center: (any PlayerDownloadCenter)?) {
         self.center = center
@@ -41,7 +40,6 @@ final class DownloadCenterViewController: UIViewController {
     deinit {
         contentsTask?.cancel()
         eventsTask?.cancel()
-        toastDismissTask?.cancel()
     }
 
     // MARK: - Lifecycle
@@ -251,15 +249,7 @@ final class DownloadCenterViewController: UIViewController {
     }
 
     private func showToast(_ message: String) {
-        toastLabel.text = "  \(message)  "
-        view.bringSubviewToFront(toastLabel)
-        UIView.animate(withDuration: 0.2) { [weak self] in self?.toastLabel.alpha = 1 }
-        toastDismissTask?.cancel()
-        toastDismissTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard Task.isCancelled == false else { return }
-            UIView.animate(withDuration: 0.3) { self?.toastLabel.alpha = 0 }
-        }
+        toastPresenter.show(message, from: view)
     }
 
     // MARK: - 빈 상태
@@ -305,19 +295,11 @@ final class DownloadCenterViewController: UIViewController {
         tableView.dataSource = self
         tableView.delegate = self
 
-        toastLabel.textColor = .white
-        toastLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        toastLabel.textAlignment = .center
-        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-        toastLabel.layer.cornerRadius = 8
-        toastLabel.clipsToBounds = true
-        toastLabel.alpha = 0
-
         let header = UIStackView(arrangedSubviews: [urlField, downloadButton, metricsLabel])
         header.axis = .vertical
         header.spacing = 12
 
-        for subview in [header, tableView, toastLabel] {
+        for subview in [header, tableView] {
             subview.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(subview)
         }
@@ -330,12 +312,7 @@ final class DownloadCenterViewController: UIViewController {
             tableView.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            toastLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            toastLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -40),
-            toastLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
-            toastLabel.heightAnchor.constraint(equalToConstant: 36)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
 }
