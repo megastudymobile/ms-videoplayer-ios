@@ -52,4 +52,17 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
     public func allowsPlaybackRate(_ rate: Double) -> Bool {
         allowedPlaybackRates.contains { abs($0 - rate) < 0.001 }
     }
+
+    /// 정책이 이 기능의 UI 노출을 허용하는가.
+    /// default 없는 switch — 새 feature 추가 시 정책 판단을 컴파일러가 강제한다.
+    public func allows(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .seekPreview:
+            return allowsSeekPreview
+        case .playbackRate, .subtitles, .externalSubtitles, .bookmarks,
+             .titledBookmarks, .zoom, .scroll, .adaptiveStreaming,
+             .pictureInPicture, .displayScaling, .displayLock:
+            return true
+        }
+    }
 }

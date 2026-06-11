@@ -12,7 +12,7 @@ public actor PlayerCore {
     public nonisolated let stateStream: AsyncStream<PlaybackState>
     public nonisolated let eventStream: AsyncStream<PlayerEvent>
     /// 엔진의 optional protocol 채택으로 산출한 가용 기능 — UI 버튼 사전 게이트용.
-    public nonisolated let availableFeatures: PlayerFeatureAvailability
+    public nonisolated let availableFeatures: Set<PlayerFeature>
 
     private let engine: PlayerPlaybackEngine
     private let engineRuntimeTraits: EngineRuntimeTraits
@@ -56,7 +56,7 @@ public actor PlayerCore {
 
         self.engine = engine
         self.engineRuntimeTraits = engineRuntimeTraits
-        self.availableFeatures = PlayerFeatureAvailability.probe(engine)
+        self.availableFeatures = PlayerFeature.available(for: engine)
         self.currentState = .idle
         self.currentPolicy = initialPolicy
         self.stateStream = stateStream

@@ -16,8 +16,8 @@ import Foundation
 ///   엔진 동작 특성 — UI 기능 목록이 아니다
 /// - Ability protocol (`EnginePlaybackRateAbility` 등): 배속/자막/북마크처럼 엔진이
 ///   선택적으로 채택하는 기능별 계약
-/// - `PlayerFeatureAvailability`: ability protocol 채택 여부를 조사해 산출한 가용 기능 집합 —
-///   Host/UI가 버튼 노출 결정에 쓴다
+/// - `PlayerFeature`: ability protocol 채택 여부를 조사해(`available(for:)`) 산출하는
+///   가용 기능 식별자 — Host/UI가 버튼 노출 결정에 쓴다
 public protocol PlayerPlaybackEngine: Actor {
     nonisolated static var runtimeTraits: EngineRuntimeTraits { get }
 

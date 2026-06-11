@@ -9,7 +9,7 @@
 import Foundation
 
 /// Core가 정책 판단에 쓰는 엔진 동작 특성. UI 기능 목록이 아니다 —
-/// 그쪽은 ability protocol 채택을 조사하는 `PlayerFeatureAvailability`가 담당한다.
+/// 그쪽은 ability protocol 채택을 조사하는 `PlayerFeature.available(for:)`가 담당한다.
 public struct EngineRuntimeTraits: OptionSet, Sendable {
     public let rawValue: Int
 

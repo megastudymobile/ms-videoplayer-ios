@@ -13,7 +13,7 @@ import UIKit
 #endif
 
 // 엔진이 선택적으로 채택하는 기능별 ability 계약.
-// 채택 여부는 `PlayerFeatureAvailability.probe(_:)`가 조사해 UI 버튼 노출로 이어진다.
+// 채택 여부는 `PlayerFeature.available(for:)`가 조사해 UI 버튼 노출로 이어진다.
 
 public protocol EnginePlaybackRateAbility: Actor {
     func setPlaybackRate(_ rate: Double) async throws

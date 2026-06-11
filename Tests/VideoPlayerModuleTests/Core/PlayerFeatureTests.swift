@@ -1,5 +1,5 @@
 //
-//  PlayerFeatureAvailabilityTests.swift
+//  PlayerFeatureTests.swift
 //  VideoPlayerModuleTests
 //
 //  Created by JunyoungJung on 2026/06/10.
@@ -13,17 +13,17 @@ import VideoPlayerCore
 import UIKit
 #endif
 
-@Suite("PlayerFeatureAvailability probe — 엔진 protocol 채택 기반 기능 협상")
-struct PlayerFeatureAvailabilityTests {
+@Suite("PlayerFeature.available — 엔진 protocol 채택 기반 기능 협상")
+struct PlayerFeatureTests {
 
     @Test("기본 엔진은 가용 기능 없음")
     func bareEngine_hasNoFeatures() {
-        #expect(PlayerFeatureAvailability.probe(BareEngine()) == [])
+        #expect(PlayerFeature.available(for: BareEngine()) == [])
     }
 
     @Test("optional protocol 채택이 곧 가용 기능이다")
     func conformingEngine_reportsAdoptedFeatures() {
-        let features = PlayerFeatureAvailability.probe(RichEngine())
+        let features = PlayerFeature.available(for: RichEngine())
 
         #expect(features.contains(.playbackRate))
         #expect(features.contains(.subtitles))
@@ -41,6 +41,20 @@ struct PlayerFeatureAvailabilityTests {
 
         #expect(core.availableFeatures.contains(.playbackRate))
         #expect(!core.availableFeatures.contains(.pictureInPicture))
+    }
+
+    @Test("정책 allows — seekPreview만 정책 게이트, 나머지는 항상 허용")
+    func policyAllows_gatesSeekPreviewOnly() {
+        let blocked = PlayerFeaturePolicy(
+            allowsBackgroundPlayback: false,
+            allowedPlaybackRates: [1.0],
+            allowsAutoplay: true,
+            allowsSeekPreview: false
+        )
+
+        #expect(blocked.allows(.seekPreview) == false)
+        #expect(blocked.allows(.bookmarks))
+        #expect(PlayerFeaturePolicy.default.allows(.seekPreview))
     }
 }
 
@@ -87,11 +101,11 @@ private actor RichEngine: PlayerPlaybackEngine,
 }
 
 #if canImport(UIKit)
-extension PlayerFeatureAvailabilityTests {
+extension PlayerFeatureTests {
     @Test("EngineSeekPreviewAbility 채택 → .seekPreview 가용")
     func seekPreviewEngine_reportsSeekPreview() {
-        #expect(PlayerFeatureAvailability.probe(SeekPreviewEngine()).contains(.seekPreview))
-        #expect(PlayerFeatureAvailability.probe(BareEngine()).contains(.seekPreview) == false)
+        #expect(PlayerFeature.available(for: SeekPreviewEngine()).contains(.seekPreview))
+        #expect(PlayerFeature.available(for: BareEngine()).contains(.seekPreview) == false)
     }
 }
 
