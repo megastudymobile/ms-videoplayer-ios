@@ -68,7 +68,7 @@ import VideoPlayerShellSupport
 let engine = AVPlayerAdapter()
 let module = await PlayerModuleWiring.makeModule(
     engine: engine,
-    engineCapabilities: AVPlayerAdapter.capabilities
+    engineRuntimeTraits: AVPlayerAdapter.runtimeTraits
 )
 
 // 2) 상태 구독 (화면 갱신)
@@ -134,7 +134,7 @@ try await module.core.execute(command: .play)
 #if targetEnvironment(simulator)
 let module = await PlayerModuleWiring.makeModule(
     engine: UnsupportedEnvironmentEngine(message: "Kollus 재생은 실기기에서만 지원됩니다."),
-    engineCapabilities: []
+    engineRuntimeTraits: []
 )
 #else
 let module = await factory.makeModule()
@@ -224,7 +224,7 @@ view.addSubview(renderSurfaceView)
 view.addSubview(skin)
 
 // 1회 설정
-skin.configure(title: "강의 제목", maxPlaybackRate: 2.0)
+skin.configure(title: "강의 제목", allowedPlaybackRates: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0])
 
 // 사용자 입력 → 명령
 skin.onAction = { [weak self] action in
@@ -279,12 +279,12 @@ view.addSubview(skin)
 
 ## 정책과 기능 협상
 
-앱이 허용하는 것(`PlayerFeaturePolicy`)과 엔진이 지원하는 것(`EngineCapabilities`)은 `PlayerCore`가 협상합니다.
+앱이 허용하는 것(`PlayerFeaturePolicy`)과 엔진이 지원하는 것(`EngineRuntimeTraits`)은 `PlayerCore`가 협상합니다.
 
 ```swift
 let policy = PlayerFeaturePolicy(
     allowsBackgroundPlayback: true,   // 엔진이 .continuesWithoutSurface를 지원할 때만 유효
-    maxPlaybackRate: 2.0,
+    allowedPlaybackRates: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0],
     allowsAutoplay: true,
     skipInterval: 10,
     nextEpisodeButtonLeadTime: 30
@@ -292,7 +292,7 @@ let policy = PlayerFeaturePolicy(
 try await module.core.start(source: source, policy: policy)
 ```
 
-협상 결과 정책이 낮춰지면 `eventStream`에 `.policyDowngraded(reason:)` 이벤트가 옵니다. 배속은 `maxPlaybackRate`로 자동 clamp됩니다.
+협상 결과 정책이 낮춰지면 `eventStream`에 `.policyDowngraded(reason:)` 이벤트가 옵니다. 배속은 `allowedPlaybackRates`로 자동 clamp됩니다.
 
 ## 생명주기와 오디오 세션
 
@@ -307,7 +307,7 @@ try PlayerAudioSessionManager.shared.acquire(category: .playback, mode: .moviePl
 let coordinator = PlayerLifecycleCoordinator(
     core: module.core,
     policy: policy,
-    engineCapabilities: module.engineCapabilities,
+    engineRuntimeTraits: module.engineRuntimeTraits,
     onEvent: { event in /* .policyDowngraded 알림 등 */ }
 )
 coordinator.start()
@@ -319,12 +319,12 @@ try PlayerAudioSessionManager.shared.release()
 
 ### 잠금화면/제어센터 (NowPlaying)
 
-`PlayerNowPlayingCoordinator`를 연결하면 잠금화면 메타데이터·remote command·재생 상태 동기화를 모듈이 자체 처리합니다. 제목/artwork는 엔진이 `PlayerContentMetadataEngine`을 지원하면 자동 조회됩니다.
+`PlayerNowPlayingCoordinator`를 연결하면 잠금화면 메타데이터·remote command·재생 상태 동기화를 모듈이 자체 처리합니다. 제목/artwork는 엔진이 `EngineContentMetadataAbility`을 지원하면 자동 조회됩니다.
 
 ```swift
 let nowPlaying = PlayerNowPlayingCoordinator(
     core: module.core,
-    metadataProvider: module.engine as? PlayerContentMetadataEngine,
+    metadataProvider: module.engine as? EngineContentMetadataAbility,
     skipInterval: policy.skipInterval,
     fallbackTitle: "재생 중"
 )

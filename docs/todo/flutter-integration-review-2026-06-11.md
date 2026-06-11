@@ -309,7 +309,7 @@ final class FlutterPlayerPlugin: NSObject, FlutterPlugin, PlayerHostApi {
             let engine = KollusPlayerModuleFactory.makeEngine(environment: environment, surface: surface)
             let module = await PlayerModuleWiring.makeModule(
                 engine: engine,
-                engineCapabilities: engine.capabilities
+                engineRuntimeTraits: engine.runtimeTraits
             )
             instances[viewId] = FlutterPlayerInstance(
                 module: module, surface: surface, events: eventsApi, viewId: viewId
@@ -550,7 +550,7 @@ PlayerView(
 
 ## 11. 참고
 
-- 기존 모듈 계약: `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift`, `Sources/VideoPlayerCore/Domain/`
+- 기존 모듈 계약: `Sources/VideoPlayerCore/Contract/ (PlayerPlaybackEngine.swift · EngineRuntimeTraits.swift · EngineAbilities.swift)`, `Sources/VideoPlayerCore/Domain/`
 - Shell 조립 흐름: `Sources/VideoPlayerShellSupport/PlayerModuleWiring.swift`
 - 렌더 표면 추상화: `Sources/VideoPlayerShellSupport/PlayerRenderSurface.swift`
 - 인수인계 시리즈: `docs/HANDOVER/01-overview.md` ~ `10-example-tests-recipes.md`

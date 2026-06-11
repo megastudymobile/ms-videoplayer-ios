@@ -18,7 +18,7 @@ final class PlayerViewController: UIViewController {
         super.viewDidLoad()
         configureHierarchy()        // 아래→위: renderSurfaceView → skin (토스트는 window에 별도 표시)
         skin.onAction = { [weak self] action in self?.route(action) }
-        skin.configure(title: "VideoPlayer Example", maxPlaybackRate: policy.maxPlaybackRate)
+        skin.configure(title: "VideoPlayer Example", allowedPlaybackRates: policy.allowedPlaybackRates)
 
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -132,7 +132,7 @@ sequenceDiagram
     Note over L: 자동 재개하지 않음 — 재개 여부는 host 정책
 ```
 
-백그라운드 전환도 같은 coordinator가 처리하되, `policy.allowsBackgroundPlayback`과 `engineCapabilities.continuesWithoutSurface`를 모두 만족할 때만 재생을 유지합니다. ([7편](07-shell-support.md))
+백그라운드 전환도 같은 coordinator가 처리하되, `policy.allowsBackgroundPlayback`과 `engineRuntimeTraits.continuesWithoutSurface`를 모두 만족할 때만 재생을 유지합니다. ([7편](07-shell-support.md))
 
 ## 에러는 어디서 잡히나 — 한 장 정리
 

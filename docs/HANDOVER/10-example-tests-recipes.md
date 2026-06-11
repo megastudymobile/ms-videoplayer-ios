@@ -36,7 +36,7 @@ open VideoPlayerExample.xcworkspace   # VideoPlayerExample scheme 실행
 // 시뮬레이터: Kollus 미지원 → 안내 문구만 띄우는 no-op 엔진
 return await PlayerModuleWiring.makeModule(
     engine: UnsupportedEnvironmentEngine(message: "Kollus 재생은 실기기에서만 지원됩니다."),
-    engineCapabilities: []
+    engineRuntimeTraits: []
 )
 #else
 return await factory.makeModule()    // 실기기: Kollus factory (캐시 재사용)
@@ -85,7 +85,7 @@ xcodebuild test -workspace VideoPlayerExample.xcworkspace -scheme VideoPlayerExa
 // Tests/VideoPlayerModuleTests/Support/AVPlayerContractFactory.swift
 enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
     static func makeTestAdapter() -> PlayerEngineAdapter { AVPlayerAdapter(player: AVPlayer()) }
-    static var expectedCapabilities: EngineCapabilities { [.continuesWithoutSurface, .seamlessSurfaceSwap] }
+    static var expectedCapabilities: EngineRuntimeTraits { [.continuesWithoutSurface, .seamlessSurfaceSwap] }
 }
 
 @Suite("AVPlayerAdapter 엔진 계약", .enabled(if: AVPlayerContractFactory.isSupportedInCurrentEnvironment))
@@ -132,7 +132,7 @@ struct PlayerSkinSmokeTests {
 예: "구간 미리듣기" 같은 새 명령.
 
 1. `Core/Domain/PlaybackCommand.swift`에 case 추가 → 컴파일 에러가 안내자 역할
-2. 엔진 위임이 필요하면 `Core/Contract/PlayerEngineAdapter.swift`에 optional 프로토콜 추가 (기존 프로토콜에 우겨넣지 말 것 — 모든 엔진이 강제 구현하게 됨)
+2. 엔진 위임이 필요하면 `Core/Contract/EngineAbilities.swift`에 ability 프로토콜 추가 (기존 프로토콜에 우겨넣지 말 것 — 모든 엔진이 강제 구현하게 됨)
 3. `Internal/PlayerCore.swift`의 `execute` switch에 분기 추가 (`engine as? 새프로토콜` 캐스팅 패턴)
 4. 상태가 바뀌는 명령이면 `PlaybackStateInput`에 입력 추가 + reducer 케이스 + **`Tests/Core/`에 reducer 테스트**
 5. 각 엔진(`AVPlayerAdapter`, `KollusPlayerAdapter`)에 프로토콜 구현

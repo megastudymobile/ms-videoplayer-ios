@@ -204,7 +204,7 @@ let skin = AssembledPlayerSkin(blueprint: .default)
 view.addSubview(skin)   // renderSurfaceView 위에 전체 화면으로
 
 // 1회 설정
-skin.configure(title: "강의 제목", maxPlaybackRate: policy.maxPlaybackRate)
+skin.configure(title: "강의 제목", allowedPlaybackRates: policy.allowedPlaybackRates)
 
 // 액션 라우팅: PlayerSkinAction → PlaybackCommand
 skin.onAction = { [weak self] action in

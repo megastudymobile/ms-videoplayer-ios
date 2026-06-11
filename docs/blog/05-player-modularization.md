@@ -78,7 +78,7 @@ flowchart TB
 
 ```swift
 public protocol PlayerPlaybackEngine: Actor {
-    nonisolated static var capabilities: EngineCapabilities { get }
+    nonisolated static var runtimeTraits: EngineRuntimeTraits { get }
 
     func prepare(source: PlaybackSource) async throws
     func play() async throws
@@ -194,15 +194,15 @@ Binder --> Shell
 세 번째 원칙. 모든 엔진이 모든 기능을 지원하지는 않는다. 그러면 어떻게 해야 하나? 우리는 capability OptionSet을 도입했다.
 
 ```swift
-public struct EngineCapabilities: OptionSet, Sendable {
-    public static let continuesWithoutSurface = EngineCapabilities(rawValue: 1 << 0)
-    public static let seamlessSurfaceSwap     = EngineCapabilities(rawValue: 1 << 1)
-    public static let nativePiP              = EngineCapabilities(rawValue: 1 << 2)
+public struct EngineRuntimeTraits: OptionSet, Sendable {
+    public static let continuesWithoutSurface = EngineRuntimeTraits(rawValue: 1 << 0)
+    public static let seamlessSurfaceSwap     = EngineRuntimeTraits(rawValue: 1 << 1)
+    public static let nativePiP              = EngineRuntimeTraits(rawValue: 1 << 2)
     // …
 }
 ```
 
-엔진은 자기 capability를 선언한다. 그리고 보조 protocol(`PlayerPlaybackRateEngine`, `PlayerSubtitleEngine`, `PlayerTitledBookmarkEngine`, `PlayerExternalSubtitleEngine`, `PlayerDisplayEngine`, `PlayerAdaptiveStreamingEngine`, `PlayerPiPCapability`)을 채택 여부로 추가 기능 지원을 표현한다. 현재 `EngineCapabilities`는 백그라운드 재생처럼 엔진의 큰 동작 특성을 판단하는 데 쓰이고, 배속/자막/북마크/디스플레이/ABR/PiP 같은 명령은 보조 protocol 채택 여부로 검사한다. 지원하지 않으면 `PlayerError.engineError`를 던지거나, 정책을 안전한 값으로 자동 downgrade한다.
+엔진은 자기 capability를 선언한다. 그리고 보조 protocol(`EnginePlaybackRateAbility`, `EngineSubtitleAbility`, `EngineTitledBookmarkAbility`, `EngineExternalSubtitleAbility`, `EngineDisplayAbility`, `EngineAdaptiveStreamingAbility`, `EnginePiPAbility`)을 채택 여부로 추가 기능 지원을 표현한다. 현재 `EngineRuntimeTraits`는 백그라운드 재생처럼 엔진의 큰 동작 특성을 판단하는 데 쓰이고, 배속/자막/북마크/디스플레이/ABR/PiP 같은 명령은 보조 protocol 채택 여부로 검사한다. 지원하지 않으면 `PlayerError.engineError`를 던지거나, 정책을 안전한 값으로 자동 downgrade한다.
 
 예를 들어 `allowsBackgroundPlayback` 정책이 켜져 있는데 엔진이 `.continuesWithoutSurface`를 지원하지 않으면, `PlayerCore`는 자동으로 정책을 끄고 `.policyDowngraded(.missingContinuesWithoutSurface)` 이벤트를 발행한다. Shell UI는 그걸 받아 "백그라운드 재생이 비활성화됨" 토스트를 띄울 수 있다. **기능이 없다고 크래시가 나는 게 아니라, 정책이 우아하게 한 단계 내려간다.**
 
@@ -378,7 +378,7 @@ flowchart LR
 
 좋은 점만 적으면 마케팅 글이다. 시니어 독자를 위해 우리가 어떤 비용을 받아들였는지도 적어 둔다.
 
-첫째, **추상화 계층의 학습 비용**. 신입 개발자가 합류했을 때 `PlayerPlaybackEngine`, `PlayerCore`, `PlayerStateBinder`, `PlayerModuleWiring`, `EngineCapabilities`, `PlayerFeaturePolicy`라는 단어를 한꺼번에 만난다. README가 길어진 이유다. 작은 강의 앱을 만든다면 이 수준의 추상화는 과잉이다. 우리처럼 장기 운영, vendor 교체 가능성, 여러 재생 시나리오를 고려해야 하는 코드에서 정당화되는 비용이다.
+첫째, **추상화 계층의 학습 비용**. 신입 개발자가 합류했을 때 `PlayerPlaybackEngine`, `PlayerCore`, `PlayerStateBinder`, `PlayerModuleWiring`, `EngineRuntimeTraits`, `PlayerFeaturePolicy`라는 단어를 한꺼번에 만난다. README가 길어진 이유다. 작은 강의 앱을 만든다면 이 수준의 추상화는 과잉이다. 우리처럼 장기 운영, vendor 교체 가능성, 여러 재생 시나리오를 고려해야 하는 코드에서 정당화되는 비용이다.
 
 둘째, **간접화의 디버깅 비용**. 재생이 안 될 때 ViewController 한 곳만 보면 됐던 시절에 비해, 이제는 ViewModel/Shell → PlayerCore → Engine → SDK delegate/mapper → vendor SDK까지 여러 단계를 따라가야 한다. 우리는 이걸 완화하려고 단방향 상태 흐름과 명시적 이벤트(`PolicyDowngradeReason`)를 도입했다. 그래도 처음 디버깅하는 사람은 한 번은 헷갈린다.
 

@@ -177,7 +177,7 @@ class PlaybackSourceMessage {
 /// PlayerFeaturePolicy와 동형 — start 시 필수
 class PlayerFeaturePolicyMessage {
   late bool allowsBackgroundPlayback;
-  late double maxPlaybackRate;
+  late double allowedPlaybackRates;
   late bool allowsAutoplay;
   late double skipInterval;
   late double nextEpisodeButtonLeadTime;
@@ -420,7 +420,7 @@ final class FlutterPlayerPlugin: NSObject, FlutterPlugin, PlayerHostApi {
             let engine = KollusPlayerModuleFactory.makeEngine(environment: environment, surface: surface)
             let module = await PlayerModuleWiring.makeModule(
                 engine: engine,
-                engineCapabilities: engine.capabilities
+                engineRuntimeTraits: engine.runtimeTraits
             )
             let instance = FlutterPlayerInstance(
                 module: module, surface: surface, events: eventsApi, viewId: viewId
@@ -808,7 +808,7 @@ add-to-app 시 주의: `initialize`(SDK bootstrap)가 네이티브 측에서 이
 
 ## 16. 참고
 
-- 기존 모듈 계약: `Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift`, `Sources/VideoPlayerCore/Domain/`
+- 기존 모듈 계약: `Sources/VideoPlayerCore/Contract/ (PlayerPlaybackEngine.swift · EngineRuntimeTraits.swift · EngineAbilities.swift)`, `Sources/VideoPlayerCore/Domain/`
 - Shell 조립 흐름: `Sources/VideoPlayerShellSupport/PlayerModuleWiring.swift`
 - 렌더 표면 추상화: `Sources/VideoPlayerShellSupport/PlayerRenderSurface.swift`
 - 생명주기 처리: `Sources/VideoPlayerShellSupport/PlayerLifecycleCoordinator.swift`

@@ -7,9 +7,9 @@
 모든 엔진은 actor이고, 이 프로토콜을 구현해야 합니다.
 
 ```swift
-// Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift
+// Sources/VideoPlayerCore/Contract/PlayerPlaybackEngine.swift (+ EngineRuntimeTraits.swift, EngineAbilities.swift)
 public protocol PlayerPlaybackEngine: Actor {
-    nonisolated static var capabilities: EngineCapabilities { get }
+    nonisolated static var runtimeTraits: EngineRuntimeTraits { get }
 
     func prepare(source: PlaybackSource) async throws
     func play() async throws
@@ -34,29 +34,29 @@ public enum PlayerEngineOutput: Sendable {
 }
 ```
 
-### 부가 기능은 optional 프로토콜로
+### 부가 기능은 ability 프로토콜로
 
 자막, 배속, 북마크 같은 기능은 엔진마다 지원 여부가 다릅니다. 그래서 별도 프로토콜로 쪼개고, 엔진이 **채택하면 지원**으로 간주합니다.
 
 ```swift
-public protocol PlayerPlaybackRateEngine: Actor {
+public protocol EnginePlaybackRateAbility: Actor {
     func setPlaybackRate(_ rate: Double) async throws
 }
-public protocol PlayerSubtitleEngine: Actor {
+public protocol EngineSubtitleAbility: Actor {
     func setSubtitleVisible(_ isVisible: Bool) async throws
     func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws
     func setCaptionFontSize(_ fontSize: Int) async throws
 }
-public protocol PlayerBookmarkEngine: Actor {
+public protocol EngineBookmarkAbility: Actor {
     func addBookmark(at time: TimeInterval) async throws
 }
-// PlayerTitledBookmarkEngine, PlayerDisplayEngine, PlayerZoomEngine,
-// PlayerScrollEngine, PlayerAdaptiveStreamingEngine, PlayerPiPCapability,
-// PlayerContentMetadataEngine(제목/썸네일 조회 — NowPlaying 등 부가 UI용),
-// PlayerSeekPreviewEngine(스크럽 중 특정 시각의 프리뷰 프레임 — 실패는 nil로 통일) …
+// EngineTitledBookmarkAbility, EngineDisplayAbility, EngineZoomAbility,
+// EngineScrollAbility, EngineAdaptiveStreamingAbility, EnginePiPAbility,
+// EngineContentMetadataAbility(제목/썸네일 조회 — NowPlaying 등 부가 UI용),
+// EngineSeekPreviewAbility(스크럽 중 특정 시각의 프리뷰 프레임 — 실패는 nil로 통일) …
 ```
 
-`PlayerCore`는 `engine as? PlayerSubtitleEngine` 캐스팅으로 위임하고, 채택 여부는 `PlayerFeatureAvailability.probe(engine)`가 init 시점에 한 번 조사해 화면에 알려줍니다(버튼 노출 게이팅).
+`PlayerCore`는 `engine as? EngineSubtitleAbility` 캐스팅으로 위임하고, 채택 여부는 `PlayerFeatureAvailability.probe(engine)`가 init 시점에 한 번 조사해 화면에 알려줍니다(버튼 노출 게이팅).
 
 화면 부착용 프로토콜은 ShellSupport에 있습니다 (UIKit이 필요해서 Core에 둘 수 없음):
 
@@ -74,11 +74,11 @@ public protocol PlayerEngineAdapter: PlayerPlaybackEngine {
 
 ```swift
 public actor AVPlayerAdapter: PlayerEngineAdapter,
-                              PlayerPlaybackRateEngine, PlayerDisplayScalingEngine {
-    public nonisolated static let capabilities: EngineCapabilities = [
+                              EnginePlaybackRateAbility, EngineDisplayScalingAbility {
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = [
         .continuesWithoutSurface,   // AVPlayer는 layer 없이도 재생 지속 가능
         .seamlessSurfaceSwap
-        // .emitsObservedCommandState 없음! → play/pause는 Core가 command-origin으로 닫음
+        // .emitsAuthoritativeStateEvents 없음! → play/pause는 Core가 command-origin으로 닫음
     ]
 
     public let outputStream: AsyncStream<PlayerEngineOutput>   // Core가 소비하는 유일한 출력

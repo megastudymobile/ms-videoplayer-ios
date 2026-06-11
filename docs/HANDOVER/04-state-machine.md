@@ -117,7 +117,7 @@ public actor PlayerCore {
     public nonisolated let eventStream: AsyncStream<PlayerEvent>     // 화면이 구독
     public nonisolated let availableFeatures: PlayerFeatureAvailability
 
-    public init(engine: PlayerPlaybackEngine, engineCapabilities: EngineCapabilities,
+    public init(engine: PlayerPlaybackEngine, engineRuntimeTraits: EngineRuntimeTraits,
                 initialPolicy: PlayerFeaturePolicy = .default)
 
     public func activate() async    // 엔진 출력 스트림 구독 시작
@@ -233,7 +233,7 @@ sequenceDiagram
 
 ### 장치 3: command-origin — 엔진마다 다른 "성공 통지" 방식 흡수
 
-3편에서 본 `emitsObservedCommandState` capability가 여기서 쓰입니다.
+3편에서 본 `emitsAuthoritativeStateEvents` runtime trait가 여기서 쓰입니다.
 
 ```swift
 case .play:
@@ -246,7 +246,7 @@ case .play:
 - **Kollus**: `play()` 성공 후 SDK가 `playStarted` delegate를 다시 쏘므로, 그 신호가 reducer로 가서 상태가 됩니다.
 - **AVPlayer**: 그런 콜백이 없으므로 명령 성공 = 상태 확정으로 간주하고 Core가 직접 `.playStarted`를 reducer에 넣습니다.
 
-이 차이를 capability 플래그 하나로 흡수했기 때문에 화면 코드는 엔진별 분기가 없습니다.
+이 차이를 runtime trait 플래그 하나로 흡수했기 때문에 화면 코드는 엔진별 분기가 없습니다.
 
 ### 장치 4: 정책 협상
 
@@ -256,7 +256,7 @@ private func applyEffectivePolicy(_ policy: PlayerFeaturePolicy)
     guard policy.allowsBackgroundPlayback else { return (policy, nil) }
 
     // 백그라운드 재생을 원하지만 엔진이 surface 없는 재생을 못 하면 → 다운그레이드
-    guard engineCapabilities.contains(.continuesWithoutSurface) else {
+    guard engineRuntimeTraits.contains(.continuesWithoutSurface) else {
         return (PlayerFeaturePolicy(allowsBackgroundPlayback: false, /* 나머지 유지 */),
                 .missingContinuesWithoutSurface)
     }
@@ -269,7 +269,7 @@ private func applyEffectivePolicy(_ policy: PlayerFeaturePolicy)
 ## Host에서 보는 사용 패턴
 
 ```swift
-let core = PlayerCore(engine: adapter, engineCapabilities: AVPlayerAdapter.capabilities)
+let core = PlayerCore(engine: adapter, engineRuntimeTraits: AVPlayerAdapter.runtimeTraits)
 await core.activate()                                   // 엔진 출력 구독 시작
 
 Task {

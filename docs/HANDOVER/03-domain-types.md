@@ -144,7 +144,7 @@ public enum PlayerEvent: Equatable, Sendable {
 
 **상태(state) vs 이벤트(event) 구분 기준**: UI가 "현재 모습"을 그리는 데 필요한 것은 상태, "그 순간 반응"해야 하는 것(토스트, 자막 한 줄, 다음화 버튼 등장)은 이벤트입니다.
 
-## 5. PlayerFeaturePolicy vs EngineCapabilities — 허용 vs 지원
+## 5. PlayerFeaturePolicy vs EngineRuntimeTraits — 허용 vs 지원
 
 이 둘의 구분이 이 패키지에서 가장 자주 헷갈리는 부분입니다.
 
@@ -152,7 +152,7 @@ public enum PlayerEvent: Equatable, Sendable {
 // 앱이 "허용"하는 것 — host가 주입
 public struct PlayerFeaturePolicy: Equatable, Sendable {
     public let allowsBackgroundPlayback: Bool
-    public let maxPlaybackRate: Double      // Float가 아닌 Double — 이진 오차 방지
+    public let allowedPlaybackRates: [Double]  // 허용 배속 목록 — Float가 아닌 Double, 이진 오차 방지
     public let allowsAutoplay: Bool
     public let skipInterval: TimeInterval
     public let nextEpisodeButtonLeadTime: TimeInterval
@@ -160,7 +160,7 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
 
     public static let `default` = PlayerFeaturePolicy(
         allowsBackgroundPlayback: false,
-        maxPlaybackRate: 2.0,
+        allowedPlaybackRates: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0],
         allowsAutoplay: true,
         skipInterval: 10,
         nextEpisodeButtonLeadTime: 30
@@ -168,29 +168,29 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
 }
 
 // 엔진이 실제 "지원"하는 것 — 엔진이 선언
-public struct EngineCapabilities: OptionSet, Sendable {
-    public static let continuesWithoutSurface  = EngineCapabilities(rawValue: 1 << 0) // 화면 없이 재생 지속(백그라운드)
-    public static let seamlessSurfaceSwap      = EngineCapabilities(rawValue: 1 << 1) // 재생 중 화면 교체
-    public static let nativePiP                = EngineCapabilities(rawValue: 1 << 2)
-    public static let emitsObservedCommandState = EngineCapabilities(rawValue: 1 << 3) // 아래 설명
+public struct EngineRuntimeTraits: OptionSet, Sendable {
+    public static let continuesWithoutSurface  = EngineRuntimeTraits(rawValue: 1 << 0) // 화면 없이 재생 지속(백그라운드)
+    public static let seamlessSurfaceSwap      = EngineRuntimeTraits(rawValue: 1 << 1) // 재생 중 화면 교체
+    public static let nativePiP                = EngineRuntimeTraits(rawValue: 1 << 2)
+    public static let emitsAuthoritativeStateEvents = EngineRuntimeTraits(rawValue: 1 << 3) // 아래 설명
 }
 ```
 
-`emitsObservedCommandState`는 미묘하지만 중요합니다: **Kollus SDK는 play/pause 성공을 별도 delegate 콜백으로 다시 알려주지만, AVPlayer는 그렇지 않습니다.** 그래서 Kollus(`true`)는 콜백 신호가 상태를 만들고, Native(`false`)는 명령 성공 직후 `PlayerCore`가 직접 상태를 닫습니다. ([4편](04-state-machine.md)의 command-origin 참고)
+`emitsAuthoritativeStateEvents`는 미묘하지만 중요합니다: **Kollus SDK는 play/pause 성공을 별도 delegate 콜백으로 다시 알려주지만, AVPlayer는 그렇지 않습니다.** 그래서 Kollus(`true`)는 콜백 신호가 상태를 만들고, Native(`false`)는 명령 성공 직후 `PlayerCore`가 직접 상태를 닫습니다. ([4편](04-state-machine.md)의 command-origin 참고)
 
 여기에 더해 **세 번째 축**이 있습니다:
 
 ```swift
-// 엔진 인스턴스가 어떤 optional 프로토콜을 채택했는지 조사한 결과
+// 엔진 인스턴스가 어떤 ability 프로토콜을 채택했는지 조사한 결과
 public struct PlayerFeatureAvailability { /* rate, subtitle, bookmark, pip, zoom … OptionSet */ }
 ```
 
-`PlayerCore` 생성 시 `PlayerFeatureAvailability.probe(engine)`으로 엔진이 `PlayerSubtitleEngine`, `PlayerBookmarkEngine` 등을 구현했는지 검사해 둡니다. 화면은 이 값으로 **버튼 노출 여부를 사전 결정**합니다 (지원 안 하는 기능의 버튼을 아예 숨김).
+`PlayerCore` 생성 시 `PlayerFeatureAvailability.probe(engine)`으로 엔진이 `EngineSubtitleAbility`, `EngineBookmarkAbility` 등을 구현했는지 검사해 둡니다. 화면은 이 값으로 **버튼 노출 여부를 사전 결정**합니다 (지원 안 하는 기능의 버튼을 아예 숨김).
 
 ```mermaid
 flowchart LR
     Policy["PlayerFeaturePolicy<br/>(앱이 허용)"] --> Nego{PlayerCore 협상}
-    Caps["EngineCapabilities<br/>(엔진이 지원)"] --> Nego
+    Caps["EngineRuntimeTraits<br/>(엔진이 지원)"] --> Nego
     Avail["PlayerFeatureAvailability<br/>(프로토콜 채택 조사)"] --> UI[화면 버튼 노출 결정]
     Nego -->|다운그레이드 시| Event[".policyDowngraded 이벤트"]
 ```

@@ -78,7 +78,7 @@ flowchart TB
 흐름을 말로 풀면:
 
 1. 화면(또는 Skin의 버튼)이 `PlayerCore`에 명령을 보낸다 — `try await core.execute(command: .play)`
-2. `PlayerCore`가 정책(`PlayerFeaturePolicy`)과 엔진 기능(`EngineCapabilities`)을 확인하고 엔진에 위임한다
+2. `PlayerCore`가 정책(`PlayerFeaturePolicy`)과 엔진 동작 특성(`EngineRuntimeTraits`)을 확인하고 엔진에 위임한다
 3. 엔진은 SDK를 호출하고, SDK 이벤트를 `PlayerEngineOutput`으로 정규화해 올려 보낸다
 4. `PlayerCore`가 그 신호를 `PlaybackStateReducer`에 넣어 다음 상태를 계산한다
 5. 화면은 `core.stateStream`(AsyncStream)만 구독하며, 엔진 내부는 전혀 모른다
@@ -99,10 +99,10 @@ flowchart TB
 
 재생 상태 변경은 순서가 생명입니다(seek 중에 pause가 끼어들면?). 모든 엔진과 `PlayerCore`는 Swift actor라서 명령이 직렬화되고 데이터 레이스가 원천 차단됩니다.
 
-### 4. 기능은 협상한다 — Policy vs Capabilities
+### 4. 기능은 협상한다 — Policy vs Runtime Traits
 
 - `PlayerFeaturePolicy`: 앱이 **허용**하는 것 (최대 배속 2.0, 백그라운드 재생 금지…)
-- `EngineCapabilities`: 엔진이 실제로 **지원**하는 것 (`.continuesWithoutSurface`, `.nativePiP`…)
+- `EngineRuntimeTraits`: 엔진이 실제로 **지원**하는 것 (`.continuesWithoutSurface`, `.nativePiP`…)
 
 `PlayerCore`가 둘을 협상해서, 예컨대 백그라운드 재생을 허용해 달라는 정책이 와도 엔진이 지원하지 않으면 정책을 다운그레이드하고 `policyDowngraded` 이벤트로 알립니다.
 
