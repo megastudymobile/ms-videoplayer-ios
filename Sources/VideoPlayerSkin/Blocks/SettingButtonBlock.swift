@@ -1,3 +1,11 @@
+//
+//  SettingButtonBlock.swift
+//  VideoPlayerSkin
+//
+//  Created by 모바일팀_정준영 on 2026/06/11.
+//  Copyright © 2026 megastudyedu. All rights reserved.
+//
+
 import UIKit
 
 public final class SettingButtonBlock: UIView, PlayerSkinBlock {

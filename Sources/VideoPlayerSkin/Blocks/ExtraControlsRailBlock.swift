@@ -1,3 +1,11 @@
+//
+//  ExtraControlsRailBlock.swift
+//  VideoPlayerSkin
+//
+//  Created by 모바일팀_정준영 on 2026/06/11.
+//  Copyright © 2026 megastudyedu. All rights reserved.
+//
+
 import UIKit
 
 /// leftRail 의 host 주입 추가버튼들(placement .leftMenu): 강의 인덱스/해설/북마크 등.

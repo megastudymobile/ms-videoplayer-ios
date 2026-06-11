@@ -1,3 +1,11 @@
+//
+//  RateControlBlock.swift
+//  VideoPlayerSkin
+//
+//  Created by 모바일팀_정준영 on 2026/06/11.
+//  Copyright © 2026 megastudyedu. All rights reserved.
+//
+
 import UIKit
 
 /// 중앙 배속 버튼과 상/하 step 버튼을 하나의 복합 뷰에서 배치해

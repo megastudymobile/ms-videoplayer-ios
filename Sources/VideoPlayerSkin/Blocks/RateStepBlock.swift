@@ -1,3 +1,11 @@
+//
+//  RateStepBlock.swift
+//  VideoPlayerSkin
+//
+//  Created by 모바일팀_정준영 on 2026/06/11.
+//  Copyright © 2026 megastudyedu. All rights reserved.
+//
+
 import UIKit
 
 /// 가로 fullscreen 우측 메뉴 ^/v (배속 step).

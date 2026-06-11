@@ -1,3 +1,11 @@
+//
+//  SkipButtonBlock.swift
+//  VideoPlayerSkin
+//
+//  Created by 모바일팀_정준영 on 2026/06/11.
+//  Copyright © 2026 megastudyedu. All rights reserved.
+//
+
 import UIKit
 
 /// 10초 뒤로/앞으로. 버튼 위 "10" 오버레이 포함.

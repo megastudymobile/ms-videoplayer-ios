@@ -1,3 +1,11 @@
+//
+//  RateButtonBlock.swift
+//  VideoPlayerSkin
+//
+//  Created by 모바일팀_정준영 on 2026/06/11.
+//  Copyright © 2026 megastudyedu. All rights reserved.
+//
+
 import UIKit
 
 /// 영상 우측 floating 회색 원형 배속 버튼.

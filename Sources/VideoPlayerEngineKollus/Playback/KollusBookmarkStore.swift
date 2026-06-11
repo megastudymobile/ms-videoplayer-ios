@@ -2,8 +2,8 @@
 //  KollusBookmarkStore.swift
 //  VideoPlayerModule
 //
-//  Created by JunyoungJung on 2026/06/10.
-//  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
+//  Created by 모바일팀_정준영 on 2026/06/10.
+//  Copyright © 2026 megastudyedu. All rights reserved.
 //
 
 import Foundation

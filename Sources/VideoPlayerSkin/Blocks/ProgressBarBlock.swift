@@ -1,3 +1,11 @@
+//
+//  ProgressBarBlock.swift
+//  VideoPlayerSkin
+//
+//  Created by 모바일팀_정준영 on 2026/06/11.
+//  Copyright © 2026 megastudyedu. All rights reserved.
+//
+
 import UIKit
 
 /// bottomBar 복합 블럭: 진행 슬라이더 + 현재/총 시간 + 화면모드 버튼.
