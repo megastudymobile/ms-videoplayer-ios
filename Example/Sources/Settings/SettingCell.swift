@@ -23,6 +23,7 @@ enum SLPalette {
     static let grey58 = dynamic(light: 0x949494, dark: 0x616466)     // slGrey58
     static let skyBlue = dynamic(light: 0x3DAED6, dark: 0x237490)    // slPrimarySkyBlue
     static let hairline = dynamic(light: 0xE5E5E5, dark: 0x333333)
+    static let lineGrey = dynamic(light: 0xD6D6D6, dark: 0x34393D)   // Line/grey — 스위치 off 테두리
 
     private static func dynamic(light: Int, dark: Int) -> UIColor {
         UIColor { $0.userInterfaceStyle == .dark ? color(dark) : color(light) }
@@ -37,9 +38,10 @@ enum SLPalette {
 /// SL AppleSDGothicNeo 폰트 — 미설치 시 시스템 폰트로 폴백.
 enum SLFont {
     static func title() -> UIFont { named("AppleSDGothicNeo-SemiBold", 17, .semibold) }
+    static func sectionHeader() -> UIFont { named("AppleSDGothicNeo-Regular", 14, .regular) }
     static func description() -> UIFont { named("AppleSDGothicNeo-Light", 14, .light) }
     static func detail() -> UIFont { named("AppleSDGothicNeo-Light", 17, .light) }
-    static func detailSpecial() -> UIFont { named("AppleSDGothicNeo-SemiBold", 20, .semibold) }
+    static func stepperValue() -> UIFont { .systemFont(ofSize: 17, weight: .light) }
     static func detailButton() -> UIFont { named("AppleSDGothicNeo-SemiBold", 14, .semibold) }
     /// 자막 미리보기 샘플 — SL kSLPlayerSettingCaptionFontNameDefault(Regular), 가변 크기.
     static func captionSample(size: CGFloat) -> UIFont { named("AppleSDGothicNeo-Regular", size, .regular) }
@@ -76,6 +78,14 @@ final class SettingCell: UITableViewCell {
         return label
     }()
 
+    private let inlineDetailLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 1
+        label.setContentHuggingPriority(.required, for: .horizontal)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return label
+    }()
+
     private let descriptionLabel: UILabel = {
         let label = UILabel()
         label.font = SLFont.description()
@@ -94,7 +104,13 @@ final class SettingCell: UITableViewCell {
         return label
     }()
 
-    private let toggle = UISwitch()
+    private let toggle: UISwitch = {
+        let toggle = UISwitch()
+        toggle.tintColor = SLPalette.lineGrey
+        toggle.onTintColor = SLPalette.skyBlue
+        toggle.thumbTintColor = .white
+        return toggle
+    }()
 
     private let chevron: UIImageView = {
         let view = UIImageView(image: UIImage(systemName: "chevron.right"))
@@ -106,10 +122,9 @@ final class SettingCell: UITableViewCell {
 
     private lazy var minusButton = makeStepperButton(symbol: "minus")
     private lazy var plusButton = makeStepperButton(symbol: "plus")
-    /// 스테퍼 값 — SemiBold 20 (SL detailSpecial).
     private let stepperValueLabel: UILabel = {
         let label = UILabel()
-        label.font = SLFont.detailSpecial()
+        label.font = SLFont.stepperValue()
         label.textColor = .label
         label.textAlignment = .center
         return label
@@ -128,7 +143,7 @@ final class SettingCell: UITableViewCell {
         let stack = UIStackView()
         stack.axis = .horizontal
         stack.alignment = .center
-        stack.spacing = 10
+        stack.spacing = 11
         return stack
     }()
 
@@ -159,7 +174,7 @@ final class SettingCell: UITableViewCell {
     }
 
     private func configureLayout() {
-        let titleRow = UIStackView(arrangedSubviews: [titleLabel, newBadge])
+        let titleRow = UIStackView(arrangedSubviews: [titleLabel, newBadge, inlineDetailLabel])
         titleRow.axis = .horizontal
         titleRow.alignment = .center
         titleRow.spacing = 6
@@ -187,16 +202,25 @@ final class SettingCell: UITableViewCell {
             newBadge.widthAnchor.constraint(equalToConstant: 16),
             newBadge.heightAnchor.constraint(equalToConstant: 16),
             chevron.widthAnchor.constraint(equalToConstant: 12),
-            stepperValueLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 52)
+            stepperValueLabel.widthAnchor.constraint(equalToConstant: 44),
+            minusButton.widthAnchor.constraint(equalToConstant: 24),
+            minusButton.heightAnchor.constraint(equalToConstant: 24),
+            plusButton.widthAnchor.constraint(equalToConstant: 24),
+            plusButton.heightAnchor.constraint(equalToConstant: 24)
         ])
     }
 
     private func makeStepperButton(symbol: String) -> UIButton {
-        var config = UIButton.Configuration.gray()
-        config.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
+        var config = UIButton.Configuration.plain()
+        config.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .light))
         config.baseForegroundColor = SLPalette.grey58
-        config.cornerStyle = .medium
+        config.contentInsets = .zero
         let button = UIButton(configuration: config)
+        button.backgroundColor = .clear
+        button.layer.borderColor = SLPalette.grey58.cgColor
+        button.layer.borderWidth = 0.5
+        button.layer.cornerRadius = 12
+        button.clipsToBounds = true
         button.setContentHuggingPriority(.required, for: .horizontal)
         return button
     }
@@ -206,6 +230,8 @@ final class SettingCell: UITableViewCell {
     func configure(with item: SettingItem) {
         titleLabel.text = item.title
         newBadge.isHidden = item.isNew == false
+        inlineDetailLabel.attributedText = item.inlineAttributedText
+        inlineDetailLabel.isHidden = item.inlineAttributedText == nil
         if let attributed = item.attributedDescription {
             descriptionLabel.attributedText = attributed
             descriptionLabel.isHidden = false
@@ -237,6 +263,14 @@ final class SettingCell: UITableViewCell {
             [minusButton, stepperValueLabel, plusButton].forEach { accessoryStack.addArrangedSubview($0) }
 
         case .navigation(let detail, _):
+            selectionStyle = .default
+            if let detail {
+                detailLabel.text = detail()
+                accessoryStack.addArrangedSubview(detailLabel)
+            }
+            accessoryStack.addArrangedSubview(chevron)
+
+        case .action(let detail, _):
             selectionStyle = .default
             if let detail {
                 detailLabel.text = detail()

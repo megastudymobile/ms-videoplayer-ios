@@ -20,7 +20,6 @@ final class ScreenPlaybackSettingViewController: SettingsListViewController {
             // 설명 전용 — useGesture 는 detail("사용 중/안함") 표시용 persist-only.
             SettingItem(
                 title: "플레이어 제스처",
-                isNew: true,
                 accessory: .navigation(
                     detail: { PreferenceManager.useGesture ? "사용 중" : "사용 안함" },
                     makeViewController: { GestureViewController() }
@@ -42,7 +41,7 @@ final class ScreenPlaybackSettingViewController: SettingsListViewController {
             screenItems.append(
                 SettingItem(
                     title: "백그라운드 재생",
-                    description: "앱이 백그라운드에서 실행 중이거나, 잠금 화면인 경우에도 강의가 재생됩니다.",
+                    description: "앱이 백그라운드에서 실행 중이거나,\n잠금 화면인 경우에도 강의가 재생됩니다.",
                     isNew: true,
                     accessory: .toggle(
                         get: { PreferenceManager.isBackgroundAudioPlay },
@@ -84,7 +83,7 @@ final class ScreenPlaybackSettingViewController: SettingsListViewController {
             // 라이브: setCaptionFontSize 즉시 적용. SL parity — "메가스터디" 샘플을 선택 크기로 미리보기.
             SettingItem(
                 title: "자막",
-                attributedDescription: Self.captionSample(),
+                inlineAttributedText: Self.captionSample(),
                 accessory: .stepper(
                     value: { "\((SubtitleSize(rawValue: PreferenceManager.subtitleSize) ?? .normal).fontSize)P" },
                     canDecrement: { Self.subtitleIndex() > 0 },
@@ -101,11 +100,11 @@ final class ScreenPlaybackSettingViewController: SettingsListViewController {
                 // 라이브: setPlaybackRate 즉시 적용.
                 SettingItem(
                     title: "기본 배속",
-                    description: "설정한 기본 배속으로 재생되며, 플레이어에서 배속 변경 시 자동 반영됩니다.",
+                    description: "설정한 기본 배속으로 재생되며,\n플레이어에서 배속 변경 시 자동 반영됩니다.",
                     accessory: .stepper(
                         value: { PlaybackRate.title(PreferenceManager.playbackRate) },
                         canDecrement: { PreferenceManager.playbackRate > PlaybackRate.min + 0.001 },
-                        canIncrement: { PreferenceManager.playbackRate < PlaybackRate.max - 0.001 },
+                        canIncrement: { PreferenceManager.playbackRate < PlaybackRate.settingsMax - 0.001 },
                         onDecrement: { [weak self] in self?.stepRate(-1) },
                         onIncrement: { [weak self] in self?.stepRate(+1) }
                     )
@@ -115,10 +114,12 @@ final class ScreenPlaybackSettingViewController: SettingsListViewController {
                 // 다음 재생 시 반영(hardwareDecoderPreferred → KollusEnvironment).
                 SettingItem(
                     title: "디코딩 방식 선택",
-                    description: "기기 최적 플레이어로 배터리 소모 및 발열 증상이 완화됩니다.",
-                    accessory: .navigation(
+                    description: "기기 최적 플레이어로 배터리 소모 및 발열 증상이 완화됩니다. 단, 저배속시 음량 울림 및 배속 조절이 정상적으로 동작하지 않을 수 있습니다.",
+                    accessory: .action(
                         detail: { (PlayerCodec(rawValue: PreferenceManager.playerCodec) ?? .nativePlayer).title },
-                        makeViewController: { PlayerCodecViewController() }
+                        perform: { [weak self] presenter, sourceView in
+                            self?.presentPlayerCodecActionSheet(from: presenter, sourceView: sourceView)
+                        }
                     )
                 )
             ])
@@ -161,9 +162,25 @@ final class ScreenPlaybackSettingViewController: SettingsListViewController {
     }
 
     private func stepRate(_ delta: Int) {
-        let next = PlaybackRate.clamped(((PreferenceManager.playbackRate * 10).rounded() + Double(delta)) / 10)
+        let next = PlaybackRate.clampedForSettings(((PreferenceManager.playbackRate * 10).rounded() + Double(delta)) / 10)
         PreferenceManager.playbackRate = next
         channel?.setPlaybackRate(next)   // 라이브 적용
         reloadSections()
+    }
+
+    private func presentPlayerCodecActionSheet(from presenter: UIViewController, sourceView: UIView) {
+        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+
+        for codec in PlayerCodec.allCases {
+            alert.addAction(UIAlertAction(title: codec.actionSheetTitle, style: .default) { [weak self] _ in
+                PreferenceManager.playerCodec = codec.rawValue
+                self?.reloadSections()
+            })
+        }
+
+        alert.addAction(UIAlertAction(title: "닫기", style: .cancel))
+        alert.popoverPresentationController?.sourceView = sourceView
+        alert.popoverPresentationController?.sourceRect = sourceView.bounds
+        presenter.present(alert, animated: true)
     }
 }

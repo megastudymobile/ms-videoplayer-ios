@@ -30,6 +30,8 @@ enum SettingAccessory {
                  onDecrement: () -> Void, onIncrement: () -> Void)
     /// 우측 값 + 화살표, 탭 시 push.
     case navigation(detail: (() -> String)?, makeViewController: () -> UIViewController)
+    /// 우측 값 + 화살표, 탭 시 현재 화면에서 작업 실행.
+    case action(detail: (() -> String)?, perform: (UIViewController, UIView) -> Void)
     /// 우측 회색 값(읽기 전용).
     case detail(value: () -> String)
     /// 우측 값 + "비우기" 버튼.
@@ -41,14 +43,18 @@ struct SettingItem {
     let description: String?
     /// 스타일 적용된 설명(예: 자막 "메가스터디" 샘플) — 있으면 description 대신 표시.
     let attributedDescription: NSAttributedString?
+    /// 제목 오른쪽 같은 줄에 표시하는 보조 텍스트.
+    let inlineAttributedText: NSAttributedString?
     let isNew: Bool
     let accessory: SettingAccessory
 
     init(title: String, description: String? = nil, attributedDescription: NSAttributedString? = nil,
+         inlineAttributedText: NSAttributedString? = nil,
          isNew: Bool = false, accessory: SettingAccessory) {
         self.title = title
         self.description = description
         self.attributedDescription = attributedDescription
+        self.inlineAttributedText = inlineAttributedText
         self.isNew = isNew
         self.accessory = accessory
     }
@@ -136,8 +142,13 @@ extension SettingsListViewController: UITableViewDataSource, UITableViewDelegate
         header.backgroundColor = SLPalette.paleGrey
         let label = UILabel()
         label.text = sections[section].title
-        label.font = SLFont.detail()
-        label.textColor = SLPalette.grey58
+        label.font = SLFont.sectionHeader()
+        label.textColor = .label
+        label.attributedText = NSAttributedString(string: sections[section].title, attributes: [
+            .font: SLFont.sectionHeader(),
+            .foregroundColor: UIColor.label,
+            .kern: -0.35
+        ])
         label.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(label)
         NSLayoutConstraint.activate([
@@ -157,8 +168,14 @@ extension SettingsListViewController: UITableViewDataSource, UITableViewDelegate
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let item = sections[indexPath.section].items[indexPath.row]
-        if case .navigation(_, let make) = item.accessory {
+        switch item.accessory {
+        case .navigation(_, let make):
             navigationController?.pushViewController(make(), animated: true)
+        case .action(_, let perform):
+            let sourceView = tableView.cellForRow(at: indexPath) ?? tableView
+            perform(self, sourceView)
+        default:
+            break
         }
     }
 }
@@ -193,6 +210,7 @@ final class SettingViewController: SettingsListViewController {
             playerItems.append(
                 SettingItem(
                     title: "좌수 모드",
+                    isNew: true,
                     accessory: .toggle(
                         get: { PreferenceManager.useLeftHandedMode },
                         set: { PreferenceManager.useLeftHandedMode = $0 }

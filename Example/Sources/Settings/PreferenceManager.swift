@@ -29,31 +29,43 @@ struct UserDefault<T> {
 // MARK: - 설정 enum (샘플 ActionSheetEnums.swift 이식)
 
 enum PlayerCodec: Int, CaseIterable {
-    case hardware
-    case software
-    case nativePlayer
+    case nativePlayer = 2
+    case hardware = 0
+    case software = 1
 
     var title: String {
         switch self {
-        case .hardware: return "Hardware"
-        case .software: return "Software"
-        case .nativePlayer: return "Native Player"
+        case .nativePlayer: return "iOS 내장"
+        case .hardware: return "H/W"
+        case .software: return "S/W"
+        }
+    }
+
+    /// 액션시트 선택지 표기 — 행의 현재값 표기(title)와 다르다.
+    var actionSheetTitle: String {
+        switch self {
+        case .nativePlayer: return "iOS Native Player"
+        case .hardware: return "H/W Decoder"
+        case .software: return "S/W Decoder"
         }
     }
 }
 
 enum SeekRange: Int, CaseIterable {
-    case r5, r10, r20, r30, r60, r300
+    case r5 = 5
+    case r10 = 10
+    case r15 = 15
+    case r20 = 20
+    case r30 = 30
+    case r40 = 40
+    case r50 = 50
+    case r60 = 60
+    case r120 = 120
+    case r180 = 180
+    case r200 = 200
 
     var seconds: Int {
-        switch self {
-        case .r5: return 5
-        case .r10: return 10
-        case .r20: return 20
-        case .r30: return 30
-        case .r60: return 60
-        case .r300: return 300
-        }
+        rawValue
     }
 
     var title: String { "\(seconds)초" }
@@ -88,14 +100,18 @@ enum SubtitleSize: Int, CaseIterable {
     }
 }
 
-/// 기본 배속 — SL 화면/재생 설정의 ± step parity (0.5x ~ 2.0x, 0.1 간격).
 enum PlaybackRate {
     static let min = 0.5
     static let max = 2.0
+    static let settingsMax = 4.0
     static let step = 0.1
 
     static func clamped(_ value: Double) -> Double {
         Swift.min(Swift.max(value, min), max)
+    }
+
+    static func clampedForSettings(_ value: Double) -> Double {
+        Swift.min(Swift.max(value, min), settingsMax)
     }
 
     static var title: (Double) -> String { { String(format: "%.1fx", $0) } }

@@ -18,8 +18,18 @@ struct PreferenceManagerTests {
         let original = PreferenceManager.playbackRate
         defer { PreferenceManager.playbackRate = original }
 
-        PreferenceManager.playbackRate = 1.5
-        #expect(PreferenceManager.playbackRate == 1.5)
+        PreferenceManager.playbackRate = 4.0
+        #expect(PreferenceManager.playbackRate == 4.0)
+        #expect(PlaybackRate.min == 0.5)
+        #expect(PlaybackRate.max == 2.0)
+        #expect(PlaybackRate.settingsMax == 4.0)
+        #expect(PlaybackRate.step == 0.1)
+        #expect(PlaybackRate.clampedForSettings(4.5) == 4.0)
+    }
+
+    @Test("코덱 표시명은 레거시 디코더 문자열을 사용")
+    func playerCodecTitles_matchLegacyDisplayNames() {
+        #expect(PlayerCodec.allCases.map(\.title) == ["iOS 내장", "H/W", "S/W"])
     }
 
     @Test("코덱 설정 → hardwareDecoderPreferred 파생")
@@ -38,6 +48,11 @@ struct PreferenceManagerTests {
     func seekRange_derivesSeconds() {
         let original = PreferenceManager.seekRange
         defer { PreferenceManager.seekRange = original }
+
+        #expect(SeekRange.allCases.map(\.seconds) == [5, 10, 15, 20, 30, 40, 50, 60, 120, 180, 200])
+
+        PreferenceManager.seekRange = SeekRange.r200.rawValue
+        #expect(PreferenceManager.seekRangeSeconds == 200)
 
         PreferenceManager.seekRange = 9_999   // 정의되지 않은 rawValue
         #expect(PreferenceManager.seekRangeSeconds == 10)
