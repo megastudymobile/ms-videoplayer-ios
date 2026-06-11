@@ -185,6 +185,7 @@ SDK가 구분해주지 않는 두 가지를 mapper/어댑터가 보완합니다:
 
 - `stopStarted(userInteraction: false)`는 **재생 완료와 시스템 강제 종료가 같은 신호**로 옵니다. mapper의 `stopReason`이 재생 위치로 구분합니다 — 끝 0.5초 이내면 `.finished`, 중간이면 `.appLifecycle`(didFinish 미발행).
 - 시스템 pause 직후 buffering이 해소돼도 **SDK는 재생을 스스로 복원하지 않습니다**. 어댑터가 system-pause 플래그를 추적해 buffering 해제 시 `play()`를 재호출합니다.
+- `pause`는 메인 스레드에서 영상 파이프라인 재셋업(`setupVideoPlaybackForURL`, 수백 ms)을 동반할 수 있습니다. 스크럽 시작처럼 **터치 추적과 겹치는 시점에 pause를 호출하면 UI 전체가 멈춥니다** (실기기 Time Profiler 확인). Example은 드래그 중 재생을 유지하고 `seekEnded`에서만 seek하는 방식으로 회피합니다.
 
 ### Playback/ 하위의 보조 장치 4개
 
