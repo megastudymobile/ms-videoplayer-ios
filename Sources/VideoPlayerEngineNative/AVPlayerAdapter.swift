@@ -11,7 +11,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine, PlayerSeekPreviewEngine {
+public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine, PlayerSeekPreviewEngine {
     public nonisolated static let capabilities: EngineCapabilities = [
         .continuesWithoutSurface,
         .seamlessSurfaceSwap

@@ -8,7 +8,7 @@
 
 ```swift
 // Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift
-public protocol PlayerPlaybackEngine: Actor, PlayerEngineOutputProducing {
+public protocol PlayerPlaybackEngine: Actor {
     nonisolated static var capabilities: EngineCapabilities { get }
 
     func prepare(source: PlaybackSource) async throws
@@ -16,10 +16,8 @@ public protocol PlayerPlaybackEngine: Actor, PlayerEngineOutputProducing {
     func pause() async throws
     func seek(to time: TimeInterval) async throws
     func stop(reason: PlayerStopReason) async throws
-}
 
-// 코어가 reducer 입력을 받는 유일한 통로
-public protocol PlayerEngineOutputProducing: Actor {
+    // 코어가 reducer 입력을 받는 유일한 통로
     var outputStream: AsyncStream<PlayerEngineOutput> { get }
 }
 ```
@@ -75,7 +73,7 @@ public protocol PlayerEngineAdapter: PlayerPlaybackEngine {
 `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` — 가장 단순한 엔진이라 구조 학습에 최적입니다.
 
 ```swift
-public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing,
+public actor AVPlayerAdapter: PlayerEngineAdapter,
                               PlayerPlaybackRateEngine, PlayerDisplayScalingEngine {
     public nonisolated static let capabilities: EngineCapabilities = [
         .continuesWithoutSurface,   // AVPlayer는 layer 없이도 재생 지속 가능

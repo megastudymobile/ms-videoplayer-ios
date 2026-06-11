@@ -10,10 +10,10 @@ import Foundation
 import Testing
 @testable import VideoPlayerCore
 
-/// US1 T012/T016 — `PlayerEngineOutputProducing.outputStream` 계약 검증.
+/// `PlayerPlaybackEngine.outputStream` 계약 검증.
 ///
 /// 핵심: outputStream은 `PlaybackStateInput`을 델타로 싣기 때문에 손실이 영구 상태 desync를
-/// 만든다(설계 §5.1). 따라서 버스트 입력이 하나도 누락되지 않아야 하고(= `.unbounded`),
+/// 만든다. 따라서 버스트 입력이 하나도 누락되지 않아야 하고(= `.unbounded`),
 /// teardown 시 스트림이 finish해 소비 루프가 종료되어야 한다.
 @Suite("PlayerEngineOutput contract")
 struct PlayerEngineOutputContractTests {

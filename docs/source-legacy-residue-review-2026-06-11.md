@@ -221,7 +221,7 @@ AGENTS 주석 규칙은 작업번호, 설계안 식별자, 레거시 참조, spe
 
 권장 정리 방향 1안(전환 완료 판단 → mirror 제거)으로 처리했다.
 
-- `PlayerPlaybackEngine`에서 `currentState`/`eventStream` 요구를 제거하고 `PlayerEngineOutputProducing`을 필수 상속으로 변경. `outputStream`이 엔진의 유일한 출력.
+- `PlayerPlaybackEngine`에서 `currentState`/`eventStream` 요구를 제거하고 `outputStream`을 엔진의 유일한 출력으로 변경. 후속으로 전환기 분리 protocol이었던 `PlayerEngineOutputProducing`을 `PlayerPlaybackEngine`에 흡수해 삭제.
 - `PlayerCore`의 미전환 엔진용 `eventStream` bridge(`engineOutput(from:)`)를 제거. `.event(.stateDidChange)` 분기는 custom engine 방어용 compatibility guard로 목적을 명시해 유지.
 - 어댑터 3종(Kollus/Native/UnsupportedEnvironment)에서 mirror 발행 경로 전부 제거. 이벤트는 signal mapper가 `outputStream`으로 동일하게 발행함을 확인.
 - 소비처 확인 결과: host 앱은 엔진 mirror를 직접 소비하지 않았고(Core `eventStream`의 `.stateDidChange`는 reducer가 계속 발행하므로 영향 없음), Example 앱의 `module.engine.currentState` 소비 3곳은 Core 스트림 기반 스냅샷 추적으로 대체.

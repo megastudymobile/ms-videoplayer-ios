@@ -34,7 +34,7 @@ public struct EngineCapabilities: OptionSet, Sendable {
     public static let emitsObservedCommandState = EngineCapabilities(rawValue: 1 << 3)
 }
 
-public protocol PlayerPlaybackEngine: Actor, PlayerEngineOutputProducing {
+public protocol PlayerPlaybackEngine: Actor {
     nonisolated static var capabilities: EngineCapabilities { get }
 
     func prepare(source: PlaybackSource) async throws
@@ -43,13 +43,12 @@ public protocol PlayerPlaybackEngine: Actor, PlayerEngineOutputProducing {
     func seek(to time: TimeInterval) async throws
     func stop(reason: PlayerStopReason) async throws
 
-}
-
-/// - Important: `outputStream`은 adapter lifetime 동안 **동일한 장수명 인스턴스**여야 하고,
-///   teardown/deinit에서 `finish()`되어야 한다. 또한 `PlaybackStateInput`을 델타로 싣기 때문에
-///   버퍼링은 **`.unbounded`**여야 한다. `bufferingNewest`로 두면 입력 손실이 영구 상태 desync를
-///   만든다.
-public protocol PlayerEngineOutputProducing: Actor {
+    /// 엔진의 유일한 출력. Core가 소비해 reducer로 `PlaybackState`를 만든다.
+    ///
+    /// - Important: `outputStream`은 adapter lifetime 동안 **동일한 장수명 인스턴스**여야 하고,
+    ///   teardown/deinit에서 `finish()`되어야 한다. 또한 `PlaybackStateInput`을 델타로 싣기 때문에
+    ///   버퍼링은 **`.unbounded`**여야 한다. `bufferingNewest`로 두면 입력 손실이 영구 상태 desync를
+    ///   만든다.
     var outputStream: AsyncStream<PlayerEngineOutput> { get }
 }
 
