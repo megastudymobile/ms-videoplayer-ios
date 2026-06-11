@@ -1011,7 +1011,7 @@ public actor KollusPlayerAdapter:
             let view = playerView
             let liveDuration = view?.liveDuration ?? 0
             return PlaybackPreparedSnapshot(
-                position: view?.content?.position ?? 0,
+                position: max(0, view?.currentPlaybackTime ?? 0), // content.position은 prepare 전 이어보기 북마크, currentPlaybackTime은 실제 재생 헤드다.
                 duration: view?.content?.duration ?? 0,
                 isLive: view?.isLive ?? false,
                 liveDuration: liveDuration > 0 ? liveDuration : nil
@@ -1067,7 +1067,7 @@ public actor KollusPlayerAdapter:
                 return (key, v)
             })
             return ReadySnapshot(
-                position: view?.content?.position ?? 0,
+                position: max(0, view?.currentPlaybackTime ?? 0), // content.position은 이어보기 북마크, currentPlaybackTime은 실제 재생 헤드다.
                 duration: view?.content?.duration ?? 0,
                 isLive: view?.isLive ?? false,
                 liveDuration: view?.liveDuration ?? 0,
