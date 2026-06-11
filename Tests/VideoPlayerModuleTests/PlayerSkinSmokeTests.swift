@@ -295,6 +295,55 @@ struct PlayerSkinSmokeTests {
         #expect(primaryLabel?.attributedText?.string == "HAR 파일 생성 방법을 설명합니다.")
     }
 
+    @Test("주/보조 자막은 같은 stack에서 단독이면 같은 위치, 동시 표시면 위아래로 배치")
+    func captionStackPlacesSingleAndDualCaptions() throws {
+        let primaryOnly = PlayerCaptionView()
+        primaryOnly.frame = CGRect(x: 0, y: 0, width: 320, height: 240)
+        primaryOnly.applyFontSize(18)
+        primaryOnly.setVisible(true)
+        primaryOnly.update(text: "메인 자막", isSecondary: false)
+        primaryOnly.layoutIfNeeded()
+
+        let primaryOnlyLabel = try #require(
+            primaryOnly.descendant(accessibilityIdentifier: "lecturePlayer.caption.primaryLabel") as? UILabel
+        )
+        let primaryStack = try #require(primaryOnlyLabel.superview as? UIStackView)
+        #expect(primaryStack.axis == .vertical)
+
+        let secondaryOnly = PlayerCaptionView()
+        secondaryOnly.frame = CGRect(x: 0, y: 0, width: 320, height: 240)
+        secondaryOnly.applyFontSize(18)
+        secondaryOnly.setVisible(true)
+        secondaryOnly.update(text: "보조 자막", isSecondary: true)
+        secondaryOnly.layoutIfNeeded()
+
+        let secondaryOnlyLabel = try #require(
+            secondaryOnly.descendant(accessibilityIdentifier: "lecturePlayer.caption.secondaryLabel") as? UILabel
+        )
+        let secondaryStack = try #require(secondaryOnlyLabel.superview as? UIStackView)
+        #expect(secondaryStack.axis == .vertical)
+        #expect(abs(primaryOnlyLabel.frame.maxY - secondaryOnlyLabel.frame.maxY) < 1)
+
+        let dualCaption = PlayerCaptionView()
+        dualCaption.frame = CGRect(x: 0, y: 0, width: 320, height: 240)
+        dualCaption.applyFontSize(18)
+        dualCaption.setVisible(true)
+        dualCaption.update(text: "메인 자막", isSecondary: false)
+        dualCaption.update(text: "보조 자막", isSecondary: true)
+        dualCaption.layoutIfNeeded()
+
+        let primaryLabel = try #require(
+            dualCaption.descendant(accessibilityIdentifier: "lecturePlayer.caption.primaryLabel") as? UILabel
+        )
+        let secondaryLabel = try #require(
+            dualCaption.descendant(accessibilityIdentifier: "lecturePlayer.caption.secondaryLabel") as? UILabel
+        )
+        #expect(primaryLabel.superview === secondaryLabel.superview)
+        #expect(primaryLabel.isHidden == false)
+        #expect(secondaryLabel.isHidden == false)
+        #expect(primaryLabel.frame.maxY <= secondaryLabel.frame.minY)
+    }
+
     @Test("PlayerSkinBlueprint가 overlay 구현을 주입한다")
     func playerSkinBlueprintInjectsOverlayImplementations() {
         let caption = CaptionProbeOverlay()

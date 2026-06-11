@@ -10,21 +10,19 @@ import UIKit
 
 public final class PlayerCaptionView: UIView {
     private enum Metric {
-        static let primaryBottomOffsetWhenSecondaryVisible: CGFloat = 35
         static let horizontalInset: CGFloat = 10
         static let defaultBottomInset: CGFloat = 5
     }
 
+    private let captionStackView = UIStackView()
     private let primaryLabel = UILabel()
-    private let secondaryLabel = LegacySubCaptionLabel()
-    private var primaryBottomConstraint: NSLayoutConstraint?
-    private var primaryBottomWithSecondaryConstraint: NSLayoutConstraint?
-    private var secondaryBottomConstraint: NSLayoutConstraint?
+    private let secondaryLabel = UILabel()
+    private var captionBottomConstraint: NSLayoutConstraint?
     private var currentState = PlayerCaptionState.initial
 
     /// 영상 하단으로부터의 자막 여백.
     public var bottomInset: CGFloat = Metric.defaultBottomInset {
-        didSet { updateBottomConstraintConstants() }
+        didSet { captionBottomConstraint?.constant = -bottomInset }
     }
 
     public override init(frame: CGRect) {
@@ -42,12 +40,12 @@ public final class PlayerCaptionView: UIView {
         currentState = state
         isHidden = state.isVisible == false || (state.hasPrimaryCaption == false && state.hasSecondaryCaption == false)
 
+        let secondaryFontSize = state.hasPrimaryCaption ? state.fontSize * 0.9 : state.fontSize
         primaryLabel.attributedText = attributedCaption(state.primaryText, fontSize: state.fontSize)
-        secondaryLabel.attributedText = attributedCaption(state.secondaryText, fontSize: state.fontSize * 0.9)
+        secondaryLabel.attributedText = attributedCaption(state.secondaryText, fontSize: secondaryFontSize)
 
         primaryLabel.isHidden = state.hasPrimaryCaption == false
         secondaryLabel.isHidden = state.hasSecondaryCaption == false
-        updatePrimaryBottomConstraint(hasSecondaryCaption: state.hasSecondaryCaption)
     }
 
     public func update(text: String, isSecondary: Bool) {
@@ -77,6 +75,12 @@ private extension PlayerCaptionView {
     func configureUI() {
         isUserInteractionEnabled = false
         accessibilityIdentifier = "lecturePlayer.captionView"
+        captionStackView.accessibilityIdentifier = "lecturePlayer.caption.stackView"
+        captionStackView.axis = .vertical
+        captionStackView.alignment = .center
+        captionStackView.distribution = .fill
+        captionStackView.spacing = 0
+        captionStackView.isUserInteractionEnabled = false
 
         [primaryLabel, secondaryLabel].forEach {
             $0.backgroundColor = .clear
@@ -94,45 +98,21 @@ private extension PlayerCaptionView {
         primaryLabel.accessibilityIdentifier = "lecturePlayer.caption.primaryLabel"
         secondaryLabel.accessibilityIdentifier = "lecturePlayer.caption.secondaryLabel"
 
-        primaryLabel.translatesAutoresizingMaskIntoConstraints = false
-        secondaryLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(primaryLabel)
-        addSubview(secondaryLabel)
+        captionStackView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(captionStackView)
+        captionStackView.addArrangedSubview(primaryLabel)
+        captionStackView.addArrangedSubview(secondaryLabel)
 
-        let primaryBottom = primaryLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -bottomInset)
-        let primaryBottomWithSecondary = primaryLabel.bottomAnchor.constraint(
-            equalTo: bottomAnchor,
-            constant: -(bottomInset + Metric.primaryBottomOffsetWhenSecondaryVisible)
-        )
-        let secondaryBottom = secondaryLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -bottomInset)
-        primaryBottomConstraint = primaryBottom
-        primaryBottomWithSecondaryConstraint = primaryBottomWithSecondary
-        secondaryBottomConstraint = secondaryBottom
+        let stackBottom = captionStackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -bottomInset)
+        captionBottomConstraint = stackBottom
 
         NSLayoutConstraint.activate([
-            primaryLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            primaryLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: Metric.horizontalInset),
-            primaryLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -Metric.horizontalInset),
-            primaryLabel.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: Metric.horizontalInset),
-            primaryBottom,
-
-            secondaryLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            secondaryLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: Metric.horizontalInset),
-            secondaryLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -Metric.horizontalInset),
-            secondaryLabel.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: Metric.horizontalInset),
-            secondaryBottom
+            captionStackView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            captionStackView.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: Metric.horizontalInset),
+            captionStackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -Metric.horizontalInset),
+            captionStackView.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: Metric.horizontalInset),
+            stackBottom
         ])
-    }
-
-    func updateBottomConstraintConstants() {
-        primaryBottomConstraint?.constant = -bottomInset
-        primaryBottomWithSecondaryConstraint?.constant = -(bottomInset + Metric.primaryBottomOffsetWhenSecondaryVisible)
-        secondaryBottomConstraint?.constant = -bottomInset
-    }
-
-    func updatePrimaryBottomConstraint(hasSecondaryCaption: Bool) {
-        primaryBottomConstraint?.isActive = hasSecondaryCaption == false
-        primaryBottomWithSecondaryConstraint?.isActive = hasSecondaryCaption
     }
 
     func attributedCaption(_ text: String, fontSize: CGFloat) -> NSAttributedString {
@@ -176,31 +156,5 @@ private extension PlayerCaptionView {
             .foregroundColor: UIColor.white,
             .paragraphStyle: paragraphStyle
         ]
-    }
-}
-
-private final class LegacySubCaptionLabel: UILabel {
-    private enum Metric {
-        static let topPadding: CGFloat = 12
-        static let defaultPadding: CGFloat = 1.5
-    }
-
-    override func drawText(in rect: CGRect) {
-        let insets = UIEdgeInsets(
-            top: Metric.topPadding,
-            left: Metric.defaultPadding,
-            bottom: Metric.defaultPadding,
-            right: Metric.defaultPadding
-        )
-        super.drawText(in: rect.inset(by: insets))
-    }
-
-    override var intrinsicContentSize: CGSize {
-        let size = super.intrinsicContentSize
-        guard size.height > 0 else { return .zero }
-        return CGSize(
-            width: size.width + (Metric.defaultPadding * 2),
-            height: size.height + Metric.topPadding + Metric.defaultPadding
-        )
     }
 }
