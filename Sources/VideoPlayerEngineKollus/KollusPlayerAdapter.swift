@@ -24,21 +24,21 @@ extension KollusPlayerType {
 
 public actor KollusPlayerAdapter:
     PlayerEngineAdapter,
-    PlayerPlaybackRateEngine,
-    PlayerTitledBookmarkEngine,
-    PlayerSubtitleEngine,
-    PlayerExternalSubtitleEngine,
-    PlayerDisplayScalingEngine,
-    PlayerZoomEngine,
-    PlayerSynchronousZoomEngine,
-    PlayerScrollEngine,
-    PlayerAdaptiveStreamingEngine,
-    PlayerContentMetadataEngine,
-    PlayerSeekPreviewEngine {
-    // emitsObservedCommandState: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
+    EnginePlaybackRateAbility,
+    EngineTitledBookmarkAbility,
+    EngineSubtitleAbility,
+    EngineExternalSubtitleAbility,
+    EngineDisplayScalingAbility,
+    EngineZoomAbility,
+    EngineSynchronousZoomAbility,
+    EngineScrollAbility,
+    EngineAdaptiveStreamingAbility,
+    EngineContentMetadataAbility,
+    EngineSeekPreviewAbility {
+    // emitsAuthoritativeStateEvents: Kollus는 playStarted/pauseStarted/stopStarted 권위 콜백을 낸다.
     // 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고 outputStream의
     // .stateInput만 신뢰한다(이중 적용 방지).
-    public nonisolated static let capabilities: EngineCapabilities = [.emitsObservedCommandState]
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = [.emitsAuthoritativeStateEvents]
 
     /// 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
     public let outputStream: AsyncStream<PlayerEngineOutput>
@@ -173,7 +173,7 @@ public actor KollusPlayerAdapter:
         outputContinuation.yield(.stateInput(.positionChanged(time: clampedTime, duration: nextState.duration)))
     }
 
-    // MARK: - PlayerSeekPreviewEngine
+    // MARK: - EngineSeekPreviewAbility
 
     public func seekPreviewImage(at time: TimeInterval) async -> UIImage? {
         // 스크럽 hot path에서는 SDK를 절대 조회하지 않는다 — 썸네일이 아직 준비되지 않은
@@ -234,7 +234,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerPlaybackRateEngine
+    // MARK: - EnginePlaybackRateAbility
 
     public func setPlaybackRate(_ rate: Double) async throws {
         guard rate > 0 else {
@@ -251,7 +251,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerBookmarkEngine / PlayerTitledBookmarkEngine
+    // MARK: - EngineBookmarkAbility / EngineTitledBookmarkAbility
 
     public func addBookmark(at time: TimeInterval) async throws {
         try await addBookmark(at: time, title: "")
@@ -315,7 +315,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerSubtitleEngine / PlayerExternalSubtitleEngine
+    // MARK: - EngineSubtitleAbility / EngineExternalSubtitleAbility
 
     public func setSubtitleVisible(_ isVisible: Bool) async throws {
         // KollusSDK는 자막 가시성 직접 API를 노출하지 않는다. 정책 다운그레이드 이벤트로 surfacing.
@@ -356,7 +356,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerZoomEngine
+    // MARK: - EngineZoomAbility
 
     public func zoom(_ recognizer: UIPinchGestureRecognizer) async throws {
         let scale = try await MainActor.run {
@@ -369,7 +369,7 @@ public actor KollusPlayerAdapter:
         currentZoom = scale
     }
 
-    // MARK: - PlayerSynchronousZoomEngine
+    // MARK: - EngineSynchronousZoomAbility
 
     /// 핀치 `.changed` 마다 main thread 에서 동기 적용 — actor async hop 없이 연속 추적.
     /// host(shell)가 main thread 에서만 호출하므로 `MainActor.assumeIsolated` 로 @MainActor playerView 에
@@ -398,7 +398,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerScrollEngine
+    // MARK: - EngineScrollAbility
 
     public func scroll(by distance: CGPoint) async throws {
         try await MainActor.run {
@@ -418,7 +418,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerAdaptiveStreamingEngine
+    // MARK: - EngineAdaptiveStreamingAbility
 
     public func changeBandwidth(_ bps: Int) async throws {
         try await MainActor.run {
@@ -446,11 +446,11 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // PiP는 미구현이므로 `PlayerPiPCapability`를 채택하지 않는다.
+    // PiP는 미구현이므로 `EnginePiPAbility`를 채택하지 않는다.
     // 채택 + 가짜 구현은 capability 협상(availability probe)이 거짓 보고를 하게 만든다.
     // 실 구현 시 host AVPictureInPictureController 통합과 함께 채택을 복원한다.
 
-    // MARK: - PlayerDisplayScalingEngine
+    // MARK: - EngineDisplayScalingAbility
 
     public func setDisplayScaled(_ isScaled: Bool) async throws {
         try await setDisplayScaleMode(isScaled ? .aspectFill : .aspectFit)

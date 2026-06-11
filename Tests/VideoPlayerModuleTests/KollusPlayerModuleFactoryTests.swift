@@ -13,14 +13,14 @@ struct KollusPlayerModuleFactoryTests {
         let engine = FactoryTestEngineAdapter()
         let factory = KollusPlayerModuleFactory(
             engineFactory: { engine },
-            engineCapabilities: [.continuesWithoutSurface]
+            engineRuntimeTraits: [.continuesWithoutSurface]
         )
 
         let module = await factory.makeModule(
             configuration: PlayerModuleConfiguration(autoActivateCore: false)
         )
 
-        #expect(module.engineCapabilities == [.continuesWithoutSurface])
+        #expect(module.engineRuntimeTraits == [.continuesWithoutSurface])
 
         try await module.core.execute(command: .stop)
 
@@ -52,7 +52,7 @@ struct KollusPlayerModuleFactoryTests {
 }
 
 private actor FactoryTestEngineAdapter: PlayerEngineAdapter {
-    nonisolated static let capabilities: EngineCapabilities = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var stopCount = 0

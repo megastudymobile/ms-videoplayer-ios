@@ -9,7 +9,7 @@ struct PlayerDisplayScalingEngineTests {
         let engine = DisplayScalingOnlyEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: DisplayScalingOnlyEngine.capabilities
+            engineRuntimeTraits: DisplayScalingOnlyEngine.runtimeTraits
         )
 
         try await core.execute(command: .setDisplayScaleMode(.aspectFill))
@@ -26,7 +26,7 @@ struct PlayerDisplayScalingEngineTests {
         let engine = DisplayScalingOnlyEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: DisplayScalingOnlyEngine.capabilities
+            engineRuntimeTraits: DisplayScalingOnlyEngine.runtimeTraits
         )
 
         do {
@@ -40,8 +40,8 @@ struct PlayerDisplayScalingEngineTests {
     }
 }
 
-private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, PlayerDisplayScalingEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, EngineDisplayScalingAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 

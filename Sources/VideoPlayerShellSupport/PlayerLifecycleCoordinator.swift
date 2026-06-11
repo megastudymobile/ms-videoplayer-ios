@@ -16,7 +16,7 @@ public final class PlayerLifecycleCoordinator {
 
     private let sendCommand: SendCommand
     private let policy: PlayerFeaturePolicy
-    private let engineCapabilities: EngineCapabilities
+    private let engineRuntimeTraits: EngineRuntimeTraits
     private let onEvent: ((PlayerEvent) -> Void)?
     private let notificationCenter: NotificationCenter
     private var observers: [NSObjectProtocol] = []
@@ -24,13 +24,13 @@ public final class PlayerLifecycleCoordinator {
     public init(
         sendCommand: @escaping SendCommand,
         policy: PlayerFeaturePolicy,
-        engineCapabilities: EngineCapabilities,
+        engineRuntimeTraits: EngineRuntimeTraits,
         notificationCenter: NotificationCenter = .default,
         onEvent: ((PlayerEvent) -> Void)? = nil
     ) {
         self.sendCommand = sendCommand
         self.policy = policy
-        self.engineCapabilities = engineCapabilities
+        self.engineRuntimeTraits = engineRuntimeTraits
         self.notificationCenter = notificationCenter
         self.onEvent = onEvent
     }
@@ -39,14 +39,14 @@ public final class PlayerLifecycleCoordinator {
     public convenience init(
         core: PlayerCore,
         policy: PlayerFeaturePolicy,
-        engineCapabilities: EngineCapabilities,
+        engineRuntimeTraits: EngineRuntimeTraits,
         notificationCenter: NotificationCenter = .default,
         onEvent: ((PlayerEvent) -> Void)? = nil
     ) {
         self.init(
             sendCommand: { try await core.execute(command: $0) },
             policy: policy,
-            engineCapabilities: engineCapabilities,
+            engineRuntimeTraits: engineRuntimeTraits,
             notificationCenter: notificationCenter,
             onEvent: onEvent
         )
@@ -93,7 +93,7 @@ public final class PlayerLifecycleCoordinator {
             return
         }
 
-        guard engineCapabilities.contains(.continuesWithoutSurface) else {
+        guard engineRuntimeTraits.contains(.continuesWithoutSurface) else {
             onEvent?(.policyDowngraded(reason: .missingContinuesWithoutSurface))
             pauseForLifecycleTransition()
             return

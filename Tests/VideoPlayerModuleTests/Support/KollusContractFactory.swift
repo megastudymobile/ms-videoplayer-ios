@@ -40,8 +40,8 @@ enum KollusContractFactory: PlayerEngineAdapterContractTestable {
         #endif
     }
 
-    static var expectedCapabilities: EngineCapabilities {
-        [.emitsObservedCommandState]
+    static var expectedCapabilities: EngineRuntimeTraits {
+        [.emitsAuthoritativeStateEvents]
     }
 }
 
@@ -56,7 +56,7 @@ struct KollusPlayerEngineContractTests {
         Contract.isSupportedInCurrentEnvironmentIsDecidableWithoutThrow()
     }
 
-    @Test("capabilities가 기대값과 일치한다")
+    @Test("runtimeTraits가 기대값과 일치한다")
     func capabilitiesMatchExpectation() {
         Contract.capabilitiesMatchExpectation()
     }

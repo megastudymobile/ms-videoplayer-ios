@@ -36,19 +36,19 @@ public extension PlayerFeatureAvailability {
     /// 엔진 구현체가 별도 신고 없이 protocol 채택만으로 협상에 참여하게 한다.
     static func probe(_ engine: any PlayerPlaybackEngine) -> PlayerFeatureAvailability {
         var features: PlayerFeatureAvailability = []
-        if engine is any PlayerPlaybackRateEngine { features.insert(.playbackRate) }
-        if engine is any PlayerSubtitleEngine { features.insert(.subtitles) }
-        if engine is any PlayerExternalSubtitleEngine { features.insert(.externalSubtitles) }
-        if engine is any PlayerBookmarkEngine { features.insert(.bookmarks) }
-        if engine is any PlayerTitledBookmarkEngine { features.insert(.titledBookmarks) }
-        if engine is any PlayerScrollEngine { features.insert(.scroll) }
-        if engine is any PlayerAdaptiveStreamingEngine { features.insert(.adaptiveStreaming) }
-        if engine is any PlayerPiPCapability { features.insert(.pictureInPicture) }
-        if engine is any PlayerDisplayScalingEngine { features.insert(.displayScaling) }
-        if engine is any PlayerDisplayLockEngine { features.insert(.displayLock) }
+        if engine is any EnginePlaybackRateAbility { features.insert(.playbackRate) }
+        if engine is any EngineSubtitleAbility { features.insert(.subtitles) }
+        if engine is any EngineExternalSubtitleAbility { features.insert(.externalSubtitles) }
+        if engine is any EngineBookmarkAbility { features.insert(.bookmarks) }
+        if engine is any EngineTitledBookmarkAbility { features.insert(.titledBookmarks) }
+        if engine is any EngineScrollAbility { features.insert(.scroll) }
+        if engine is any EngineAdaptiveStreamingAbility { features.insert(.adaptiveStreaming) }
+        if engine is any EnginePiPAbility { features.insert(.pictureInPicture) }
+        if engine is any EngineDisplayScalingAbility { features.insert(.displayScaling) }
+        if engine is any EngineDisplayLockAbility { features.insert(.displayLock) }
         #if canImport(UIKit)
-        if engine is any PlayerZoomEngine { features.insert(.zoom) }
-        if engine is any PlayerSeekPreviewEngine { features.insert(.seekPreview) }
+        if engine is any EngineZoomAbility { features.insert(.zoom) }
+        if engine is any EngineSeekPreviewAbility { features.insert(.seekPreview) }
         #endif
         return features
     }

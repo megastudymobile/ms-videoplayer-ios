@@ -29,7 +29,7 @@ enum PlayerEngineContract<Factory: PlayerEngineAdapterContractTestable> {
     // MARK: Capabilities
 
     static func capabilitiesMatchExpectation() {
-        #expect(type(of: Factory.makeTestAdapter()).capabilities == Factory.expectedCapabilities)
+        #expect(type(of: Factory.makeTestAdapter()).runtimeTraits == Factory.expectedCapabilities)
     }
 
     // MARK: Lifecycle safety (§6.3.5 계약 4)

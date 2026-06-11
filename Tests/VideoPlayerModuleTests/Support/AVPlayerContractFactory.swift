@@ -26,7 +26,7 @@ enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
 
     static var maxPreparationSeconds: TimeInterval { 3 }
     static var isSupportedInCurrentEnvironment: Bool { true }
-    static var expectedCapabilities: EngineCapabilities {
+    static var expectedCapabilities: EngineRuntimeTraits {
         [.continuesWithoutSurface, .seamlessSurfaceSwap]
     }
 }
@@ -42,7 +42,7 @@ struct AVPlayerEngineContractTests {
         Contract.isSupportedInCurrentEnvironmentIsDecidableWithoutThrow()
     }
 
-    @Test("capabilities가 기대값과 일치한다")
+    @Test("runtimeTraits가 기대값과 일치한다")
     func capabilitiesMatchExpectation() {
         Contract.capabilitiesMatchExpectation()
     }

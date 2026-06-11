@@ -54,7 +54,7 @@ struct PlayerInteractorTests {
         )
 
         try await interactor.setUp(renderSurface: FakeRenderSurface())
-        // BareTestEngine은 PlayerPlaybackRateEngine 미채택 → Core가 engineError throw.
+        // BareTestEngine은 EnginePlaybackRateAbility 미채택 → Core가 engineError throw.
         interactor.send(.setPlaybackRate(2.0))
 
         try await waitUntil { captured.isEmpty == false }
@@ -201,7 +201,7 @@ private final class FakeModuleProvider: PlayerModuleProviding {
         }
         let module = await PlayerModuleWiring.makeModule(
             engine: engine,
-            engineCapabilities: []
+            engineRuntimeTraits: []
         )
         madeModules.append(module)
         return module
@@ -209,7 +209,7 @@ private final class FakeModuleProvider: PlayerModuleProviding {
 }
 
 private actor BareTestEngine: PlayerEngineAdapter {
-    nonisolated static let capabilities: EngineCapabilities = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var prepareCount = 0
 
@@ -223,7 +223,7 @@ private actor BareTestEngine: PlayerEngineAdapter {
 }
 
 private actor RecordingEngine: PlayerEngineAdapter {
-    nonisolated static let capabilities: EngineCapabilities = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
     let outputStream: AsyncStream<PlayerEngineOutput>
     private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private(set) var commands: [String] = []
@@ -271,8 +271,8 @@ private actor RecordingEngine: PlayerEngineAdapter {
     func unbindRenderSurface() {}
 }
 
-private actor ScrollTestEngine: PlayerEngineAdapter, PlayerScrollEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor ScrollTestEngine: PlayerEngineAdapter, EngineScrollAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var events: [String] = []
 

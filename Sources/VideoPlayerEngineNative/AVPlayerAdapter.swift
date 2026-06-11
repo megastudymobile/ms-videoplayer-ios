@@ -11,11 +11,11 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, PlayerDisplayScalingEngine, PlayerSeekPreviewEngine {
-    public nonisolated static let capabilities: EngineCapabilities = [
+public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, EngineDisplayScalingAbility, EngineSeekPreviewAbility {
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = [
         .continuesWithoutSurface,
         .seamlessSurfaceSwap
-        // emitsObservedCommandState 미포함: Native는 play/pause/seek 권위 콜백이 없어
+        // emitsAuthoritativeStateEvents 미포함: Native는 play/pause/seek 권위 콜백이 없어
         // Core command-origin이 그 상태를 닫는다.
     ]
 
@@ -193,7 +193,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerPlaybackRateEngine, Pla
         }
     }
 
-    // MARK: - PlayerSeekPreviewEngine
+    // MARK: - EngineSeekPreviewAbility
 
     public func seekPreviewImage(at time: TimeInterval) async -> UIImage? {
         let snapshot = await MainActor.run { () -> (asset: AVAsset, duration: TimeInterval)? in

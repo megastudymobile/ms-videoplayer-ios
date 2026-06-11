@@ -14,14 +14,14 @@ import VideoPlayerCore
 /// 라우팅, 재생 상태 동기화를 모듈이 자체 수행한다.
 ///
 /// `PlayerStateBinder.bind(core:nowPlaying:...)`로 연결하면 상태 동기화에 host 배선이
-/// 필요 없다. 제목/썸네일은 엔진(`PlayerContentMetadataEngine`)에서 직접 조회하고,
+/// 필요 없다. 제목/썸네일은 엔진(`EngineContentMetadataAbility`)에서 직접 조회하고,
 /// 엔진이 메타데이터를 제공하지 못하면 `fallbackTitle`만 표시한다.
 ///
 /// - Important: 화면을 닫을 때 `stop()`을 호출해야 잠금화면 플레이어가 제거된다.
 @MainActor
 public final class PlayerNowPlayingCoordinator {
     private let core: PlayerCore
-    private let metadataProvider: PlayerContentMetadataEngine?
+    private let metadataProvider: EngineContentMetadataAbility?
     private let skipInterval: TimeInterval
     private let fallbackTitle: String?
 
@@ -33,7 +33,7 @@ public final class PlayerNowPlayingCoordinator {
 
     public init(
         core: PlayerCore,
-        metadataProvider: PlayerContentMetadataEngine?,
+        metadataProvider: EngineContentMetadataAbility?,
         skipInterval: TimeInterval,
         fallbackTitle: String? = nil
     ) {

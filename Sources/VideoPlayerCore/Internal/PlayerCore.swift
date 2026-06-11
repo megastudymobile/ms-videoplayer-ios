@@ -15,7 +15,7 @@ public actor PlayerCore {
     public nonisolated let availableFeatures: PlayerFeatureAvailability
 
     private let engine: PlayerPlaybackEngine
-    private let engineCapabilities: EngineCapabilities
+    private let engineRuntimeTraits: EngineRuntimeTraits
     private let stateReducer = PlaybackStateReducer()
     /// seek "chase" 정책 (Apple QA1820 패턴). 엔진 seek은 동시에 **1개만** in-flight.
     /// - `chaseTime`: 아직 엔진에 보내지 않은 최신 목표(연타 시 여기에 누적).
@@ -41,7 +41,7 @@ public actor PlayerCore {
 
     public init(
         engine: PlayerPlaybackEngine,
-        engineCapabilities: EngineCapabilities,
+        engineRuntimeTraits: EngineRuntimeTraits,
         initialPolicy: PlayerFeaturePolicy = .default
     ) {
         var stateContinuation: AsyncStream<PlaybackState>.Continuation?
@@ -55,7 +55,7 @@ public actor PlayerCore {
         }
 
         self.engine = engine
-        self.engineCapabilities = engineCapabilities
+        self.engineRuntimeTraits = engineRuntimeTraits
         self.availableFeatures = PlayerFeatureAvailability.probe(engine)
         self.currentState = .idle
         self.currentPolicy = initialPolicy
@@ -322,11 +322,11 @@ public actor PlayerCore {
         output.events.forEach { publish(event: $0) }
     }
 
-    /// 권위 콜백이 없는 엔진(`!emitsObservedCommandState`, 예: Native)에서만 명령 성공 직후
+    /// 권위 콜백이 없는 엔진(`!emitsAuthoritativeStateEvents`, 예: Native)에서만 명령 성공 직후
     /// command-origin 입력을 reducer에 넣는다. 권위 콜백이 있는 엔진(Kollus)은 outputStream의
     /// `.stateInput`이 상태를 만들므로 여기서 또 넣으면 이중 적용/경합이 된다.
     private func applyCommandOriginIfNeeded(_ input: PlaybackStateInput) {
-        guard !engineCapabilities.contains(.emitsObservedCommandState) else {
+        guard !engineRuntimeTraits.contains(.emitsAuthoritativeStateEvents) else {
             #if DEBUG
             NSLog("[PlayerCore.cmd] skip command-origin (engine emits observed state): %@",
                   String(describing: input))
@@ -400,7 +400,7 @@ public actor PlayerCore {
             return (policy, nil)
         }
 
-        guard engineCapabilities.contains(.continuesWithoutSurface) else {
+        guard engineRuntimeTraits.contains(.continuesWithoutSurface) else {
             return (
                 PlayerFeaturePolicy(
                     allowsBackgroundPlayback: false,
@@ -425,7 +425,7 @@ public actor PlayerCore {
             throw PlayerError.engineError("Playback rate \(rate)x is not allowed by policy. allowed=\(currentPolicy.allowedPlaybackRates)")
         }
 
-        guard let rateEngine = engine as? any PlayerPlaybackRateEngine else {
+        guard let rateEngine = engine as? any EnginePlaybackRateAbility else {
             throw PlayerError.engineError("Playback rate \(rate)x is not supported by the current playback engine.")
         }
 
@@ -447,7 +447,7 @@ public actor PlayerCore {
     }
 
     private func setSubtitleVisible(_ isVisible: Bool) async throws {
-        guard let subtitleEngine = engine as? any PlayerSubtitleEngine else {
+        guard let subtitleEngine = engine as? any EngineSubtitleAbility else {
             throw PlayerError.engineError("Subtitle visibility is not supported by the current playback engine.")
         }
 
@@ -455,7 +455,7 @@ public actor PlayerCore {
     }
 
     private func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {
-        guard let subtitleEngine = engine as? any PlayerSubtitleEngine else {
+        guard let subtitleEngine = engine as? any EngineSubtitleAbility else {
             throw PlayerError.engineError("Subtitle track selection is not supported by the current playback engine.")
         }
 
@@ -467,7 +467,7 @@ public actor PlayerCore {
             throw PlayerError.engineError("Caption font size must be greater than 0. fontSize=\(fontSize)")
         }
 
-        guard let subtitleEngine = engine as? any PlayerSubtitleEngine else {
+        guard let subtitleEngine = engine as? any EngineSubtitleAbility else {
             throw PlayerError.engineError("Caption font size is not supported by the current playback engine.")
         }
 
@@ -479,13 +479,13 @@ public actor PlayerCore {
             throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
         }
 
-        guard let bookmarkEngine = engine as? any PlayerBookmarkEngine else {
+        guard let bookmarkEngine = engine as? any EngineBookmarkAbility else {
             throw PlayerError.engineError("Bookmark mutation is not supported by the current playback engine.")
         }
 
         if title.isEmpty {
             try await bookmarkEngine.addBookmark(at: time)
-        } else if let titledEngine = bookmarkEngine as? any PlayerTitledBookmarkEngine {
+        } else if let titledEngine = bookmarkEngine as? any EngineTitledBookmarkAbility {
             try await titledEngine.addBookmark(at: time, title: title)
         } else {
             try await bookmarkEngine.addBookmark(at: time)
@@ -497,7 +497,7 @@ public actor PlayerCore {
             throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
         }
 
-        guard let bookmarkEngine = engine as? any PlayerTitledBookmarkEngine else {
+        guard let bookmarkEngine = engine as? any EngineTitledBookmarkAbility else {
             throw PlayerError.engineError("Bookmark removal is not supported by the current playback engine.")
         }
 
@@ -505,7 +505,7 @@ public actor PlayerCore {
     }
 
     private func selectSubtitleFile(_ fileURL: URL?) async throws {
-        guard let subtitleEngine = engine as? any PlayerExternalSubtitleEngine else {
+        guard let subtitleEngine = engine as? any EngineExternalSubtitleAbility else {
             throw PlayerError.engineError("External subtitle file selection is not supported by the current playback engine.")
         }
 
@@ -513,7 +513,7 @@ public actor PlayerCore {
     }
 
     private func setDisplayLocked(_ isLocked: Bool) async throws {
-        guard let displayEngine = engine as? any PlayerDisplayLockEngine else {
+        guard let displayEngine = engine as? any EngineDisplayLockAbility else {
             throw PlayerError.engineError("Display lock is not supported by the current playback engine.")
         }
 
@@ -525,7 +525,7 @@ public actor PlayerCore {
     }
 
     private func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
-        guard let displayEngine = engine as? any PlayerDisplayScalingEngine else {
+        guard let displayEngine = engine as? any EngineDisplayScalingAbility else {
             throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
         }
 
@@ -537,7 +537,7 @@ public actor PlayerCore {
     }
 
     private func toggleDisplayScaleMode() async throws {
-        guard let displayEngine = engine as? any PlayerDisplayScalingEngine else {
+        guard let displayEngine = engine as? any EngineDisplayScalingAbility else {
             throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
         }
 

@@ -78,7 +78,7 @@ struct PlayerEngineOutputContractTests {
 
 /// `outputStream` 계약을 만족하는 최소 fake. 스트림은 단일 장수명 인스턴스 + `.unbounded`.
 private actor ContractFakeEngine: PlayerPlaybackEngine {
-    nonisolated static let capabilities: EngineCapabilities = [.continuesWithoutSurface]
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = [.continuesWithoutSurface]
 
     let outputStream: AsyncStream<PlayerEngineOutput>
 

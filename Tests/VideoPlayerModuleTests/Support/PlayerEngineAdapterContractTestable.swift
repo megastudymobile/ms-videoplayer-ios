@@ -17,7 +17,7 @@ protocol PlayerEngineAdapterContractTestable {
     static func cleanupTestAdapter(_ adapter: PlayerEngineAdapter) async
     static var maxPreparationSeconds: TimeInterval { get }
     static var isSupportedInCurrentEnvironment: Bool { get }
-    static var expectedCapabilities: EngineCapabilities { get }
+    static var expectedCapabilities: EngineRuntimeTraits { get }
 }
 
 #endif

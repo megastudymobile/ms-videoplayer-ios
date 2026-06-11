@@ -16,7 +16,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("미지원 엔진에서 addBookmarkWithTitle은 engineError를 던진다")
     func addBookmarkWithTitle_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         await #expect {
             try await core.execute(command: .addBookmarkWithTitle(at: 10, title: "test"))
@@ -29,7 +29,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("addBookmarkWithTitle은 Titled 엔진을 호출한다")
     func addBookmarkWithTitle_invokesTitledEngine() async throws {
         let engine = TitledBookmarkEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         try await core.execute(command: .addBookmarkWithTitle(at: 30, title: "chapter1"))
 
@@ -42,7 +42,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("미지원 엔진에서 removeBookmark는 engineError를 던진다")
     func removeBookmark_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         await #expect {
             try await core.execute(command: .removeBookmark(at: 10))
@@ -55,7 +55,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("removeBookmark는 Titled 엔진을 호출한다")
     func removeBookmark_invokesTitledEngine() async throws {
         let engine = TitledBookmarkEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         try await core.execute(command: .removeBookmark(at: 45))
 
@@ -66,7 +66,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("미지원 엔진에서 selectSubtitleFile은 engineError를 던진다")
     func selectSubtitleFile_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         await #expect {
             try await core.execute(command: .selectSubtitleFile(URL(string: "https://example.com/a.srt")))
@@ -79,7 +79,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("selectSubtitleFile은 외부 자막 엔진을 호출한다")
     func selectSubtitleFile_invokesExternalSubtitleEngine() async throws {
         let engine = ExternalSubtitleEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         let url = try #require(URL(string: "https://example.com/sub.srt"))
         try await core.execute(command: .selectSubtitleFile(url))
@@ -93,7 +93,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("addBookmarkWithTitle은 title을 Titled 엔진에 그대로 전달한다")
     func addBookmarkWithTitle_passesTitleToTitledEngine() async throws {
         let engine = TitledBookmarkEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         // 빈 title: addBookmark(at:title:)가 아니라 addBookmark(at:)로 라우팅된다 (PlayerCore 정책).
         try await core.execute(command: .addBookmarkWithTitle(at: 5, title: ""))
@@ -113,7 +113,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("removeBookmark는 음수 time을 검증한다")
     func removeBookmark_validatesNonNegativeTime() async throws {
         let engine = TitledBookmarkEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         await #expect {
             try await core.execute(command: .removeBookmark(at: -1))
@@ -129,7 +129,7 @@ struct PlayerCoreCommandCoverageTests {
     @Test("selectSubtitleFile은 비활성화를 위한 nil을 허용한다")
     func selectSubtitleFile_acceptsNilForDisable() async throws {
         let engine = ExternalSubtitleEngine()
-        let core = PlayerCore(engine: engine, engineCapabilities: [])
+        let core = PlayerCore(engine: engine, engineRuntimeTraits: [])
 
         // nil은 외부 자막 비활성화를 의미. throw 없이 엔진까지 nil이 흘러야 한다.
         try await core.execute(command: .selectSubtitleFile(nil))
@@ -147,7 +147,7 @@ struct PlayerCoreCommandCoverageTests {
 // MARK: - Test fakes
 
 private actor PlaybackOnlyEngine: PlayerPlaybackEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -158,8 +158,8 @@ private actor PlaybackOnlyEngine: PlayerPlaybackEngine {
     func stop(reason: PlayerStopReason) async throws {}
 }
 
-private actor TitledBookmarkEngine: PlayerPlaybackEngine, PlayerTitledBookmarkEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor TitledBookmarkEngine: PlayerPlaybackEngine, EngineTitledBookmarkAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     private(set) var recorded: [(time: TimeInterval, title: String)] = []
     private(set) var removedTimes: [TimeInterval] = []
@@ -190,8 +190,8 @@ private actor TitledBookmarkEngine: PlayerPlaybackEngine, PlayerTitledBookmarkEn
     }
 }
 
-private actor ExternalSubtitleEngine: PlayerPlaybackEngine, PlayerExternalSubtitleEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor ExternalSubtitleEngine: PlayerPlaybackEngine, EngineExternalSubtitleAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     private(set) var selectedURLs: [URL?] = []
 

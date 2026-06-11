@@ -12,7 +12,7 @@ import VideoPlayerShellSupport
 
 public struct KollusPlayerModuleFactory {
     private let engineFactory: () -> PlayerEngineAdapter
-    private let engineCapabilities: EngineCapabilities
+    private let engineRuntimeTraits: EngineRuntimeTraits
     /// 모든 makeModule() 호출과 공유되는 단일 KollusDownloadCenter.
     /// init(environment:) path에서만 사용 가능. test-only init에서는 nil.
     public let downloads: KollusDownloadCenter?
@@ -33,11 +33,11 @@ public struct KollusPlayerModuleFactory {
                 diagnostics: diagnostics
             )
         }
-        var caps = KollusPlayerAdapter.capabilities
+        var caps = KollusPlayerAdapter.runtimeTraits
         if environment.audioBackgroundPlayPolicy {
             caps.insert(.continuesWithoutSurface)
         }
-        self.engineCapabilities = caps
+        self.engineRuntimeTraits = caps
         self.downloads = KollusDownloadCenter(
             bootstrapper: bootstrapper,
             environment: environment
@@ -47,10 +47,10 @@ public struct KollusPlayerModuleFactory {
     /// Test-only initializer. `@testable import`만 접근 가능. downloads는 nil.
     internal init(
         engineFactory: @escaping () -> PlayerEngineAdapter,
-        engineCapabilities: EngineCapabilities = KollusPlayerAdapter.capabilities
+        engineRuntimeTraits: EngineRuntimeTraits = KollusPlayerAdapter.runtimeTraits
     ) {
         self.engineFactory = engineFactory
-        self.engineCapabilities = engineCapabilities
+        self.engineRuntimeTraits = engineRuntimeTraits
         self.downloads = nil
     }
 
@@ -60,7 +60,7 @@ public struct KollusPlayerModuleFactory {
         let engine = engineFactory()
         return await PlayerModuleWiring.makeModule(
             engine: engine,
-            engineCapabilities: engineCapabilities,
+            engineRuntimeTraits: engineRuntimeTraits,
             configuration: configuration
         )
     }

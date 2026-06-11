@@ -42,9 +42,9 @@ final class PlayerInteractor {
     private var isDisposed = false
 
     // capability protocol 캐스트 — 시뮬레이터(UnsupportedEnvironmentEngine)에서는 nil.
-    private var zoomEngine: PlayerSynchronousZoomEngine?
-    private var seekPreviewEngine: (any PlayerSeekPreviewEngine)?
-    private var scrollEngine: PlayerScrollEngine?
+    private var zoomEngine: EngineSynchronousZoomAbility?
+    private var seekPreviewEngine: (any EngineSeekPreviewAbility)?
+    private var scrollEngine: EngineScrollAbility?
     private var pendingScrollDistance = CGPoint.zero
     private var shouldStopScroll = false
     private var scrollTask: Task<Void, Never>?
@@ -88,14 +88,14 @@ final class PlayerInteractor {
         }
         playerModule = module
         availableFeatures = module.availableFeatures
-        zoomEngine = module.engine as? PlayerSynchronousZoomEngine
-        seekPreviewEngine = module.engine as? any PlayerSeekPreviewEngine
-        scrollEngine = module.engine as? PlayerScrollEngine
+        zoomEngine = module.engine as? EngineSynchronousZoomAbility
+        seekPreviewEngine = module.engine as? any EngineSeekPreviewAbility
+        scrollEngine = module.engine as? EngineScrollAbility
 
         let coordinator = PlayerLifecycleCoordinator(
             core: module.core,
             policy: featurePolicy,
-            engineCapabilities: module.engineCapabilities,
+            engineRuntimeTraits: module.engineRuntimeTraits,
             onEvent: { [weak self] event in self?.consume(event: event) }
         )
         lifecycleCoordinator = coordinator
@@ -105,7 +105,7 @@ final class PlayerInteractor {
         if featurePolicy.allowsBackgroundPlayback {
             let nowPlaying = PlayerNowPlayingCoordinator(
                 core: module.core,
-                metadataProvider: module.engine as? PlayerContentMetadataEngine,
+                metadataProvider: module.engine as? EngineContentMetadataAbility,
                 skipInterval: featurePolicy.skipInterval,
                 fallbackTitle: "VideoPlayer Example"
             )
@@ -244,7 +244,7 @@ final class PlayerInteractor {
     func refreshZoomState() {
         Task { @MainActor [weak self] in
             guard let self, let module = self.playerModule else { return }
-            guard let zoomEngine = module.engine as? PlayerZoomEngine else { return }
+            guard let zoomEngine = module.engine as? EngineZoomAbility else { return }
             self.isZoomedIn = await zoomEngine.isZoomedIn
         }
     }
@@ -264,7 +264,7 @@ final class PlayerInteractor {
         drainScrollQueue(using: scrollEngine)
     }
 
-    private func drainScrollQueue(using scrollEngine: PlayerScrollEngine) {
+    private func drainScrollQueue(using scrollEngine: EngineScrollAbility) {
         guard scrollTask == nil else { return }
         scrollTaskGeneration += 1
         let taskGeneration = scrollTaskGeneration

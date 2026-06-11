@@ -105,7 +105,7 @@ struct PlayerInterfaceTests {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: CoreOnlyEngine.capabilities
+            engineRuntimeTraits: CoreOnlyEngine.runtimeTraits
         )
 
         do {
@@ -125,7 +125,7 @@ struct PlayerInterfaceTests {
         let engine = RateControllableEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: RateControllableEngine.capabilities
+            engineRuntimeTraits: RateControllableEngine.runtimeTraits
         )
 
         try await core.execute(command: .setPlaybackRate(1.5))
@@ -139,7 +139,7 @@ struct PlayerInterfaceTests {
         let engine = RateControllableEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: RateControllableEngine.capabilities
+            engineRuntimeTraits: RateControllableEngine.runtimeTraits
         )
 
         try await core.start(
@@ -168,7 +168,7 @@ struct PlayerInterfaceTests {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: CoreOnlyEngine.capabilities
+            engineRuntimeTraits: CoreOnlyEngine.runtimeTraits
         )
 
         do {
@@ -188,7 +188,7 @@ struct PlayerInterfaceTests {
         let engine = SubtitleControllableEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: SubtitleControllableEngine.capabilities
+            engineRuntimeTraits: SubtitleControllableEngine.runtimeTraits
         )
 
         do {
@@ -208,7 +208,7 @@ struct PlayerInterfaceTests {
         let engine = SubtitleControllableEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: SubtitleControllableEngine.capabilities
+            engineRuntimeTraits: SubtitleControllableEngine.runtimeTraits
         )
         let trackID = PlayerSubtitleTrackID(rawValue: "caption-ko")
 
@@ -229,7 +229,7 @@ struct PlayerInterfaceTests {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: CoreOnlyEngine.capabilities
+            engineRuntimeTraits: CoreOnlyEngine.runtimeTraits
         )
 
         do {
@@ -249,7 +249,7 @@ struct PlayerInterfaceTests {
         let engine = BookmarkControllableEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: BookmarkControllableEngine.capabilities
+            engineRuntimeTraits: BookmarkControllableEngine.runtimeTraits
         )
 
         do {
@@ -269,7 +269,7 @@ struct PlayerInterfaceTests {
         let engine = BookmarkControllableEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: BookmarkControllableEngine.capabilities
+            engineRuntimeTraits: BookmarkControllableEngine.runtimeTraits
         )
 
         try await core.execute(command: .addBookmark(at: 45))
@@ -283,7 +283,7 @@ struct PlayerInterfaceTests {
         let engine = CoreOnlyEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: CoreOnlyEngine.capabilities
+            engineRuntimeTraits: CoreOnlyEngine.runtimeTraits
         )
 
         do {
@@ -303,7 +303,7 @@ struct PlayerInterfaceTests {
         let engine = DisplayControllableEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: DisplayControllableEngine.capabilities
+            engineRuntimeTraits: DisplayControllableEngine.runtimeTraits
         )
 
         try await core.execute(command: .setDisplayLocked(true))
@@ -325,7 +325,7 @@ struct PlayerInterfaceTests {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: SeekRecordingEngine.capabilities
+            engineRuntimeTraits: SeekRecordingEngine.runtimeTraits
         )
         await core.activate()
         try await core.execute(command: .seek(to: 40))
@@ -344,7 +344,7 @@ struct PlayerInterfaceTests {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: SeekRecordingEngine.capabilities
+            engineRuntimeTraits: SeekRecordingEngine.runtimeTraits
         )
         await core.activate()
         try await core.execute(command: .seek(to: 40))
@@ -362,7 +362,7 @@ struct PlayerInterfaceTests {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: SeekRecordingEngine.capabilities
+            engineRuntimeTraits: SeekRecordingEngine.runtimeTraits
         )
 
         do {
@@ -382,7 +382,7 @@ struct PlayerInterfaceTests {
         let engine = SeekRecordingEngine()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: SeekRecordingEngine.capabilities,
+            engineRuntimeTraits: SeekRecordingEngine.runtimeTraits,
             initialPolicy: PlayerFeaturePolicy(
                 allowsBackgroundPlayback: false,
                 allowedPlaybackRates: [1.0, 2.0],
@@ -418,7 +418,7 @@ struct PlayerInterfaceTests {
 }
 
 private actor CoreOnlyEngine: PlayerPlaybackEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -429,8 +429,8 @@ private actor CoreOnlyEngine: PlayerPlaybackEngine {
     func stop(reason: PlayerStopReason) async throws {}
 }
 
-private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor RateControllableEngine: PlayerPlaybackEngine, EnginePlaybackRateAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -456,8 +456,8 @@ private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEn
     }
 }
 
-private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor SubtitleControllableEngine: PlayerPlaybackEngine, EngineSubtitleAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -484,8 +484,8 @@ private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEn
     }
 }
 
-private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor DisplayControllableEngine: PlayerPlaybackEngine, EngineDisplayAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -521,8 +521,8 @@ private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngi
     }
 }
 
-private actor BookmarkControllableEngine: PlayerPlaybackEngine, PlayerBookmarkEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor BookmarkControllableEngine: PlayerPlaybackEngine, EngineBookmarkAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
@@ -540,7 +540,7 @@ private actor BookmarkControllableEngine: PlayerPlaybackEngine, PlayerBookmarkEn
 }
 
 private actor SeekRecordingEngine: PlayerPlaybackEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     let outputStream: AsyncStream<PlayerEngineOutput>
 

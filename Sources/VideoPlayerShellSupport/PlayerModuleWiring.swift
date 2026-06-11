@@ -12,7 +12,7 @@ import VideoPlayerCore
 public struct PlayerModule {
     public let core: PlayerCore
     public let engine: PlayerEngineAdapter
-    public let engineCapabilities: EngineCapabilities
+    public let engineRuntimeTraits: EngineRuntimeTraits
 
     /// 엔진 가용 기능 — host/Skin이 init 직후 버튼 노출을 사전 결정한다.
     public var availableFeatures: PlayerFeatureAvailability {
@@ -22,23 +22,23 @@ public struct PlayerModule {
     public init(
         core: PlayerCore,
         engine: PlayerEngineAdapter,
-        engineCapabilities: EngineCapabilities
+        engineRuntimeTraits: EngineRuntimeTraits
     ) {
         self.core = core
         self.engine = engine
-        self.engineCapabilities = engineCapabilities
+        self.engineRuntimeTraits = engineRuntimeTraits
     }
 }
 
 public enum PlayerModuleWiring {
     public static func makeModule(
         engine: PlayerEngineAdapter,
-        engineCapabilities: EngineCapabilities,
+        engineRuntimeTraits: EngineRuntimeTraits,
         configuration: PlayerModuleConfiguration = .default
     ) async -> PlayerModule {
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: engineCapabilities,
+            engineRuntimeTraits: engineRuntimeTraits,
             initialPolicy: configuration.initialPolicy
         )
 
@@ -49,7 +49,7 @@ public enum PlayerModuleWiring {
         return PlayerModule(
             core: core,
             engine: engine,
-            engineCapabilities: engineCapabilities
+            engineRuntimeTraits: engineRuntimeTraits
         )
     }
 }

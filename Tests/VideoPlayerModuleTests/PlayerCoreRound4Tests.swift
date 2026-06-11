@@ -22,7 +22,7 @@ final class PlayerCoreRound4Tests {
 
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: TestPlayerEngineAdapter.capabilities
+            engineRuntimeTraits: TestPlayerEngineAdapter.runtimeTraits
         )
         await core.activate()
 
@@ -73,7 +73,7 @@ final class PlayerCoreRound4Tests {
 
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: TestPlayerEngineAdapter.capabilities
+            engineRuntimeTraits: TestPlayerEngineAdapter.runtimeTraits
         )
         await core.activate()
 
@@ -111,7 +111,7 @@ final class PlayerCoreRound4Tests {
         let engine = TestPlayerEngineAdapter()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: TestPlayerEngineAdapter.capabilities
+            engineRuntimeTraits: TestPlayerEngineAdapter.runtimeTraits
         )
         await core.activate()
 
@@ -167,7 +167,7 @@ final class PlayerCoreRound4Tests {
         let engine = TestPlayerEngineAdapter()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: TestPlayerEngineAdapter.capabilities
+            engineRuntimeTraits: TestPlayerEngineAdapter.runtimeTraits
         )
         await core.activate()
 
@@ -207,7 +207,7 @@ final class PlayerCoreRound4Tests {
         let engine = TestPlayerEngineAdapter()
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: TestPlayerEngineAdapter.capabilities
+            engineRuntimeTraits: TestPlayerEngineAdapter.runtimeTraits
         )
         await core.activate()
 
@@ -232,7 +232,7 @@ final class PlayerCoreRound4Tests {
         await engine.setPlayError(.engineError("play blocked"))
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: TestPlayerEngineAdapter.capabilities
+            engineRuntimeTraits: TestPlayerEngineAdapter.runtimeTraits
         )
         await core.activate()
 
@@ -252,7 +252,7 @@ final class PlayerCoreRound4Tests {
         await engine.setSeekError(.engineError("seek denied"))
         let core = PlayerCore(
             engine: engine,
-            engineCapabilities: TestPlayerEngineAdapter.capabilities
+            engineRuntimeTraits: TestPlayerEngineAdapter.runtimeTraits
         )
         await core.activate()
 
@@ -308,7 +308,7 @@ final class PlayerCoreRound4Tests {
 }
 
 private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
-    nonisolated static let capabilities: EngineCapabilities = [.continuesWithoutSurface]
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = [.continuesWithoutSurface]
 
     let outputStream: AsyncStream<PlayerEngineOutput>
 

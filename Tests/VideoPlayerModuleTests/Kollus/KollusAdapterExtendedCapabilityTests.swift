@@ -17,10 +17,10 @@ import VideoPlayerCore
 /// Phase 7 T047 — `KollusPlayerAdapter`가 곧 채택할 확장 capability protocol들의 기본 동작 검증.
 ///
 /// 대상 protocol (모두 `PlayerEngineAdapter.swift` 정의):
-/// - `PlayerZoomEngine`        — zoom / setZoomOutDisabled / zoomValue / isZoomedIn
-/// - `PlayerScrollEngine`      — scroll / stopScroll
-/// - `PlayerAdaptiveStreamingEngine` — changeBandwidth / streamInfoList
-/// - `PlayerPiPCapability`     — 미채택 검증 (PiP 미구현, H9)
+/// - `EngineZoomAbility`        — zoom / setZoomOutDisabled / zoomValue / isZoomedIn
+/// - `EngineScrollAbility`      — scroll / stopScroll
+/// - `EngineAdaptiveStreamingAbility` — changeBandwidth / streamInfoList
+/// - `EnginePiPAbility`     — 미채택 검증 (PiP 미구현, H9)
 ///
 /// 본 테스트는 `KollusPlayerView` 인스턴스 없이 호출했을 때의 계약을 잠근다:
 /// - "조회/disable" 류 (`setZoomOutDisabled`, `zoomValue`, `streamInfoList`, `isZoomedIn`)는
@@ -47,7 +47,7 @@ struct KollusAdapterExtendedCapabilityTests {
         return KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
     }
 
-    // MARK: - PlayerZoomEngine
+    // MARK: - EngineZoomAbility
 
     /// `setZoomOutDisabled(_:)`는 playerView 미준비 상태에서도 throw 없이 통과해야 한다.
     /// (정책: noop + log. 실제 SDK 동기화는 playerView attach 후 lazy 적용)
@@ -89,7 +89,7 @@ struct KollusAdapterExtendedCapabilityTests {
         }
     }
 
-    // MARK: - PlayerScrollEngine
+    // MARK: - EngineScrollAbility
 
     /// `scroll(by:)`는 playerView 미준비 시 `PlayerError.engineError`를 throw 한다.
     @Test("scroll은 playerView 미준비 시 engineError throw")
@@ -117,7 +117,7 @@ struct KollusAdapterExtendedCapabilityTests {
         }
     }
 
-    // MARK: - PlayerAdaptiveStreamingEngine
+    // MARK: - EngineAdaptiveStreamingAbility
 
     /// `streamInfoList()`는 playerView 미준비 시 빈 배열을 반환한다.
     @Test("streamInfoList는 playerView 미준비 시 빈 배열 반환")
@@ -140,14 +140,14 @@ struct KollusAdapterExtendedCapabilityTests {
         }
     }
 
-    // MARK: - PlayerPiPCapability 미채택
+    // MARK: - EnginePiPAbility 미채택
 
-    /// PiP는 미구현이므로 어댑터가 `PlayerPiPCapability`를 채택하지 않아야 한다.
+    /// PiP는 미구현이므로 어댑터가 `EnginePiPAbility`를 채택하지 않아야 한다.
     /// 채택 + 가짜 구현은 capability 협상이 거짓 보고를 하게 만든다 (H9).
-    @Test("KollusPlayerAdapter는 PlayerPiPCapability를 채택하지 않는다")
+    @Test("KollusPlayerAdapter는 EnginePiPAbility를 채택하지 않는다")
     func adapter_doesNotConformToPiPCapability() {
         let adapter = makeAdapter()
-        #expect(!(adapter is any PlayerPiPCapability))
+        #expect(!(adapter is any EnginePiPAbility))
     }
 }
 

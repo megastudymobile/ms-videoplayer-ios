@@ -16,7 +16,7 @@ import VideoPlayerCore
 /// 재생 관련 명령(`prepare`/`play`/`seek` 등)은 상태를 바꾸지 않는 no-op 으로 처리한다.
 /// 호스트 앱은 시뮬레이터 + Kollus 소스 조합에서 본 엔진으로 라우팅한다.
 public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
-    public nonisolated static let capabilities: EngineCapabilities = []
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = []
 
     public let outputStream: AsyncStream<PlayerEngineOutput>
 
@@ -64,9 +64,9 @@ public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
     public func stop(reason: PlayerStopReason) async throws {}
 }
 
-// MARK: - PlayerTitledBookmarkEngine (시뮬레이터 in-memory 북마크 — 콘솔 테스트용)
+// MARK: - EngineTitledBookmarkAbility (시뮬레이터 in-memory 북마크 — 콘솔 테스트용)
 
-extension UnsupportedEnvironmentEngine: PlayerTitledBookmarkEngine {
+extension UnsupportedEnvironmentEngine: EngineTitledBookmarkAbility {
     public func addBookmark(at time: TimeInterval) async throws {
         try await addBookmark(at: time, title: "")
     }

@@ -37,7 +37,7 @@ struct PlayerFeatureAvailabilityTests {
 
     @Test("PlayerCore는 init 시점에 availability를 산출한다")
     func playerCore_probesAtInit() {
-        let core = PlayerCore(engine: RichEngine(), engineCapabilities: [])
+        let core = PlayerCore(engine: RichEngine(), engineRuntimeTraits: [])
 
         #expect(core.availableFeatures.contains(.playbackRate))
         #expect(!core.availableFeatures.contains(.pictureInPicture))
@@ -47,7 +47,7 @@ struct PlayerFeatureAvailabilityTests {
 // MARK: - Fakes
 
 private actor BareEngine: PlayerPlaybackEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
@@ -58,11 +58,11 @@ private actor BareEngine: PlayerPlaybackEngine {
 }
 
 private actor RichEngine: PlayerPlaybackEngine,
-    PlayerPlaybackRateEngine,
-    PlayerSubtitleEngine,
-    PlayerTitledBookmarkEngine,
-    PlayerAdaptiveStreamingEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+    EnginePlaybackRateAbility,
+    EngineSubtitleAbility,
+    EngineTitledBookmarkAbility,
+    EngineAdaptiveStreamingAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
@@ -88,15 +88,15 @@ private actor RichEngine: PlayerPlaybackEngine,
 
 #if canImport(UIKit)
 extension PlayerFeatureAvailabilityTests {
-    @Test("PlayerSeekPreviewEngine 채택 → .seekPreview 가용")
+    @Test("EngineSeekPreviewAbility 채택 → .seekPreview 가용")
     func seekPreviewEngine_reportsSeekPreview() {
         #expect(PlayerFeatureAvailability.probe(SeekPreviewEngine()).contains(.seekPreview))
         #expect(PlayerFeatureAvailability.probe(BareEngine()).contains(.seekPreview) == false)
     }
 }
 
-private actor SeekPreviewEngine: PlayerPlaybackEngine, PlayerSeekPreviewEngine {
-    nonisolated static let capabilities: EngineCapabilities = []
+private actor SeekPreviewEngine: PlayerPlaybackEngine, EngineSeekPreviewAbility {
+    nonisolated static let runtimeTraits: EngineRuntimeTraits = []
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
