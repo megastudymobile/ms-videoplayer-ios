@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import VideoPlayerCore
 
 /// 블루프린트를 소비해 고정 스켈레톤 슬롯에 블럭을 조립하는 PlayerSkin.
 /// 스켈레톤(슬롯 위치 + 반응형 + lock 게이트)은 패키지가 소유, 내용물은 blueprint 가 채운다.
@@ -60,6 +61,19 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         blocks.compactMap { $0 as? TopMenuExtraControlsBlock }.forEach { $0.setExtraControls(controls) }
         blocks.compactMap { $0 as? ExtraControlsRailBlock }.forEach { $0.setExtraControls(controls) }
         blocks.compactMap { $0 as? ExtraFloatingBlock }.forEach { $0.setExtraControls(controls) }
+        forceRender(latestState)
+    }
+
+    /// setUp 완료 후 host가 1회 호출 — requiredFeatures 미충족 블록을 숨긴다.
+    /// UIStackView는 hidden인 arrangedSubview를 배치에서 제외하므로 빈자리 없이 당겨진다.
+    public func apply(availableFeatures: Set<PlayerFeature>) {
+        // 조건 없는 블록(기본값 [])은 건드리지 않는다 — LiveBadgeBlock처럼
+        // 자기 view의 isHidden을 render에서 직접 제어하는 블록과 충돌하기 때문.
+        for block in blocks where block.requiredFeatures.isEmpty == false {
+            block.view.isHidden = availableFeatures.isSuperset(of: block.requiredFeatures) == false
+        }
+        // 시킹 프리뷰는 블록이 아닌 내장 presenter — 같은 feature 통로로 함께 게이팅.
+        setSeekPreviewEnabled(availableFeatures.contains(.seekPreview))
         forceRender(latestState)
     }
     public func render(_ state: PlayerSkinState) {
@@ -327,6 +341,11 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
                 }
                 container.addArrangedSubview(block.view)
                 blocks.append(block)
+                // apply(availableFeatures:) 호출 전까지는 숨김 — 엔진 확정 전에
+                // 미지원 버튼이 잠깐 보였다 사라지는 깜빡임을 막는다.
+                if block.requiredFeatures.isEmpty == false {
+                    block.view.isHidden = true
+                }
             }
         }
         for bar in blocks.compactMap({ $0 as? ProgressBarBlock }) {
