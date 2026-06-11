@@ -57,7 +57,6 @@ public actor KollusPlayerAdapter:
     private let environment: KollusEnvironment?
     private let observer: KollusObserver?
     private let diagnostics: KollusDiagnosticsSink?
-    private let legacyStorage: KollusStorage?
     private let playerType: KollusPlayerType
 
     private var state: PlaybackState
@@ -125,46 +124,6 @@ public actor KollusPlayerAdapter:
         self.environment = environment
         self.observer = observer
         self.diagnostics = diagnostics
-        self.legacyStorage = nil
-        self.playerType = playerType
-        self.state = .idle
-        self.signalConsumerTask = nil
-        Task { await self.startSignalConsumerIfNeeded() }
-    }
-
-    /// Test-only init. `@testable import`로만 접근. 새 wiring(인증/26 콜백) 미사용.
-    internal init() {
-        self.init(
-            storage: KollusStorage(),
-            playerType: KollusPlayerType(rawValue: 1)!
-        )
-    }
-
-    /// Test-only direct-storage init. 외부 공개 표면 아님. 새 wiring 미사용.
-    init(
-        storage: KollusStorage,
-        playerType: KollusPlayerType = KollusPlayerType(rawValue: 1)!
-    ) {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        self.eventStream = AsyncStream<PlayerEvent>(bufferingPolicy: .bufferingNewest(8)) {
-            continuation = $0
-        }
-        self.eventContinuation = continuation!
-        var bridgeContinuation: AsyncStream<BridgeEvent>.Continuation?
-        self.bridgeEventStream = AsyncStream<BridgeEvent>(bufferingPolicy: .unbounded) {
-            bridgeContinuation = $0
-        }
-        self.bridgeEventContinuation = bridgeContinuation!
-        var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
-        self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
-            outputContinuation = $0
-        }
-        self.outputContinuation = outputContinuation!
-        self.bootstrapper = nil
-        self.environment = nil
-        self.observer = nil
-        self.diagnostics = nil
-        self.legacyStorage = storage
         self.playerType = playerType
         self.state = .idle
         self.signalConsumerTask = nil
@@ -200,13 +159,10 @@ public actor KollusPlayerAdapter:
     public func prepare(source: PlaybackSource) async throws {
         seekPreviewSource = nil
         seekPreviewSnapshot = nil
-        if bootstrapper != nil {
-            try await prepareWithBootstrappedStorage(source: source)
-        } else if legacyStorage != nil {
-            try await prepareWithLegacyStorage(source: source)
-        } else {
+        guard bootstrapper != nil else {
             throw PlayerError.engineError("KollusPlayerAdapter에 storage가 구성되지 않았습니다.")
         }
+        try await prepareWithBootstrappedStorage(source: source)
     }
 
     public func play() async throws {
@@ -706,61 +662,6 @@ public actor KollusPlayerAdapter:
                 await self?.completePendingPrepare(with: .failure(CancellationError()))
             }
         }
-    }
-
-    /// **test-only 경로**. `init(storage:)`/`internal init()`로만 진입하며 bridge/delegate를
-    /// 배선하지 않는다(SDK `prepareToPlayWithError` 완료 콜백을 받지 못함). 따라서 프로덕션
-    /// 완료-대기 계약을 의도적으로 지키지 않고 `prepareToPlay` 동기 호출 직후 `.readyToPlay`로 전이한다.
-    /// 이는 SDK 콜백 없이 동작하는 단위 테스트 스캐폴딩 전용이며, **프로덕션은 반드시 bootstrapped 경로**
-    /// (`init(bootstrapper:environment:)`)를 사용한다 — 그 경로는 `installPrepareContinuation` +
-    /// `prepareToPlayCompleted` delegate 완료까지 대기해 autoplay가 준비 완료 이후에만 play를 호출한다.
-    private func prepareWithLegacyStorage(source: PlaybackSource) async throws {
-        guard let storage = legacyStorage else {
-            throw PlayerError.engineError("legacy storage 누락")
-        }
-
-        let boundSurface = renderSurface
-        let displayScaleMode = self.displayScaleMode
-        let playerType = self.playerType
-        let preparedState = try await MainActor.run { () throws -> PlaybackState in
-            // 재진입 시 이전 playerView stop 후 폐기(proxy releaseServerAndStop 타이머 크래시 방지).
-            if let previous = self.playerView {
-                try? previous.stop()
-                previous.removeFromSuperview()
-            }
-            self.playerView = nil
-
-            guard let playerView = Self.makePlayerView(for: source) else {
-                throw PlayerError.engineError("KollusPlayerView 초기화에 실패했습니다.")
-            }
-            playerView.storage = storage
-            playerView.debug = false
-            if let proxyPort = environment?.proxyPort, proxyPort > 0 {
-                playerView.proxyPort = UInt(proxyPort)
-            }
-            playerView.scalingMode = Self.scalingMode(mode: displayScaleMode)
-
-            if let boundSurface {
-                self.attach(playerView: playerView, to: boundSurface)
-            }
-
-            try playerView.prepareToPlay(withMode: playerType)
-
-            self.playerView = playerView
-            self.backgroundKeeper = KollusBackgroundAudioKeeper(
-                playerView: playerView,
-                isEnabled: environment?.audioBackgroundPlayPolicy ?? false
-            )
-
-            return PlaybackState(
-                status: .readyToPlay,
-                currentTime: playerView.content?.position ?? 0,
-                duration: playerView.content?.duration ?? 0,
-                isBuffering: false
-            )
-        }
-
-        transition(to: preparedState)
     }
 
     // MARK: - Signal handling (bootstrapped path)

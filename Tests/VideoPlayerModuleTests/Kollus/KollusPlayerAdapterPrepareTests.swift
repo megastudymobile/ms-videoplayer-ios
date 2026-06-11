@@ -129,26 +129,6 @@ struct KollusPlayerAdapterPrepareTests {
         }
     }
 
-    // MARK: - Regression guard: .url no longer hits legacy throw block
-
-    @MainActor
-    @Test("URL prepare는 legacy URL 차단 메시지를 throw하지 않음")
-    func prepareWithURL_doesNotThrowLegacyURLBlockedMessage() async {
-        let storage = FakeKollusStorage()
-        storage.startStorageError = NSError(domain: "kollus.test", code: 7)
-        let env = makeEnvironment()
-        let bootstrapper = KollusSessionBootstrapper(environment: env) { storage }
-        let adapter = KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
-        let url = URL(string: "https://example.com/sample.mp4")!
-
-        await #expect {
-            try await adapter.prepare(source: .url(url))
-        } throws: { error in
-            guard case let PlayerError.engineError(message) = error else { return false }
-            // T027 회귀: legacy URL 차단 메시지가 남아있으면 실패.
-            return !message.contains("kollus(mediaContentKey:)만 지원")
-        }
-    }
 }
 
 #endif
