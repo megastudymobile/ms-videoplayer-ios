@@ -136,8 +136,6 @@ final class PlayerViewController: UIViewController {
                 // 기능 게이팅 — 엔진이 지원하는 기능만 버튼 노출 (런타임 실패 대신 사전 숨김).
                 self.applyFeatureGating(self.interactor.availableFeatures)
                 try await self.interactor.start()
-                // 세팅 반영 — 자막 크기는 재생 중 즉시 적용 가능 (문서 §6).
-                self.interactor.send(.setCaptionFontSize(PreferenceManager.captionFontSize))
                 // 기본 배속 반영 — 설정값을 재생 시작 시 1회 적용 (SL 화면/재생 설정 parity).
                 self.applyPlaybackRate(PlaybackRate.clamped(PreferenceManager.playbackRate))
             } catch {
@@ -682,7 +680,6 @@ extension PlayerViewController: PlayerControlChannel {
     }
 
     func setCaptionFontSize(_ size: Int) {
-        interactor.send(.setCaptionFontSize(size))
         skin.setCaptionFontSize(size)
     }
 
