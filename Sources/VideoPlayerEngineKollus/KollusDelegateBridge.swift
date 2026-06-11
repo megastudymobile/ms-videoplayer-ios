@@ -2,9 +2,8 @@
 //  KollusDelegateBridge.swift
 //  VideoPlayerModule
 //
-//  Created by 모바일개발팀_정준영 on 2026/05/15.
-//  Updated on 2026/05/15 (Phase 3 refactor): SDK delegate 본문을 internal raw-handler 26개로 추출.
-//  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
+//  Created by 모바일팀_정준영 on 2026/05/15.
+//  Copyright © 2026 megastudyedu. All rights reserved.
 //
 
 #if canImport(UIKit) && canImport(KollusSDKBinary)

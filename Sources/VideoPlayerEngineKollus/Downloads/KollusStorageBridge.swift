@@ -2,8 +2,8 @@
 //  KollusStorageBridge.swift
 //  VideoPlayerModule
 //
-//  Created by 모바일개발팀_정준영 on 2026/05/15 (Phase 6 T042).
-//  Copyright © 2026 VideoPlayerModule contributors. All rights reserved.
+//  Created by 모바일팀_정준영 on 2026/05/15.
+//  Copyright © 2026 megastudyedu. All rights reserved.
 //
 
 import Foundation

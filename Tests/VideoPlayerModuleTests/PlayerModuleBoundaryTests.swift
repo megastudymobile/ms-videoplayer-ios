@@ -20,6 +20,10 @@ struct PlayerModuleBoundaryTests {
             // Core 도메인에 벤더 케이스 재유입 금지 (PlaybackSource는 .mediaKey로 중립화됨)
             "case kollus"
         ]
+        let bannedPatterns: [(label: String, pattern: String)] = [
+            ("Phase work marker", #"\bPhase\s+\d+\b"#),
+            ("Task number marker", #"\bT\d{3}\b"#)
+        ]
         let swiftFiles = FileManager.default.enumerator(
             at: sourceRoot,
             includingPropertiesForKeys: nil
@@ -32,6 +36,13 @@ struct PlayerModuleBoundaryTests {
             let source = try String(contentsOf: file, encoding: .utf8)
             for term in bannedTerms where source.contains(term) {
                 matches.append("\(file.path): \(term)")
+            }
+            for bannedPattern in bannedPatterns {
+                let regex = try NSRegularExpression(pattern: bannedPattern.pattern)
+                let range = NSRange(source.startIndex..<source.endIndex, in: source)
+                if regex.firstMatch(in: source, range: range) != nil {
+                    matches.append("\(file.path): \(bannedPattern.label)")
+                }
             }
         }
 

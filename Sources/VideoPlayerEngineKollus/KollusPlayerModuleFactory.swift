@@ -2,7 +2,7 @@
 //  KollusPlayerModuleFactory.swift
 //  VideoPlayerModule
 //
-//  Updated by 모바일개발팀_정준영 on 2026/05/15 (Phase 3 T026).
+//  Created by 모바일팀_정준영 on 2026/05/15.
 //
 
 import Foundation
