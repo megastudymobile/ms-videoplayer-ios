@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "ic_play_blist.png",
+      "filename" : "player_bookmark_list_normal.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
@@ -12,12 +12,12 @@
           "value" : "dark"
         }
       ],
-      "filename" : "ic_play_blist 1.png",
+      "filename" : "player_bookmark_list_normal_dark.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "ic_play_blist@2x.png",
+      "filename" : "player_bookmark_list_normal@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
@@ -28,12 +28,12 @@
           "value" : "dark"
         }
       ],
-      "filename" : "ic_play_blist@2x 1.png",
+      "filename" : "player_bookmark_list_normal_dark@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "ic_play_blist@3x.png",
+      "filename" : "player_bookmark_list_normal@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     },
@@ -44,7 +44,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "ic_play_blist@3x 1.png",
+      "filename" : "player_bookmark_list_normal_dark@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

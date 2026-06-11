@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "touch_l.png",
+      "filename" : "player_touch_l_highlighted.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "touch_l@2x.png",
+      "filename" : "player_touch_l_highlighted@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "touch_l@3x.png",
+      "filename" : "player_touch_l_highlighted@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

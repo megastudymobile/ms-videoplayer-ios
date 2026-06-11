@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "Property 1=full.png",
+      "filename" : "player_screen_scaling_fill_normal.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "Property 1=full@2x.png",
+      "filename" : "player_screen_scaling_fill_normal@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "Property 1=full@3x.png",
+      "filename" : "player_screen_scaling_fill_normal@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

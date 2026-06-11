@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "PlayerBackwardGestureNormal.png",
+      "filename" : "player_backward_gesture_normal.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "PlayerBackwardGestureNormal@2x.png",
+      "filename" : "player_backward_gesture_normal@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "PlayerBackwardGestureNormal@3x.png",
+      "filename" : "player_backward_gesture_normal@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

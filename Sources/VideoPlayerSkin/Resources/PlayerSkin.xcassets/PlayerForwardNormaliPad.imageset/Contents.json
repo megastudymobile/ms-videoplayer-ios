@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "PlayerForwardNormaliPad.png",
+      "filename" : "player_forward_normal_ipad.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "PlayerForwardNormaliPad@2x.png",
+      "filename" : "player_forward_normal_ipad@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "PlayerForwardNormaliPad@3x.png",
+      "filename" : "player_forward_normal_ipad@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

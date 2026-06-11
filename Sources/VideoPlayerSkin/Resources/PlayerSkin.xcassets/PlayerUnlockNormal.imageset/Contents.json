@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "Property 1=unlock.png",
+      "filename" : "player_unlock_normal.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "Property 1=unlock@2x.png",
+      "filename" : "player_unlock_normal@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "Property 1=unlock@3x.png",
+      "filename" : "player_unlock_normal@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

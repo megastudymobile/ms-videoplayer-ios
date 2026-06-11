@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "PlayerScreenLandscapeNormal.png",
+      "filename" : "player_screen_landscape_normal.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "PlayerScreenLandscapeNormal@2x.png",
+      "filename" : "player_screen_landscape_normal@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "PlayerScreenLandscapeNormal@3x.png",
+      "filename" : "player_screen_landscape_normal@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
