@@ -178,7 +178,10 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
 2. `render`에서 상태/테마만 읽어 그린다 — Block이 자체 상태를 누적하지 않는다 (스크럽 중 `isSeeking` 같은 일시적 입력 상태만 예외)
 3. `state.isLocked`를 존중한다
 4. 색/폰트/아이콘은 직접 하드코딩하지 말고 `theme.color(.role)` / `theme.icon(.name)` 사용
-5. Blueprint에 끼운다
+5. 엔진 지원 여부로 노출이 갈리면 `requiredFeatures`를 `let`으로 override —
+   skin이 `apply(availableFeatures:)`에서 자동 게이팅한다. 이때 `view.isHidden`의
+   소유권은 skin에 있으니 블록이 직접 만지지 않는다 (자체 연출은 alpha/내부 subview로)
+6. Blueprint에 끼운다
 
 ## Theme — 색/폰트/아이콘의 role 시스템
 

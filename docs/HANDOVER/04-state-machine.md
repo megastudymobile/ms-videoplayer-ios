@@ -115,7 +115,7 @@ case .seeking(let time):
 public actor PlayerCore {
     public nonisolated let stateStream: AsyncStream<PlaybackState>   // 화면이 구독
     public nonisolated let eventStream: AsyncStream<PlayerEvent>     // 화면이 구독
-    public nonisolated let availableFeatures: PlayerFeatureAvailability
+    public nonisolated let availableFeatures: Set<PlayerFeature>
 
     public init(engine: PlayerPlaybackEngine, engineRuntimeTraits: EngineRuntimeTraits,
                 initialPolicy: PlayerFeaturePolicy = .default)

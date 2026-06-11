@@ -16,7 +16,7 @@ public struct PlayerModule {
     public let engineRuntimeTraits: EngineRuntimeTraits
 
     /// 엔진 가용 기능 — host/Skin이 init 직후 버튼 노출을 사전 결정한다.
-    public var availableFeatures: PlayerFeatureAvailability { core.availableFeatures }
+    public var availableFeatures: Set<PlayerFeature> { core.availableFeatures }
 }
 
 // PlayerEngineDescriptor는 엔진과 runtime traits를 한 단위로 묶는다 — traits가

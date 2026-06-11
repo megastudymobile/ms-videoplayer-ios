@@ -56,7 +56,7 @@ public protocol EngineBookmarkAbility: Actor {
 // EngineSeekPreviewAbility(스크럽 중 특정 시각의 프리뷰 프레임 — 실패는 nil로 통일) …
 ```
 
-`PlayerCore`는 `engine as? EngineSubtitleAbility` 캐스팅으로 위임하고, 채택 여부는 `PlayerFeatureAvailability.probe(engine)`가 init 시점에 한 번 조사해 화면에 알려줍니다(버튼 노출 게이팅).
+`PlayerCore`는 `engine as? EngineSubtitleAbility` 캐스팅으로 위임하고, 채택 여부는 `PlayerFeature.available(for: engine)`이 init 시점에 한 번 조사해 화면에 알려줍니다(버튼 노출 게이팅).
 
 화면 부착용 프로토콜은 ShellSupport에 있습니다 (UIKit이 필요해서 Core에 둘 수 없음):
 

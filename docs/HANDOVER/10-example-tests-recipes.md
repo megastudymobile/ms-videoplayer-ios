@@ -136,7 +136,8 @@ struct PlayerSkinSmokeTests {
 3. `Internal/PlayerCore.swift`의 `execute` switch에 분기 추가 (`engine as? 새프로토콜` 캐스팅 패턴)
 4. 상태가 바뀌는 명령이면 `PlaybackStateInput`에 입력 추가 + reducer 케이스 + **`Tests/Core/`에 reducer 테스트**
 5. 각 엔진(`AVPlayerAdapter`, `KollusPlayerAdapter`)에 프로토콜 구현
-6. 필요하면 `PlayerFeatureAvailability`에 플래그 추가 (버튼 게이팅용)
+6. 버튼 게이팅이 필요하면 `PlayerFeature`에 case 추가 — `isSupported(by:)`/`allows(_:)`의
+   exhaustive switch가 컴파일 에러로 나머지 갱신 지점을 안내한다
 7. Skin에 버튼이 필요하면 레시피 B로
 
 ### 레시피 B: Skin에 새 버튼 추가
@@ -144,9 +145,12 @@ struct PlayerSkinSmokeTests {
 1. `Skin/Blocks/`에 Block 클래스 생성 — [8편](08-skin.md)의 체크리스트 준수
 2. 액션이 새 종류면 `PlayerSkinAction`에 case 추가
 3. 상태 표시가 필요하면 `PlayerSkinState`에 필드 추가
-4. Blueprint에 배치 (기본 Blueprint를 바꿀지, host 커스텀으로 둘지 판단)
-5. `PlayerSkinSmokeTests`에 렌더/잠금 동작 추가
-6. host의 `onAction` 라우팅에 분기 추가
+4. 엔진 지원 여부로 노출이 갈리면 블록에서 `requiredFeatures` override —
+   skin이 `apply(availableFeatures:)` 시점에 자동 게이팅 (조건 블록의 `view.isHidden`은
+   skin 소유 — 블록이 직접 만지지 말 것)
+5. Blueprint에 배치 (기본 Blueprint를 바꿀지, host 커스텀으로 둘지 판단)
+6. `PlayerSkinSmokeTests`에 렌더/잠금 동작 추가
+7. host의 `onAction` 라우팅에 분기 추가
 
 ### 레시피 C: Kollus SDK 새 delegate 콜백 연결
 
