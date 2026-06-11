@@ -8,7 +8,7 @@
 
 ```swift
 // Sources/VideoPlayerCore/Contract/PlayerEngineAdapter.swift
-public protocol PlayerPlaybackEngine: Actor {
+public protocol PlayerPlaybackEngine: Actor, PlayerEngineOutputProducing {
     nonisolated static var capabilities: EngineCapabilities { get }
 
     func prepare(source: PlaybackSource) async throws
@@ -16,16 +16,16 @@ public protocol PlayerPlaybackEngine: Actor {
     func pause() async throws
     func seek(to time: TimeInterval) async throws
     func stop(reason: PlayerStopReason) async throws
-
-    var currentState: PlaybackState { get }
-    var eventStream: AsyncStream<PlayerEvent> { get }
 }
 
-// 코어가 reducer 입력을 받는 통로 (현행 엔진은 모두 채택)
+// 코어가 reducer 입력을 받는 유일한 통로
 public protocol PlayerEngineOutputProducing: Actor {
     var outputStream: AsyncStream<PlayerEngineOutput> { get }
 }
 ```
+
+엔진은 상태를 직접 노출하지 않습니다. `outputStream`이 유일한 출력이고, 상태(`PlaybackState`)는
+Core가 reducer로 만들어 소유합니다. 엔진 내부 `state`는 어디까지나 SDK 신호 해석용 내부 캐시입니다.
 
 `PlayerEngineOutput`은 두 갈래입니다 — 4편에서 본 그대로, **상태를 움직이는 입력**과 **그냥 알리는 이벤트**:
 
@@ -83,8 +83,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing,
         // .emitsObservedCommandState 없음! → play/pause는 Core가 command-origin으로 닫음
     ]
 
-    public let eventStream: AsyncStream<PlayerEvent>
-    public let outputStream: AsyncStream<PlayerEngineOutput>   // Core가 소비
+    public let outputStream: AsyncStream<PlayerEngineOutput>   // Core가 소비하는 유일한 출력
 
     private let player: AVPlayer
     private var state: PlaybackState

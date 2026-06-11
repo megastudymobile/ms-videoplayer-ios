@@ -420,10 +420,7 @@ struct PlayerInterfaceTests {
 private actor CoreOnlyEngine: PlayerPlaybackEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-    let eventStream = AsyncStream<PlayerEvent> { continuation in
-        continuation.finish()
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
@@ -435,13 +432,7 @@ private actor CoreOnlyEngine: PlayerPlaybackEngine {
 private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState {
-        state
-    }
-
-    let eventStream = AsyncStream<PlayerEvent> { continuation in
-        continuation.finish()
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     private var state: PlaybackState = .idle
     private(set) var recordedRate: Double?
@@ -468,11 +459,7 @@ private actor RateControllableEngine: PlayerPlaybackEngine, PlayerPlaybackRateEn
 private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-
-    let eventStream = AsyncStream<PlayerEvent> { continuation in
-        continuation.finish()
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     private(set) var recordedSubtitleVisibility: Bool?
     private(set) var recordedSubtitleTrackID: PlayerSubtitleTrackID?
@@ -500,11 +487,7 @@ private actor SubtitleControllableEngine: PlayerPlaybackEngine, PlayerSubtitleEn
 private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-
-    let eventStream = AsyncStream<PlayerEvent> { continuation in
-        continuation.finish()
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     private(set) var recordedDisplayLock: Bool?
     private(set) var recordedDisplayScale: Bool?
@@ -541,11 +524,7 @@ private actor DisplayControllableEngine: PlayerPlaybackEngine, PlayerDisplayEngi
 private actor BookmarkControllableEngine: PlayerPlaybackEngine, PlayerBookmarkEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-
-    let eventStream = AsyncStream<PlayerEvent> { continuation in
-        continuation.finish()
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     private(set) var recordedBookmarkTime: TimeInterval?
 
@@ -563,26 +542,22 @@ private actor BookmarkControllableEngine: PlayerPlaybackEngine, PlayerBookmarkEn
 private actor SeekRecordingEngine: PlayerPlaybackEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState {
-        state
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput>
 
-    let eventStream: AsyncStream<PlayerEvent>
-
-    private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
+    private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private var state: PlaybackState = .idle
     private(set) var recordedSeekTimes: [TimeInterval] = []
 
     init() {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        eventStream = AsyncStream<PlayerEvent>(bufferingPolicy: .bufferingNewest(8)) {
+        var continuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
             continuation = $0
         }
-        self.eventContinuation = continuation!
+        self.outputContinuation = continuation!
     }
 
     deinit {
-        eventContinuation.finish()
+        outputContinuation.finish()
     }
 
     func setState(_ state: PlaybackState) {
@@ -602,7 +577,7 @@ private actor SeekRecordingEngine: PlayerPlaybackEngine {
         state = state.updating(currentTime: time)
         // chase 패턴 완료 신호: 실 엔진처럼 seek 직후 도달 위치를 통지해
         // PlayerCore가 in-flight seek 완료를 감지하고 다음 chase를 디스패치하게 한다.
-        eventContinuation.yield(.timeDidChange(currentTime: time, duration: state.duration))
+        outputContinuation.yield(.stateInput(.positionChanged(time: time, duration: state.duration)))
     }
 
     func stop(reason: PlayerStopReason) async throws {}

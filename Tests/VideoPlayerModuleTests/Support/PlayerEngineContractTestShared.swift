@@ -26,18 +26,6 @@ enum PlayerEngineContract<Factory: PlayerEngineAdapterContractTestable> {
         _ = Factory.isSupportedInCurrentEnvironment
     }
 
-    // MARK: Initial state
-
-    static func initialStateIsIdle() async throws {
-        let adapter = Factory.makeTestAdapter()
-        defer { Task { await Factory.cleanupTestAdapter(adapter) } }
-
-        let state = await adapter.currentState
-        #expect(state.status == .idle)
-        #expect(state.currentTime == 0)
-        #expect(!state.isBuffering)
-    }
-
     // MARK: Capabilities
 
     static func capabilitiesMatchExpectation() {
@@ -52,19 +40,17 @@ enum PlayerEngineContract<Factory: PlayerEngineAdapterContractTestable> {
 
         try await adapter.stop(reason: .userClosed)
         try await adapter.stop(reason: .userClosed)
-
-        let state = await adapter.currentState
-        #expect(state.status == .idle)
     }
 
-    static func stopWithFinishedReasonTransitionsToFinished() async throws {
+    static func stopWithFinishedReasonEmitsFinishedOutput() async throws {
         let adapter = Factory.makeTestAdapter()
         defer { Task { await Factory.cleanupTestAdapter(adapter) } }
+        let stream = await adapter.outputStream
 
         try await adapter.stop(reason: .finished)
 
-        let state = await adapter.currentState
-        #expect(state.status == .finished)
+        let didEmitFinished = await containsFinishedStopOutput(in: stream)
+        #expect(didEmitFinished)
     }
 
     static func unbindRenderSurfaceWithoutBindDoesNotCrash() async throws {
@@ -73,20 +59,43 @@ enum PlayerEngineContract<Factory: PlayerEngineAdapterContractTestable> {
 
         await adapter.unbindRenderSurface()
         await adapter.unbindRenderSurface()
-
-        let state = await adapter.currentState
-        #expect(state.status == .idle)
     }
 
-    // MARK: Event stream
+    // MARK: Output stream
 
-    static func eventStreamIsAvailable() async throws {
+    static func outputStreamIsAvailable() async throws {
         let adapter = Factory.makeTestAdapter()
         defer { Task { await Factory.cleanupTestAdapter(adapter) } }
 
-        let stream = await adapter.eventStream
-        // 검증 포인트: eventStream property 접근에서 isolation 문제 없이 AsyncStream 획득.
+        let stream = await adapter.outputStream
+        // 검증 포인트: outputStream property 접근에서 isolation 문제 없이 AsyncStream 획득.
         _ = stream
+    }
+
+    private static func containsFinishedStopOutput(
+        in stream: AsyncStream<PlayerEngineOutput>,
+        timeoutNanoseconds: UInt64 = 1_000_000_000
+    ) async -> Bool {
+        await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                var iterator = stream.makeAsyncIterator()
+                while let output = await iterator.next() {
+                    if case .stateInput(.stopped(.finished)) = output {
+                        return true
+                    }
+                }
+                return false
+            }
+
+            group.addTask {
+                try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+                return false
+            }
+
+            let result = await group.next() ?? false
+            group.cancelAll()
+            return result
+        }
     }
 }
 

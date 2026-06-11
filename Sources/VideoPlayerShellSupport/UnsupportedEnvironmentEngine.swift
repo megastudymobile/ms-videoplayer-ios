@@ -18,12 +18,10 @@ import VideoPlayerCore
 public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
     public nonisolated static let capabilities: EngineCapabilities = []
 
-    public var currentState: PlaybackState { state }
-    public let eventStream: AsyncStream<PlayerEvent>
+    public let outputStream: AsyncStream<PlayerEngineOutput>
 
-    private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
+    private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private let message: String
-    private var state: PlaybackState = .idle
     private weak var renderSurface: PlayerRenderSurface?
     /// 시뮬레이터에서도 북마크 UI 흐름(추가/목록/삭제)을 테스트할 수 있도록 in-memory 로 보관.
     /// 실재생이 없으므로 영속화하지 않는다.
@@ -31,15 +29,15 @@ public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
 
     public init(message: String) {
         self.message = message
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        self.eventStream = AsyncStream<PlayerEvent>(bufferingPolicy: .bufferingNewest(1)) {
+        var continuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
             continuation = $0
         }
-        self.eventContinuation = continuation!
+        self.outputContinuation = continuation!
     }
 
     deinit {
-        eventContinuation.finish()
+        outputContinuation.finish()
     }
 
     // MARK: - PlayerEngineAdapter
@@ -90,6 +88,6 @@ extension UnsupportedEnvironmentEngine: PlayerTitledBookmarkEngine {
     }
 
     private func emitBookmarks() {
-        eventContinuation.yield(.bookmarksDidLoad(bookmarks))
+        outputContinuation.yield(.event(.bookmarksDidLoad(bookmarks)))
     }
 }

@@ -76,31 +76,21 @@ struct PlayerEngineOutputContractTests {
     }
 }
 
-/// 병행 계약을 동시에 만족하는 최소 fake. `outputStream`은 단일 장수명 인스턴스 + `.unbounded`.
-private actor ContractFakeEngine: PlayerPlaybackEngine, PlayerEngineOutputProducing {
+/// `outputStream` 계약을 만족하는 최소 fake. 스트림은 단일 장수명 인스턴스 + `.unbounded`.
+private actor ContractFakeEngine: PlayerPlaybackEngine {
     nonisolated static let capabilities: EngineCapabilities = [.continuesWithoutSurface]
 
-    let eventStream: AsyncStream<PlayerEvent>
     let outputStream: AsyncStream<PlayerEngineOutput>
 
-    private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
     private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
-    private var state: PlaybackState = .idle
-
-    var currentState: PlaybackState { state }
 
     init() {
-        var eventContinuation: AsyncStream<PlayerEvent>.Continuation?
-        eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(8)) { eventContinuation = $0 }
-        self.eventContinuation = eventContinuation!
-
         var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
         outputStream = AsyncStream(bufferingPolicy: .unbounded) { outputContinuation = $0 }
         self.outputContinuation = outputContinuation!
     }
 
     deinit {
-        eventContinuation.finish()
         outputContinuation.finish()
     }
 

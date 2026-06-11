@@ -40,18 +40,20 @@ struct KollusAdapterSubtitleBookmarkTests {
         return KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
     }
 
-    /// adapter.eventStream에서 첫 번째 PlayerEvent를 (timeout 안에) 수신한다.
+    /// adapter.outputStream에서 첫 번째 PlayerEvent를 (timeout 안에) 수신한다.
     private func awaitFirstEvent(
         from adapter: KollusPlayerAdapter,
         timeout: TimeInterval = 1.0,
         trigger: @escaping @Sendable () async throws -> Void
     ) async throws -> PlayerEvent? {
-        let stream = await adapter.eventStream
+        let stream = await adapter.outputStream
 
         return try await withThrowingTaskGroup(of: PlayerEvent?.self) { group in
             group.addTask {
-                for await event in stream {
-                    return event
+                for await output in stream {
+                    if case .event(let event) = output {
+                        return event
+                    }
                 }
                 return nil
             }

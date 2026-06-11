@@ -19,18 +19,10 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         // Core command-origin이 그 상태를 닫는다.
     ]
 
-    public var currentState: PlaybackState {
-        state
-    }
-
-    public let eventStream: AsyncStream<PlayerEvent>
-
     /// Core는 이 스트림을 소비해 reducer로 상태를 만든다.
-    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다.
     public let outputStream: AsyncStream<PlayerEngineOutput>
 
     private let player: AVPlayer
-    private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
     private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private var state: PlaybackState
     private weak var renderSurface: PlayerRenderSurface?
@@ -61,11 +53,6 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
     private var observerConsumerTask: Task<Void, Never>?
 
     public init(player: AVPlayer = AVPlayer()) {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        self.eventStream = AsyncStream<PlayerEvent>(bufferingPolicy: .bufferingNewest(8)) {
-            continuation = $0
-        }
-        self.eventContinuation = continuation!
         var observerContinuation: AsyncStream<ObserverEvent>.Continuation?
         self.observerEventStream = AsyncStream<ObserverEvent>(bufferingPolicy: .unbounded) {
             observerContinuation = $0
@@ -100,7 +87,6 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
 
         observerConsumerTask?.cancel()
         observerEventContinuation.finish()
-        eventContinuation.finish()
         outputContinuation.finish()
     }
 
@@ -199,8 +185,8 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
                     }
 
                     let nextState = await self.state.updating(currentTime: clampedTime)
-                    await self.publish(event: .timeDidChange(currentTime: clampedTime, duration: nextState.duration))
                     await self.setState(nextState)
+                    await self.emitStateInput(.positionChanged(time: clampedTime, duration: nextState.duration))
                     continuation.resume()
                 }
             }
@@ -255,7 +241,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         let nextState = stateAfterStop(reason: reason)
         transition(to: nextState)
         if reason == .finished {
-            publish(event: .didFinish)
+            outputContinuation.yield(.stateInput(.stopped(.finished)))
         }
 
         Task { @MainActor [player, weak self] in
@@ -438,7 +424,6 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         let duration = Self.duration(for: player.currentItem)
         let nextState = state.updating(currentTime: currentTime, duration: duration)
         state = nextState
-        publish(event: .timeDidChange(currentTime: currentTime, duration: duration))
     }
 
     private func handleTimeControlStatus(_ status: AVPlayer.TimeControlStatus) {
@@ -449,11 +434,8 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         case .waitingToPlayAtSpecifiedRate:
             let nextState = state.updating(status: .buffering, isBuffering: true)
             state = nextState
-            publish(event: .bufferingDidChange(isBuffering: true))
         case .playing:
-            if state.isBuffering {
-                publish(event: .bufferingDidChange(isBuffering: false))
-            }
+            break
         @unknown default:
             break
         }
@@ -462,22 +444,15 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
     private func handleDidFinish() {
         let nextState = state.updating(status: .finished, isBuffering: false)
         state = nextState
-        publish(event: .didFinish)
     }
 
     private func handleFailure(_ error: PlayerError) {
         let nextState = state.updating(status: .failed(error), isBuffering: false)
         state = nextState
-        publish(event: .didFail(error))
     }
 
     private func transition(to nextState: PlaybackState) {
         state = nextState
-        publish(event: .stateDidChange(nextState))
-    }
-
-    private func publish(event: PlayerEvent) {
-        eventContinuation.yield(event)
     }
 
     /// observer 신호를 매퍼로 정규화해 outputStream에 발행한다.
@@ -491,6 +466,10 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, PlayerEngineOutputProducing, 
         NSLog("[Native.out] %@ -> %@", String(describing: signal), String(describing: output))
         #endif
         outputContinuation.yield(output)
+    }
+
+    private func emitStateInput(_ input: PlaybackStateInput) {
+        outputContinuation.yield(.stateInput(input))
     }
 
     private func setState(_ nextState: PlaybackState) {

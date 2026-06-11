@@ -149,17 +149,7 @@ struct PlayerCoreCommandCoverageTests {
 private actor PlaybackOnlyEngine: PlayerPlaybackEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent>
-    private let continuation: AsyncStream<PlayerEvent>.Continuation
-
-    init() {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        self.eventStream = AsyncStream { continuation = $0 }
-        self.continuation = continuation!
-    }
-
-    deinit { continuation.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
@@ -171,21 +161,11 @@ private actor PlaybackOnlyEngine: PlayerPlaybackEngine {
 private actor TitledBookmarkEngine: PlayerPlaybackEngine, PlayerTitledBookmarkEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent>
-    private let continuation: AsyncStream<PlayerEvent>.Continuation
-
     private(set) var recorded: [(time: TimeInterval, title: String)] = []
     private(set) var removedTimes: [TimeInterval] = []
     private(set) var bookmarks: [Bookmark] = []
 
-    init() {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        self.eventStream = AsyncStream { continuation = $0 }
-        self.continuation = continuation!
-    }
-
-    deinit { continuation.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
@@ -213,19 +193,9 @@ private actor TitledBookmarkEngine: PlayerPlaybackEngine, PlayerTitledBookmarkEn
 private actor ExternalSubtitleEngine: PlayerPlaybackEngine, PlayerExternalSubtitleEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent>
-    private let continuation: AsyncStream<PlayerEvent>.Continuation
-
     private(set) var selectedURLs: [URL?] = []
 
-    init() {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        self.eventStream = AsyncStream { continuation = $0 }
-        self.continuation = continuation!
-    }
-
-    deinit { continuation.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}

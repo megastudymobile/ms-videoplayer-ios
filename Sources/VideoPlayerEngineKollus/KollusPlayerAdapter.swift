@@ -41,17 +41,9 @@ public actor KollusPlayerAdapter:
     // .stateInput만 신뢰한다(이중 적용 방지).
     public nonisolated static let capabilities: EngineCapabilities = [.emitsObservedCommandState]
 
-    public var currentState: PlaybackState {
-        state
-    }
-
-    public let eventStream: AsyncStream<PlayerEvent>
-
     /// 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
-    /// `eventStream`/`currentState`는 전환기 deprecated mirror로만 유지된다.
     public let outputStream: AsyncStream<PlayerEngineOutput>
 
-    private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
     private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private let bootstrapper: KollusSessionBootstrapper?
     private let environment: KollusEnvironment?
@@ -105,11 +97,6 @@ public actor KollusPlayerAdapter:
         diagnostics: KollusDiagnosticsSink? = nil,
         playerType: KollusPlayerType = KollusPlayerType(rawValue: 1)!
     ) {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        self.eventStream = AsyncStream<PlayerEvent>(bufferingPolicy: .bufferingNewest(8)) {
-            continuation = $0
-        }
-        self.eventContinuation = continuation!
         var bridgeContinuation: AsyncStream<BridgeEvent>.Continuation?
         self.bridgeEventStream = AsyncStream<BridgeEvent>(bufferingPolicy: .unbounded) {
             bridgeContinuation = $0
@@ -133,7 +120,6 @@ public actor KollusPlayerAdapter:
     deinit {
         signalConsumerTask?.cancel()
         bridgeEventContinuation.finish()
-        eventContinuation.finish()
         outputContinuation.finish()
     }
 
@@ -184,8 +170,8 @@ public actor KollusPlayerAdapter:
             playerView.currentPlaybackTime = clampedTime
         }
         let nextState = state.updating(currentTime: clampedTime)
-        transition(to: nextState, emitStateEvent: false)
-        publish(event: .timeDidChange(currentTime: clampedTime, duration: nextState.duration))
+        transition(to: nextState)
+        outputContinuation.yield(.stateInput(.positionChanged(time: clampedTime, duration: nextState.duration)))
     }
 
     // MARK: - PlayerSeekPreviewEngine
@@ -245,7 +231,7 @@ public actor KollusPlayerAdapter:
         let nextState = stateAfterStop(reason: reason)
         transition(to: nextState)
         if reason == .finished {
-            publish(event: .didFinish)
+            outputContinuation.yield(.stateInput(.stopped(.finished)))
         }
     }
 
@@ -693,8 +679,7 @@ public actor KollusPlayerAdapter:
         if polled <= 0, state.currentTime > 0 { return }
         guard polled != state.currentTime else { return }
         let nextState = state.updating(currentTime: polled)
-        transition(to: nextState, emitStateEvent: false)
-        publish(event: .timeDidChange(currentTime: polled, duration: nextState.duration))
+        transition(to: nextState)
         // Core 권위 경로: polling 위치는 handleSignal 밖이라 별도로 outputStream에 발행해야
         // Core(outputStream 소비)가 재생바를 갱신한다.
         outputContinuation.yield(.stateInput(.positionChanged(time: polled, duration: nextState.duration)))
@@ -706,8 +691,7 @@ public actor KollusPlayerAdapter:
 
     func handleSignal(_ signal: KollusEngineSignal) async {
         // 권위 경로: 신호를 매퍼로 정규화해 outputStream에 발행한다(Core가 reducer로 소비).
-        // 아래 switch는 전환기 mirror(eventStream/state) + 부수효과(polling/prepare continuation/
-        // next-episode)를 그대로 유지한다.
+        // 아래 switch는 adapter 내부 state와 부수효과(polling/prepare continuation/next-episode)를 유지한다.
         await emitOutput(signal)
 
         switch signal {
@@ -717,8 +701,6 @@ public actor KollusPlayerAdapter:
                 transition(to: state.updating(status: .failed(pe), isBuffering: false))
                 if pendingPrepareContinuation != nil {
                     completePendingPrepare(with: .failure(pe))
-                } else {
-                    publish(event: .didFail(pe))
                 }
             } else {
                 // Kollus SDK 는 prepare 완료 시점에 audioBackgroundPlay 를 내부 player 에 latch 한다.
@@ -737,7 +719,7 @@ public actor KollusPlayerAdapter:
 
         case .playStarted(_, let error):
             if let error {
-                handleFailure(playerError(from: error, operation: "play"))
+                handleFailure(playerError(from: error, operation: "play"), emitOutput: false)
                 return
             }
             systemPausedBeforeBuffering = false
@@ -746,7 +728,7 @@ public actor KollusPlayerAdapter:
 
         case .pauseStarted(let userInteraction, let error):
             if let error {
-                handleFailure(playerError(from: error, operation: "pause"))
+                handleFailure(playerError(from: error, operation: "pause"), emitOutput: false)
                 return
             }
             systemPausedBeforeBuffering = !userInteraction
@@ -755,16 +737,14 @@ public actor KollusPlayerAdapter:
 
         case .bufferingChanged(let buffering, _, let error):
             if let error {
-                handleFailure(playerError(from: error, operation: "buffering"))
+                handleFailure(playerError(from: error, operation: "buffering"), emitOutput: false)
                 return
             }
             // terminal 상태(.finished/.failed)는 늦은 buffering 이벤트로 되살리지 않는다.
             if case .finished = state.status {
-                publish(event: .bufferingDidChange(isBuffering: buffering))
                 return
             }
             if case .failed = state.status {
-                publish(event: .bufferingDidChange(isBuffering: buffering))
                 return
             }
             let shouldResumeSystemPause = systemPausedBeforeBuffering && buffering == false
@@ -776,8 +756,7 @@ public actor KollusPlayerAdapter:
             } else {
                 nextStatus = .playing
             }
-            transition(to: state.updating(status: nextStatus, isBuffering: buffering), emitStateEvent: false)
-            publish(event: .bufferingDidChange(isBuffering: buffering))
+            transition(to: state.updating(status: nextStatus, isBuffering: buffering))
             if shouldResumeSystemPause {
                 systemPausedBeforeBuffering = false
                 await resumeAfterSystemPause()
@@ -785,7 +764,7 @@ public actor KollusPlayerAdapter:
 
         case .stopStarted(let userInteraction, let error):
             if let error {
-                handleFailure(playerError(from: error, operation: "stop"))
+                handleFailure(playerError(from: error, operation: "stop"), emitOutput: false)
                 return
             }
             systemPausedBeforeBuffering = false
@@ -797,49 +776,28 @@ public actor KollusPlayerAdapter:
             )
             let nextStatus: PlaybackState.Status = reason == .finished ? .finished : .idle
             transition(to: state.updating(status: nextStatus, isBuffering: false))
-            if nextStatus == .finished {
-                publish(event: .didFinish)
-            }
 
         case .positionChanged(let time, let isSeeking):
             guard !isSeeking else { return }
             let nextState = state.updating(currentTime: time)
-            transition(to: nextState, emitStateEvent: false)
-            publish(event: .timeDidChange(currentTime: time, duration: nextState.duration))
+            transition(to: nextState)
             // 다음 회차 진입 시간 도달 검사 (컨텐츠당 1회). 캐시된 메타로 산술 비교만 — MainActor 왕복 없음.
             emitNextEpisodeIfNeeded(currentTime: time)
 
         case .unknownError(let error):
             let pe = playerError(from: error, operation: "unknown")
             transition(to: state.updating(status: .failed(pe), isBuffering: false))
-            publish(event: .didFail(pe))
 
-        case .captionUpdated(_, let caption):
-            publish(event: .captionDidUpdate(text: caption, isSecondary: false))
-
-        case .subCaptionUpdated(_, let caption):
-            publish(event: .captionDidUpdate(text: caption, isSecondary: true))
-
-        case .naturalSizeResolved(let size):
-            publish(event: .naturalSizeDidResolve(size))
-
-        case .contentFrameChanged(let frame):
-            publish(event: .videoFrameDidChange(frame))
-
-        case .framerateResolved(let framerate):
-            publish(event: .framerateDidResolve(framerate))
-
-        case .externalOutputEnabledChanged(let enabled):
-            publish(event: .externalOutputDidChange(enabled: enabled))
-
-        case .devicePolicyLocked:
-            publish(event: .deviceLockPolicyChanged(locked: true))
-
-        case .hlsHeightChanged(let height):
-            publish(event: .heightDidChange(height))
-
-        case .hlsBitrateChanged(let bitrate):
-            publish(event: .bitrateDidChange(bitrate))
+        case .captionUpdated,
+             .subCaptionUpdated,
+             .naturalSizeResolved,
+             .contentFrameChanged,
+             .framerateResolved,
+             .externalOutputEnabledChanged,
+             .devicePolicyLocked,
+             .hlsHeightChanged,
+             .hlsBitrateChanged:
+            break
 
         case .thumbnailReady:
             // 스프라이트가 비동기 다운로드로 뒤늦게 도착할 수 있다 — 캐시를 무효화하고
@@ -870,8 +828,6 @@ public actor KollusPlayerAdapter:
 
     private func publishBookmarks(_ bookmarks: [Bookmark]) {
         publish(event: .bookmarksDidLoad(bookmarks))
-        // Core 권위 경로 (handleSignal 밖 emit — bookmarks 로드).
-        outputContinuation.yield(.event(.bookmarksDidLoad(bookmarks)))
     }
 
     /// 신호를 매퍼로 정규화해 outputStream에 발행한다(Core 권위 경로).
@@ -945,8 +901,6 @@ public actor KollusPlayerAdapter:
         NSLog("[Kollus.out] event nextEpisodeAvailable showAt=%.3f", info.showAt)
 #endif
         publish(event: .nextEpisodeAvailable(info))
-        // Core 권위 경로 — handleSignal 밖 emit이라 별도 발행이 필요하다.
-        outputContinuation.yield(.event(.nextEpisodeAvailable(info)))
     }
 
     private func readyStateSnapshot() async -> PlaybackState {
@@ -1060,11 +1014,8 @@ public actor KollusPlayerAdapter:
         renderSurface.containerView.addSubview(playerView)
     }
 
-    private func transition(to nextState: PlaybackState, emitStateEvent: Bool = true) {
+    private func transition(to nextState: PlaybackState) {
         state = nextState
-        if emitStateEvent {
-            publish(event: .stateDidChange(nextState))
-        }
     }
 
     /// SDK 신호 에러 → PlayerError. 사용자 메시지는 SDK `localizedDescription`을 그대로 노출한다
@@ -1087,15 +1038,17 @@ public actor KollusPlayerAdapter:
         return classified
     }
 
-    private func handleFailure(_ error: PlayerError) {
+    private func handleFailure(_ error: PlayerError, emitOutput: Bool = true) {
         stopPositionPolling()
         let nextState = state.updating(status: .failed(error), isBuffering: false)
         transition(to: nextState)
-        publish(event: .didFail(error))
+        if emitOutput {
+            outputContinuation.yield(.stateInput(.failed(error)))
+        }
     }
 
     private func publish(event: PlayerEvent) {
-        eventContinuation.yield(event)
+        outputContinuation.yield(.event(event))
     }
 
     private static func scalingMode(mode: PlayerDisplayScaleMode) -> KollusPlayerContentMode {

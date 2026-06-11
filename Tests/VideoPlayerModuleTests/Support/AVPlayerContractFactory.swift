@@ -42,11 +42,6 @@ struct AVPlayerEngineContractTests {
         Contract.isSupportedInCurrentEnvironmentIsDecidableWithoutThrow()
     }
 
-    @Test("초기 상태는 idle이다")
-    func initialStateIsIdle() async throws {
-        try await Contract.initialStateIsIdle()
-    }
-
     @Test("capabilities가 기대값과 일치한다")
     func capabilitiesMatchExpectation() {
         Contract.capabilitiesMatchExpectation()
@@ -57,9 +52,9 @@ struct AVPlayerEngineContractTests {
         try await Contract.stopFromIdleDoesNotCrash()
     }
 
-    @Test("finished 사유 stop은 finished 상태로 전이한다")
-    func stopWithFinishedReasonTransitionsToFinished() async throws {
-        try await Contract.stopWithFinishedReasonTransitionsToFinished()
+    @Test("finished 사유 stop은 finished output을 방출한다")
+    func stopWithFinishedReasonEmitsFinishedOutput() async throws {
+        try await Contract.stopWithFinishedReasonEmitsFinishedOutput()
     }
 
     @Test("bind 없이 unbindRenderSurface 호출이 crash하지 않는다")
@@ -67,9 +62,9 @@ struct AVPlayerEngineContractTests {
         try await Contract.unbindRenderSurfaceWithoutBindDoesNotCrash()
     }
 
-    @Test("eventStream을 isolation 문제 없이 획득한다")
-    func eventStreamIsAvailable() async throws {
-        try await Contract.eventStreamIsAvailable()
+    @Test("outputStream을 isolation 문제 없이 획득한다")
+    func outputStreamIsAvailable() async throws {
+        try await Contract.outputStreamIsAvailable()
     }
 }
 

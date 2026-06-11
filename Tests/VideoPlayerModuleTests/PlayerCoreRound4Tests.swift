@@ -118,13 +118,13 @@ final class PlayerCoreRound4Tests {
         var iterator = core.eventStream.makeAsyncIterator()
 
         // 첫 이벤트는 소비자(테스트 task)가 즉시 1건 읽는다.
-        await engine.emit(.timeDidChange(currentTime: 0, duration: 300))
+        await engine.emit(.stateInput(.positionChanged(time: 0, duration: 300)))
         let first = try #require(await Self.nextTimeDidChange(&iterator))
         #expect(first.duration == 300)
 
         // 나머지를 빠르게 burst → bufferingNewest(1) 이 최신값만 유지한다.
         for second in 1..<20 {
-            await engine.emit(.timeDidChange(currentTime: TimeInterval(second), duration: 300))
+            await engine.emit(.stateInput(.positionChanged(time: TimeInterval(second), duration: 300)))
         }
 
         // 느린 소비자는 burst 의 모든 이벤트를 받지 못하고 최신(19)으로 coalesce 된다.
@@ -162,8 +162,8 @@ final class PlayerCoreRound4Tests {
         return nil
     }
 
-    @Test("activate는 엔진 이벤트를 state/event 스트림으로 다시 발행한다")
-    func activateRepublishesEngineEventsToStateAndEventStreams() async throws {
+    @Test("activate는 엔진 출력을 state/event 스트림으로 다시 발행한다")
+    func activateRepublishesEngineOutputsToStateAndEventStreams() async throws {
         let engine = TestPlayerEngineAdapter()
         let core = PlayerCore(
             engine: engine,
@@ -173,19 +173,19 @@ final class PlayerCoreRound4Tests {
 
         let stateRecorder = startRecording(core.stateStream)
         let eventRecorder = startRecording(core.eventStream)
-        let publishedState = PlaybackState(
-            status: .readyToPlay,
-            currentTime: 3,
+        await engine.emit(.stateInput(.prepared(PlaybackPreparedSnapshot(
+            position: 3,
             duration: 90,
-            isBuffering: false
-        )
-
-        await engine.emit(.stateDidChange(publishedState))
+            isLive: false,
+            liveDuration: nil
+        ))))
         try await waitUntil {
-            await stateRecorder.contains { $0 == publishedState }
+            await stateRecorder.contains {
+                $0.status == .readyToPlay && $0.currentTime == 3 && $0.duration == 90
+            }
         }
 
-        await engine.emit(.bufferingDidChange(isBuffering: true))
+        await engine.emit(.stateInput(.bufferingChanged(true)))
         try await waitUntil {
             await eventRecorder.contains { event in
                 if case .bufferingDidChange(true) = event {
@@ -196,9 +196,33 @@ final class PlayerCoreRound4Tests {
             }
         }
 
-        await engine.emit(.didFail(.engineError("boom")))
+        await engine.emit(.stateInput(.failed(.engineError("boom"))))
         try await waitUntil {
             await eventRecorder.failureError == .engineError("boom")
+        }
+    }
+
+    @Test("event(.stateDidChange)는 stateStream도 갱신하는 compatibility guard로 처리한다")
+    func stateDidChangeEventUpdatesStateStream() async throws {
+        let engine = TestPlayerEngineAdapter()
+        let core = PlayerCore(
+            engine: engine,
+            engineCapabilities: TestPlayerEngineAdapter.capabilities
+        )
+        await core.activate()
+
+        let stateRecorder = startRecording(core.stateStream)
+        let publishedState = PlaybackState(
+            status: .readyToPlay,
+            currentTime: 12,
+            duration: 120,
+            isBuffering: false
+        )
+
+        await engine.emit(.event(.stateDidChange(publishedState)))
+
+        try await waitUntil {
+            await stateRecorder.contains { $0 == publishedState }
         }
     }
 
@@ -286,13 +310,9 @@ final class PlayerCoreRound4Tests {
 private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
     nonisolated static let capabilities: EngineCapabilities = [.continuesWithoutSurface]
 
-    var currentState: PlaybackState {
-        state
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput>
 
-    let eventStream: AsyncStream<PlayerEvent>
-
-    private let continuation: AsyncStream<PlayerEvent>.Continuation
+    private let continuation: AsyncStream<PlayerEngineOutput>.Continuation
     private var state: PlaybackState = .idle
     private var prepareBehaviors: [String: PrepareBehavior] = [:]
     private(set) var prepareCount = 0
@@ -303,8 +323,8 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
     private var seekError: PlayerError?
 
     init() {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(32)) {
+        var continuation: AsyncStream<PlayerEngineOutput>.Continuation?
+        outputStream = AsyncStream(bufferingPolicy: .unbounded) {
             continuation = $0
         }
         self.continuation = continuation!
@@ -339,7 +359,12 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
                 isBuffering: false
             )
             state = readyState
-            continuation.yield(.stateDidChange(readyState))
+            continuation.yield(.stateInput(.prepared(PlaybackPreparedSnapshot(
+                position: readyState.currentTime,
+                duration: readyState.duration,
+                isLive: false,
+                liveDuration: nil
+            ))))
         case .suspendUntilCancelled:
             try await Task.sleep(nanoseconds: 60_000_000_000)
         }
@@ -351,12 +376,12 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
         }
         playCount += 1
         state = state.updating(status: .playing, isBuffering: false)
-        continuation.yield(.stateDidChange(state))
+        continuation.yield(.stateInput(.playStarted))
     }
 
     func pause() async throws {
         state = state.updating(status: .paused, isBuffering: false)
-        continuation.yield(.stateDidChange(state))
+        continuation.yield(.stateInput(.pauseStarted))
     }
 
     func seek(to time: TimeInterval) async throws {
@@ -364,7 +389,7 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
             throw seekError
         }
         state = state.updating(currentTime: time)
-        continuation.yield(.timeDidChange(currentTime: time, duration: state.duration))
+        continuation.yield(.stateInput(.positionChanged(time: time, duration: state.duration)))
     }
 
     func stop(reason: PlayerStopReason) async throws {
@@ -372,8 +397,8 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
         state = .idle
     }
 
-    func emit(_ event: PlayerEvent) {
-        continuation.yield(event)
+    func emit(_ output: PlayerEngineOutput) {
+        continuation.yield(output)
     }
 }
 

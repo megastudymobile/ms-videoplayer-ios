@@ -43,11 +43,7 @@ struct PlayerDisplayScalingEngineTests {
 private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, PlayerDisplayScalingEngine {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState { .idle }
-
-    let eventStream = AsyncStream<PlayerEvent> { continuation in
-        continuation.finish()
-    }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     private(set) var recordedDisplayScale: Bool?
     private(set) var recordedDisplayScaleMode: PlayerDisplayScaleMode?

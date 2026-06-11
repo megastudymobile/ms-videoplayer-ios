@@ -54,26 +54,8 @@ struct KollusPlayerModuleFactoryTests {
 private actor FactoryTestEngineAdapter: PlayerEngineAdapter {
     nonisolated static let capabilities: EngineCapabilities = []
 
-    var currentState: PlaybackState {
-        .idle
-    }
-
-    let eventStream: AsyncStream<PlayerEvent>
-
-    private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var stopCount = 0
-
-    init() {
-        var continuation: AsyncStream<PlayerEvent>.Continuation?
-        eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(8)) {
-            continuation = $0
-        }
-        eventContinuation = continuation!
-    }
-
-    deinit {
-        eventContinuation.finish()
-    }
 
     func prepare(source: PlaybackSource) async throws {}
 

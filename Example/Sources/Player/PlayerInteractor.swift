@@ -46,6 +46,7 @@ final class PlayerInteractor {
     private var scrollTask: Task<Void, Never>?
     private var scrollTaskGeneration = 0
     private(set) var isZoomedIn = false
+    private var latestPlaybackState: PlaybackState = .idle
 
     init(
         source: PlaybackSource,
@@ -157,7 +158,7 @@ final class PlayerInteractor {
     func togglePlayPause() {
         Task { @MainActor [weak self] in
             guard let self, let module = self.playerModule else { return }
-            let isPlaying = await module.engine.currentState.status == .playing
+            let isPlaying = self.latestPlaybackState.status == .playing
             await self.execute(isPlaying ? .pause : .play, on: module)
         }
     }
@@ -165,7 +166,7 @@ final class PlayerInteractor {
     func seekBy(_ delta: TimeInterval) {
         Task { @MainActor [weak self] in
             guard let self, let module = self.playerModule else { return }
-            let snapshot = await module.engine.currentState
+            let snapshot = self.latestPlaybackState
             let target = min(max(0, snapshot.currentTime + delta), max(0, snapshot.duration))
             await self.execute(.seek(to: target), on: module)
         }
@@ -258,8 +259,8 @@ final class PlayerInteractor {
 
     func handleSectionRepeat(_ action: PlayerSkinAction) {
         Task { @MainActor [weak self] in
-            guard let self, let module = self.playerModule else { return }
-            let now = await module.engine.currentState.currentTime
+            guard let self, self.playerModule != nil else { return }
+            let now = self.latestPlaybackState.currentTime
 
             switch (action, self.viewModel.state.sectionRepeat) {
             case (.sectionRepeatToggleRequested, .idle):
@@ -279,15 +280,30 @@ final class PlayerInteractor {
     // MARK: - 스트림 소비
 
     private func consume(playbackState: PlaybackState) {
+        latestPlaybackState = playbackState
         enforceSectionRepeatIfNeeded(currentTime: playbackState.currentTime)
         onRender(viewModel.apply(playbackState: playbackState))
     }
 
     private func consume(event: PlayerEvent) {
+        updateLatestPlaybackState(from: event)
         if let next = viewModel.apply(event: event) {
             onRender(next)
         }
         onEvent(event)
+    }
+
+    private func updateLatestPlaybackState(from event: PlayerEvent) {
+        switch event {
+        case .stateDidChange(let playbackState):
+            latestPlaybackState = playbackState
+        case .timeDidChange(let currentTime, let duration):
+            latestPlaybackState = latestPlaybackState.updating(currentTime: currentTime, duration: duration)
+        case .bufferingDidChange(let isBuffering):
+            latestPlaybackState = latestPlaybackState.updating(isBuffering: isBuffering)
+        default:
+            break
+        }
     }
 
     /// 구간 끝 도달 시 시작점으로 재시크.

@@ -33,61 +33,37 @@ struct KollusPlayerAdapterSignalTests {
     @Test("playStarted 에러는 failed 전이 및 didFail 방출")
     func playStarted_withError_transitionsToFailedAndPublishesDidFail() async {
         let adapter = makeAdapter()
-        let stream = await adapter.eventStream
+        let stream = await adapter.outputStream
         let error = NSError(domain: "kollus.play", code: 10, userInfo: [
             NSLocalizedDescriptionKey: "play denied"
         ])
 
         await adapter.handleSignal(.playStarted(userInteraction: true, error: error))
 
-        let state = await adapter.currentState
-        guard case .failed(let playerError) = state.status else {
-            Issue.record("Expected failed state, got \(state.status)")
-            return
-        }
-        #expect(playerError == .engineError("play denied"))
-
         var iterator = stream.makeAsyncIterator()
-        guard case .stateDidChange(let emittedState)? = await iterator.next() else {
-            Issue.record("Expected stateDidChange")
+        guard case .stateInput(.failed(let emittedError))? = await iterator.next() else {
+            Issue.record("Expected failed stateInput")
             return
         }
-        #expect(emittedState.status == state.status)
-        guard case .didFail(let emittedError)? = await iterator.next() else {
-            Issue.record("Expected didFail")
-            return
-        }
-        #expect(emittedError == playerError)
+        #expect(emittedError == .engineError("play denied"))
     }
 
     @Test("bufferingChanged 에러는 buffering 성공을 방출하지 않음")
     func bufferingChanged_withError_doesNotEmitBufferingSuccess() async {
         let adapter = makeAdapter()
-        let stream = await adapter.eventStream
+        let stream = await adapter.outputStream
         let error = NSError(domain: "kollus.buffer", code: 11, userInfo: [
             NSLocalizedDescriptionKey: "buffer failed"
         ])
 
         await adapter.handleSignal(.bufferingChanged(buffering: true, prepared: false, error: error))
 
-        let state = await adapter.currentState
-        guard case .failed(let playerError) = state.status else {
-            Issue.record("Expected failed state, got \(state.status)")
-            return
-        }
-        #expect(!(state.isBuffering))
-        #expect(playerError == .engineError("buffer failed"))
-
         var iterator = stream.makeAsyncIterator()
-        guard case .stateDidChange? = await iterator.next() else {
-            Issue.record("Expected stateDidChange")
+        guard case .stateInput(.failed(let emittedError))? = await iterator.next() else {
+            Issue.record("Expected failed stateInput")
             return
         }
-        guard case .didFail(let emittedError)? = await iterator.next() else {
-            Issue.record("Expected didFail")
-            return
-        }
-        #expect(emittedError == playerError)
+        #expect(emittedError == .engineError("buffer failed"))
     }
 
     // 플래그 소진까지만 검증 — 이어지는 SDK play 호출은 시뮬레이터 스텁으로 확인 불가(실기기 항목).
@@ -115,21 +91,13 @@ struct KollusPlayerAdapterSignalTests {
     @Test("finished 사유 stop은 finished 전이 및 didFinish 방출")
     func stopWithFinishedReason_transitionsToFinishedAndPublishesDidFinish() async throws {
         let adapter = makeAdapter()
-        let stream = await adapter.eventStream
+        let stream = await adapter.outputStream
 
         try await adapter.stop(reason: .finished)
 
-        let state = await adapter.currentState
-        #expect(state.status == .finished)
-
         var iterator = stream.makeAsyncIterator()
-        guard case .stateDidChange(let emittedState)? = await iterator.next() else {
-            Issue.record("Expected stateDidChange")
-            return
-        }
-        #expect(emittedState.status == .finished)
-        guard case .didFinish? = await iterator.next() else {
-            Issue.record("Expected didFinish")
+        guard case .stateInput(.stopped(.finished))? = await iterator.next() else {
+            Issue.record("Expected finished stateInput")
             return
         }
     }

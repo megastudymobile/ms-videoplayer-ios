@@ -48,8 +48,7 @@ struct PlayerFeatureAvailabilityTests {
 
 private actor BareEngine: PlayerPlaybackEngine {
     nonisolated static let capabilities: EngineCapabilities = []
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent> = AsyncStream { $0.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
@@ -64,8 +63,7 @@ private actor RichEngine: PlayerPlaybackEngine,
     PlayerTitledBookmarkEngine,
     PlayerAdaptiveStreamingEngine {
     nonisolated static let capabilities: EngineCapabilities = []
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent> = AsyncStream { $0.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
@@ -99,8 +97,7 @@ extension PlayerFeatureAvailabilityTests {
 
 private actor SeekPreviewEngine: PlayerPlaybackEngine, PlayerSeekPreviewEngine {
     nonisolated static let capabilities: EngineCapabilities = []
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent> = AsyncStream { $0.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     func prepare(source: PlaybackSource) async throws {}
     func play() async throws {}
