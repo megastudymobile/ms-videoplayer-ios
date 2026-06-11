@@ -483,8 +483,7 @@ body.script-visible .keyboard-hint {
 .layer-bridge .caption {
     font-size: var(--small-size);
     line-height: 1.1;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
+    white-space: nowrap;
 }
 .layer-stack { display: flex; flex-direction: column; gap: 0.55rem; }
 .layer-item {
@@ -530,9 +529,6 @@ body.script-visible .keyboard-hint {
         min-width: 0;
         flex-direction: row;
     }
-    .layer-bridge .caption {
-        writing-mode: horizontal-tb;
-    }
     .layer-bridge .arrow {
         transform: rotate(90deg);
     }
@@ -546,9 +542,6 @@ body.script-visible .keyboard-hint {
         min-height: 0;
         min-width: 2.2rem;
         flex-direction: column;
-    }
-    .target-architecture-slide .layer-bridge .caption {
-        writing-mode: vertical-rl;
     }
     .target-architecture-slide .layer-bridge .arrow {
         transform: none;
@@ -605,6 +598,29 @@ body.script-visible .keyboard-hint {
     }
     .wrapper-leak-slide .body-text {
         line-height: 1.35;
+    }
+    .target-architecture-slide .layer-group {
+        gap: 0.28rem;
+    }
+    .target-architecture-slide .layer-group-label {
+        padding: 0.34rem 0.45rem;
+    }
+    .target-architecture-slide .layer-group-label span,
+    .target-architecture-slide .layer-item span {
+        display: none;
+    }
+    .target-architecture-slide .layer-stack {
+        gap: 0.26rem;
+    }
+    .target-architecture-slide .layer-item {
+        padding: 0.42rem 0.5rem;
+    }
+    .target-architecture-slide .layer-bridge {
+        min-height: 1.35rem;
+    }
+    .target-architecture-slide .layer-bridge .arrow {
+        width: 1.35rem;
+        height: 1.35rem;
     }
 }
 @media (max-height: 500px) and (orientation: landscape) {
@@ -786,7 +802,7 @@ window.__initialSlideHash = window.location.hash;
         <h2 class="reveal">반복 구현은 기능보다 유지보수 비용을 키웁니다.</h2>
         <div class="grid grid-4 reveal">
             <div class="card"><span class="num">UX</span><h3>제스처·자막·배속</h3><p class="body-text">서비스별로 다시 구현하고 다시 맞춥니다.</p></div>
-            <div class="card"><span class="num">KOLLUS</span><h3>SDK 미지원</h3><p class="body-text">Kollus 경로는 시뮬레이터에서 실행되지 않아 실기기 검증이 필요합니다.</p></div>
+            <div class="card"><span class="num">KOLLUS</span><h3>실재생 제약</h3><p class="body-text">Kollus 실재생 경로는 시뮬레이터 대신 실기기 검증이 필요합니다.</p></div>
             <div class="card"><span class="num">SDK</span><h3>버전 대응</h3><p class="body-text">각 앱의 빌드, 링크, 런타임 영향 범위가 커집니다.</p></div>
             <div class="card"><span class="num">PRODUCT</span><h3>경험 분산</h3><p class="body-text">서비스마다 다른 플레이어 경험이 누적됩니다.</p></div>
         </div>
@@ -806,8 +822,8 @@ window.__initialSlideHash = window.location.hash;
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 02. 현재 구조의 비용</h3>
         <p><strong>주장:</strong> 반복 구현은 기능 개발보다 유지보수와 검증 비용을 키웁니다.</p>
-        <p><strong>화면:</strong><br>1. UX 카드는 제스처, 자막, 배속 반복 구현을 뜻합니다.<br>2. KOLLUS 카드는 SDK가 시뮬레이터에서 실행되지 않는다는 제약입니다.<br>3. SDK와 PRODUCT 카드는 버전 대응과 경험 분산 비용입니다.</p>
-        <p><strong>말할 내용:</strong> 여기서 핵심은 기능이 많다는 것이 아니라 같은 판단을 서비스마다 반복한다는 점입니다. 특히 Kollus 경로는 SDK 자체가 시뮬레이터에서 실행되지 않기 때문에 실기기 검증이 필요합니다. 공통 경계가 없으면 SDK 버전 대응과 사용자 경험 차이도 계속 서비스별 비용으로 남습니다.</p>
+        <p><strong>화면:</strong><br>1. UX 카드는 제스처, 자막, 배속 반복 구현을 뜻합니다.<br>2. KOLLUS 카드는 실재생 경로가 실기기 검증 대상이라는 제약입니다.<br>3. SDK와 PRODUCT 카드는 버전 대응과 경험 분산 비용입니다.</p>
+        <p><strong>말할 내용:</strong> 여기서 핵심은 기능이 많다는 것이 아니라 같은 판단을 서비스마다 반복한다는 점입니다. 특히 Kollus 실재생 경로는 시뮬레이터에서 닫기 어렵기 때문에 실기기 검증이 필요합니다. 공통 경계가 없으면 SDK 버전 대응과 사용자 경험 차이도 계속 서비스별 비용으로 남습니다.</p>
         <p><strong>전환:</strong> 이 비용이 실제 코드 표면에 어떻게 남아 있는지 보겠습니다.</p>
     </aside>
 </section>
@@ -821,17 +837,17 @@ window.__initialSlideHash = window.location.hash;
             <div class="card stat">
                 <span class="v">72</span>
                 <span class="k">legacy player ObjC files</span>
-                <p class="body-text" style="margin-top:0.8rem;">레거시 플레이어 영역에 Objective-C 파일이 넓게 분산되어 있습니다.</p>
+                <p class="body-text" style="margin-top:0.8rem;">host 레거시 플레이어 영역 기준 Objective-C 파일이 넓게 분산되어 있습니다.</p>
             </div>
             <div class="card stat">
                 <span class="v">82</span>
                 <span class="k">SDK touchpoints</span>
-                <p class="body-text" style="margin-top:0.8rem;">`KollusPlayerView`, storage, delegate, 다운로드 API가 여러 지점에 나타납니다.</p>
+                <p class="body-text" style="margin-top:0.8rem;">host 레거시 코드 검색 기준 `KollusPlayerView`, storage, delegate, 다운로드 API 접점입니다.</p>
             </div>
             <div class="card stat">
                 <span class="v">QA</span>
                 <span class="k">device-only checks</span>
-                <p class="body-text" style="margin-top:0.8rem;">Kollus SDK가 시뮬레이터 미지원이라 Kollus 경로 전체는 실기기 검증 대상입니다.</p>
+                <p class="body-text" style="margin-top:0.8rem;">Kollus 실재생/DRM/다운로드 경로는 실기기 검증 대상입니다.</p>
             </div>
         </div>
         <div class="diagram-line reveal" style="margin-top:var(--content-gap);">
@@ -846,7 +862,7 @@ window.__initialSlideHash = window.location.hash;
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 03. 반복 비용의 근거</h3>
         <p><strong>주장:</strong> 모듈화는 추상 정리가 아니라 이미 분산된 책임을 한 경계로 모으는 작업입니다.</p>
-        <p><strong>화면:</strong><br>1. 72는 레거시 플레이어 영역의 Objective-C 파일 수입니다.<br>2. 82는 Kollus 관련 SDK 접점 검색 결과입니다.<br>3. QA 카드는 Kollus 경로 전체가 실기기 검증 대상임을 뜻합니다.</p>
+        <p><strong>화면:</strong><br>1. 72는 host 레거시 플레이어 영역 기준 Objective-C 파일 수입니다.<br>2. 82는 같은 기준의 Kollus 관련 SDK 접점 검색 결과입니다.<br>3. QA 카드는 Kollus 실재생/DRM/다운로드가 실기기 검증 대상임을 뜻합니다.</p>
         <p><strong>말할 내용:</strong> 이 숫자는 “느낌상 복잡하다”가 아니라 코드 표면에 이미 비용이 남아 있다는 근거입니다. SDK 타입, storage, delegate, 다운로드 API가 여러 곳에 흩어지면 변경과 검증도 흩어집니다. 그래서 공통 경계가 필요합니다.</p>
         <p><strong>전환:</strong> 이제 목표 구조를 보겠습니다.</p>
     </aside>
@@ -866,7 +882,7 @@ window.__initialSlideHash = window.location.hash;
                     <div class="layer-item"><strong>해외 Host</strong><span>현지 정책과 localization 주입</span></div>
                 </div>
             </div>
-            <div class="layer-bridge" aria-hidden="true"><span class="arrow">→</span><span class="caption">reuse</span></div>
+            <div class="layer-bridge" aria-hidden="true"><span class="arrow">→</span><span class="caption">재사용</span></div>
             <div class="layer-group">
                 <div class="layer-group-label"><span>common</span><strong>공통 재생 모듈</strong></div>
                 <div class="layer-stack">
@@ -875,7 +891,7 @@ window.__initialSlideHash = window.location.hash;
                     <div class="layer-item accent"><strong>VideoPlayerSkin</strong><span>block, theme, blueprint 조립</span></div>
                 </div>
             </div>
-            <div class="layer-bridge" aria-hidden="true"><span class="arrow">→</span><span class="caption">inject</span></div>
+            <div class="layer-bridge" aria-hidden="true"><span class="arrow">→</span><span class="caption">주입</span></div>
             <div class="layer-group">
                 <div class="layer-group-label"><span>variation</span><strong>Host 주입점</strong></div>
                 <div class="layer-stack">
@@ -1180,7 +1196,9 @@ VideoPlayerSkin
         <div class="eyebrow reveal">runtime architecture</div>
         <h2 class="reveal">명령과 상태는 한 방향으로 흐릅니다.</h2>
         <div class="flow reveal" style="max-width:860px;">
-            <div class="flow-node"><span class="nm">Host / Skin</span><span class="ds">PlaybackCommand 발행</span></div>
+            <div class="flow-node"><span class="nm">Skin</span><span class="ds">PlayerSkinAction 발행</span></div>
+            <div class="flow-arrow">↓ Host mapping</div>
+            <div class="flow-node"><span class="nm">Host / Interactor</span><span class="ds">PlaybackCommand 변환</span></div>
             <div class="flow-arrow">↓</div>
             <div class="flow-node accent"><span class="nm">PlayerCore actor</span><span class="ds">정책과 capability 협상</span></div>
             <div class="flow-arrow">↓ async throws</div>
@@ -1194,8 +1212,8 @@ VideoPlayerSkin
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 12. 런타임 흐름</h3>
         <p><strong>주장:</strong> 명령과 상태는 한 방향으로 흐릅니다.</p>
-        <p><strong>화면:</strong><br>1. 위에서 아래로 흐름을 읽습니다.<br>2. Host/Skin이 command를 발행합니다.<br>3. Core가 정책과 capability를 보고 EngineAdapter에 위임합니다.<br>4. Reducer가 최종 PlaybackState를 결정합니다.</p>
-        <p><strong>말할 내용:</strong> 단방향 흐름은 디버깅 기준을 명확하게 만듭니다. 마지막 command가 무엇인지, engine output이 무엇인지, reducer가 어떤 state를 만들었는지를 보면 됩니다.</p>
+        <p><strong>화면:</strong><br>1. 위에서 아래로 흐름을 읽습니다.<br>2. Skin은 PlayerSkinAction을 내보내고 Host가 PlaybackCommand로 변환합니다.<br>3. Core가 정책과 capability를 보고 EngineAdapter에 위임합니다.<br>4. Reducer가 최종 PlaybackState를 결정합니다.</p>
+        <p><strong>말할 내용:</strong> Skin은 재생 명령을 직접 소유하지 않습니다. Host가 화면 액션을 command로 번역하고, Core 이후 흐름은 한 방향으로 내려갑니다. 그래서 디버깅할 때 마지막 action, command, engine output, reducer state를 순서대로 보면 됩니다.</p>
         <p><strong>전환:</strong> 이 흐름을 유지하려면 SDK가 들어오는 product 경계도 명확해야 합니다.</p>
     </aside>
 </section>
@@ -1210,6 +1228,7 @@ VideoPlayerSkin
                 <thead><tr><th>product</th><th>역할</th><th>SDK 의존</th></tr></thead>
                 <tbody>
                     <tr><td>VideoPlayerCore</td><td>도메인, 상태, 엔진 계약</td><td>없음</td></tr>
+                    <tr><td>VideoPlayerShellSupport</td><td>wiring, render surface, lifecycle/audio</td><td>없음</td></tr>
                     <tr><td>VideoPlayerEngineNative</td><td>URL/HLS 재생</td><td>없음</td></tr>
                     <tr><td>VideoPlayerEngineKollus</td><td>Kollus DRM/다운로드</td><td>Kollus/PallyCon</td></tr>
                     <tr><td>VideoPlayerSkin</td><td>재사용 UI</td><td>없음</td></tr>
@@ -1240,8 +1259,8 @@ VideoPlayerSkin
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 13. product 경계가 SDK 경계다</h3>
         <p><strong>주장:</strong> SDK 격리는 말이 아니라 SPM product 경계로 강제합니다.</p>
-        <p><strong>화면:</strong><br>1. 표에서 Core와 Skin은 SDK 의존이 없음을 봅니다.<br>2. Kollus product만 Kollus/PallyCon binary를 압니다.<br>3. 아래 Mermaid의 화살표는 의존 방향입니다. Core가 Engine 구현을 의존하지 않습니다.</p>
-        <p><strong>말할 내용:</strong> Core는 도메인, 상태, 엔진 계약만 압니다. Native와 Kollus engine은 Core/ShellSupport 쪽을 사용하고, vendor binary는 Kollus product 안에만 있습니다. 그래서 SDK 교체 영향 범위를 제한할 수 있습니다.</p>
+        <p><strong>화면:</strong><br>1. 표에서 Core, ShellSupport, Skin은 SDK 의존이 없음을 봅니다.<br>2. Kollus product만 Kollus/PallyCon binary를 압니다.<br>3. 아래 Mermaid의 화살표는 의존 방향입니다. Core가 Engine 구현을 의존하지 않습니다.</p>
+        <p><strong>말할 내용:</strong> Core는 도메인, 상태, 엔진 계약만 압니다. ShellSupport는 wiring, render surface, lifecycle/audio를 담당하고, Native와 Kollus engine은 그 경계를 사용합니다. vendor binary는 Kollus product 안에만 있습니다.</p>
         <p><strong>전환:</strong> 다음은 상태 소유권입니다.</p>
     </aside>
 </section>
@@ -1290,20 +1309,21 @@ reduce(input, state):
         <h2 class="reveal">모든 엔진이 모든 기능을 지원하지 않아도 됩니다.</h2>
         <div class="code-editor compact reveal" style="max-width:860px;">
             <span class="filename">feature gate</span>
-<pre>availableFeature = hostPolicy ∩ engineCapability ∩ optionalProtocolSupport</pre>
+<pre>availableFeatures = optionalProtocolSupport(engine)
+runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         </div>
         <div class="grid grid-3 reveal" style="margin-top:var(--content-gap);">
-            <div class="card"><span class="num">POLICY</span><h3>Host 정책</h3><p class="body-text">서비스가 허용한 기능인지 확인합니다.</p></div>
-            <div class="card"><span class="num">CAPABILITY</span><h3>엔진 지원</h3><p class="body-text">현재 엔진이 실제 지원하는지 확인합니다.</p></div>
-            <div class="card"><span class="num">UI</span><h3>사전 게이트</h3><p class="body-text">지원 가능한 기능만 Host/Skin에 노출합니다.</p></div>
+            <div class="card"><span class="num">PROTOCOL</span><h3>기능 채택</h3><p class="body-text">엔진의 optional protocol 채택으로 UI 가용 기능을 산출합니다.</p></div>
+            <div class="card"><span class="num">CAPABILITY</span><h3>런타임 제약</h3><p class="body-text">백그라운드 유지, command-origin 같은 엔진 동작 차이를 협상합니다.</p></div>
+            <div class="card"><span class="num">POLICY</span><h3>Host 정책</h3><p class="body-text">서비스 정책은 명령 검증과 런타임 정책 조정에 사용합니다.</p></div>
         </div>
-        <p class="takeaway reveal">기능 차이는 분기가 아니라 capability로 관리합니다.</p>
+        <p class="takeaway reveal">기능 차이는 protocol 기반 availability와 runtime capability로 관리합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 15. 기능 차이는 capability로 처리한다</h3>
         <p><strong>주장:</strong> 모든 엔진이 모든 기능을 지원하지 않아도 됩니다.</p>
-        <p><strong>화면:</strong><br>1. 위 공식은 hostPolicy, engineCapability, optionalProtocolSupport의 교집합입니다.<br>2. 세 카드가 각각 정책, 엔진 지원, UI 사전 게이트를 뜻합니다.<br>3. 지원 가능한 기능만 화면에 노출하는 것이 목적입니다.</p>
-        <p><strong>말할 내용:</strong> 배속, 자막, 북마크, 다운로드, PiP는 엔진마다 지원 범위가 다를 수 있습니다. 사용자가 눌러보고 실패하게 두는 것이 아니라, 시작 시점에 가능한 기능만 Host와 Skin에 노출합니다.</p>
+        <p><strong>화면:</strong><br>1. 위 공식은 현재 코드 기준의 두 축입니다.<br>2. UI 가용 기능은 엔진 optional protocol 채택으로 산출합니다.<br>3. engineCapabilities는 백그라운드 유지나 command-origin 같은 런타임 정책 조정에 씁니다.</p>
+        <p><strong>말할 내용:</strong> 배속, 자막, 북마크, PiP 같은 버튼 노출은 엔진이 어떤 optional protocol을 채택했는지로 결정합니다. Host 정책은 배속 상한, 시킹 프리뷰 사용 여부, 백그라운드 재생 허용 같은 실행 조건을 조정합니다. 다운로드는 PlayerDownloadCenter 계약으로 별도 노출합니다.</p>
         <p><strong>전환:</strong> 이제 실제 조립 코드로 넘어가겠습니다. 먼저 Native engine입니다.</p>
     </aside>
 </section>
@@ -1473,19 +1493,19 @@ reduce(input, state):
                 <tbody>
                     <tr><td>더 좋은 VOD SDK 도입</td><td>새 EngineAdapter 추가</td></tr>
                     <tr><td>서비스별 UI 요구</td><td>Skin block/theme 추가</td></tr>
-                    <tr><td>기능 지원 차이</td><td>capability와 optional protocol 추가</td></tr>
+                    <tr><td>기능 지원 차이</td><td>optional protocol과 availability probe 추가</td></tr>
                     <tr><td>다운로드 정책 변경</td><td>DownloadCenter contract 확장</td></tr>
                     <tr><td>해외 서비스 요구</td><td>Host policy와 localization 주입</td></tr>
                 </tbody>
             </table>
         </div>
-        <p class="takeaway reveal">미래 변화는 adapter, capability, skin block으로 흡수합니다.</p>
+        <p class="takeaway reveal">미래 변화는 adapter, availability, DownloadCenter, skin block으로 흡수합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 20. 미래 확장 시나리오</h3>
         <p><strong>주장:</strong> 미래 변화는 Host 전체 수정이 아니라 경계 확장으로 흡수합니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 capability로 확장합니다.</p>
-        <p><strong>말할 내용:</strong> 더 좋은 VOD SDK가 나오면 Host 화면을 다시 짜는 것이 아니라 새 EngineAdapter를 추가합니다. 서비스별 UI 요구는 Skin block이나 theme으로, 해외 서비스 요구는 policy와 localization 주입으로 대응합니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 optional protocol과 availability로 확장합니다.</p>
+        <p><strong>말할 내용:</strong> 더 좋은 VOD SDK가 나오면 Host 화면을 다시 짜는 것이 아니라 새 EngineAdapter를 추가합니다. 서비스별 UI 요구는 Skin block이나 theme으로, 다운로드 정책은 DownloadCenter 계약으로, 해외 서비스 요구는 policy와 localization 주입으로 대응합니다.</p>
         <p><strong>전환:</strong> 공통 모듈이 되려면 검증 경계도 함께 분리되어야 합니다.</p>
     </aside>
 </section>
@@ -1512,7 +1532,7 @@ reduce(input, state):
                 <h3>남은 한계</h3>
                 <ul class="feature-list" style="margin-top:0.6rem;">
                     <li>Kollus PiP는 현재 capability로 열지 않습니다.</li>
-                    <li>Kollus SDK 미지원 때문에 Kollus 재생/DRM/다운로드/백그라운드 오디오는 실기기 QA가 필요합니다.</li>
+                    <li>Kollus 실재생/DRM/다운로드/백그라운드 오디오는 실기기 QA가 필요합니다.</li>
                     <li>고등 서비스 기준 UX와 새 Skin의 제스처/HUD 정렬이 더 필요합니다.</li>
                 </ul>
             </div>
@@ -1521,7 +1541,7 @@ reduce(input, state):
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 21. 검증 전략과 남은 한계</h3>
         <p><strong>주장:</strong> 공통 모듈은 코드 경계뿐 아니라 검증 경계도 가져야 합니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 표는 테스트 경계를 보여줍니다.<br>2. 오른쪽 카드는 아직 남은 한계를 보여줍니다.<br>3. Kollus 경로는 SDK 미지원 때문에 실기기 QA가 필요합니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 표는 테스트 경계를 보여줍니다.<br>2. 오른쪽 카드는 아직 남은 한계를 보여줍니다.<br>3. Kollus 실재생 경로는 실기기 QA가 필요합니다.</p>
         <p><strong>말할 내용:</strong> 상태 전이는 reducer pure test로 봅니다. SDK 이벤트 매핑은 signal mapper test로 봅니다. Core나 Skin에 SDK 타입이 새지 않는지는 boundary test로 봅니다. Kollus 재생과 DRM, 다운로드, 백그라운드 오디오는 실기기 QA로 닫아야 합니다.</p>
         <p><strong>전환:</strong> 그래서 오늘 결정할 것은 세부 구현 전체가 아니라 다음 단계입니다.</p>
     </aside>
