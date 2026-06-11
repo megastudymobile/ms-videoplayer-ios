@@ -21,8 +21,8 @@ public protocol PlayerSkin: AnyObject {
     /// 사용자 컨트롤 입력 출력. host 가 reactor / usecase 로 매핑한다.
     var onAction: ((PlayerSkinAction) -> Void)? { get set }
 
-    /// 1회 정적 구성 (제목 / 배속 상한).
-    func configure(title: String, maxPlaybackRate: Double)
+    /// 1회 정적 구성 (제목 / 허용 배속 목록).
+    func configure(title: String, availablePlaybackRates: [Double])
 
     /// 매 프레임 재생 상태 반영.
     func render(_ state: PlayerSkinState)

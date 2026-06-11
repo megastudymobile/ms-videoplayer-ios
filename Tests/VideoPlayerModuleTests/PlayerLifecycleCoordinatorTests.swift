@@ -38,7 +38,7 @@ struct PlayerLifecycleCoordinatorTests {
             sendCommand: { commandRecorder.append($0) },
             policy: PlayerFeaturePolicy(
                 allowsBackgroundPlayback: true,
-                maxPlaybackRate: 2.0,
+                allowedPlaybackRates: [1.0, 2.0],
                 allowsAutoplay: true
             ),
             engineCapabilities: [],
@@ -69,7 +69,7 @@ struct PlayerLifecycleCoordinatorTests {
             sendCommand: { commandRecorder.append($0) },
             policy: PlayerFeaturePolicy(
                 allowsBackgroundPlayback: true,
-                maxPlaybackRate: 2.0,
+                allowedPlaybackRates: [1.0, 2.0],
                 allowsAutoplay: true
             ),
             engineCapabilities: [.continuesWithoutSurface],

@@ -70,7 +70,7 @@ final class PlayerInteractor {
         self.onCommandError = onCommandError
         self.featurePolicy = PlayerFeaturePolicy(
             allowsBackgroundPlayback: PreferenceManager.isBackgroundAudioPlay,
-            maxPlaybackRate: 2.0,
+            allowedPlaybackRates: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0],
             allowsAutoplay: true,
             skipInterval: TimeInterval(PreferenceManager.seekRangeSeconds),
             allowsSeekPreview: PreferenceManager.useSeekPreview

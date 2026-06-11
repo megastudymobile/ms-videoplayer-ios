@@ -146,7 +146,7 @@ struct PlayerInterfaceTests {
             source: .url(URL(string: "https://example.com/video.mp4")!),
             policy: PlayerFeaturePolicy(
                 allowsBackgroundPlayback: false,
-                maxPlaybackRate: 1.25,
+                allowedPlaybackRates: [1.0, 1.25],
                 allowsAutoplay: false
             )
         )
@@ -156,7 +156,7 @@ struct PlayerInterfaceTests {
             Issue.record("Rate above policy should fail explicitly.")
         } catch let error as PlayerError {
             #expect(
-                error == .engineError("Playback rate 1.5x exceeds max policy rate 1.25x.")
+                error == .engineError("Playback rate 1.5x is not allowed by policy. allowed=[1.0, 1.25]")
             )
         } catch {
             Issue.record("Unexpected error: \(error)")
@@ -385,7 +385,7 @@ struct PlayerInterfaceTests {
             engineCapabilities: SeekRecordingEngine.capabilities,
             initialPolicy: PlayerFeaturePolicy(
                 allowsBackgroundPlayback: false,
-                maxPlaybackRate: 2,
+                allowedPlaybackRates: [1.0, 2.0],
                 allowsAutoplay: true,
                 skipInterval: 30
             )

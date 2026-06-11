@@ -106,7 +106,7 @@ final class PlayerViewController: UIViewController {
         deviceControl.attach(to: view)
 
         skin.onAction = { [weak self] action in self?.route(action) }
-        skin.configure(title: "VideoPlayer Example", maxPlaybackRate: interactor.featurePolicy.maxPlaybackRate)
+        skin.configure(title: "VideoPlayer Example", availablePlaybackRates: interactor.featurePolicy.allowedPlaybackRates)
         skin.setCaptionBottomInset(Metric.captionBottomInset)
         skin.setCaptionFontSize(PreferenceManager.captionFontSize)
         // 화면 녹화/미러링 감지 시 영상 영역을 차단막으로 가리고 재생을 멈춘다.
@@ -411,9 +411,9 @@ final class PlayerViewController: UIViewController {
         case .rateSelected(let rate):
             applyPlaybackRate(rate)
         case .rateStepUp:
-            applyPlaybackRate(min(viewModel.state.playbackRate + 0.1, interactor.featurePolicy.maxPlaybackRate))
+            applyPlaybackRate(adjacentAllowedRate(from: viewModel.state.playbackRate, direction: +1))
         case .rateStepDown:
-            applyPlaybackRate(max(viewModel.state.playbackRate - 0.1, 0.5))
+            applyPlaybackRate(adjacentAllowedRate(from: viewModel.state.playbackRate, direction: -1))
         case .rateToggleCenter, .ratePanelRequested:
             presentRatePanel()
         case .toggleDisplayScaling:
@@ -467,11 +467,21 @@ final class PlayerViewController: UIViewController {
 
     // MARK: - 배속 패널
 
+    /// 현재 배속에서 허용 목록상 한 칸 위/아래 배속을 돌려준다. 경계에서는 현재 값 유지.
+    private func adjacentAllowedRate(from rate: Double, direction: Int) -> Double {
+        let rates = interactor.featurePolicy.allowedPlaybackRates
+        let nearest = rates.min(by: { abs($0 - rate) < abs($1 - rate) }) ?? 1.0
+        guard let index = rates.firstIndex(of: nearest) else { return nearest }
+        let nextIndex = index + direction
+        guard rates.indices.contains(nextIndex) else { return nearest }
+        return rates[nextIndex]
+    }
+
     private func presentRatePanel() {
         emitRender(viewModel.setRatePanelPresented(true))
         let panel = PlayerPlaybackRatePanelViewController(
             initialRate: viewModel.state.playbackRate,
-            mode: .standard,
+            availableRates: interactor.featurePolicy.allowedPlaybackRates,
             isFullScreenMode: viewModel.state.isFullScreenMode
         )
         panel.onSelectRate = { [weak self, weak panel] rate, shouldDismiss in

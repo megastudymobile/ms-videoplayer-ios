@@ -8,17 +8,12 @@
 
 import UIKit
 
-/// 배속 상세 패널. 슬라이더 + ±0.1 스텝 + preset 버튼으로 배속을 변경한다.
+/// 배속 상세 패널. 슬라이더 + ±스텝 + preset 버튼으로 배속을 변경한다.
+/// 선택 가능한 배속은 host가 주입한 `availableRates` 목록으로 한정된다 —
+/// 슬라이더·±버튼 모두 목록 안의 값으로만 스냅된다.
 /// 배경 tap·preset 선택 시 dismiss, slider/± 조작 시에는 dismiss 하지 않는다.
 @MainActor
 public final class PlayerPlaybackRatePanelViewController: UIViewController {
-
-    public enum Mode {
-        /// 2배속 상한 — preset `[0.8, 1.0, 1.2, 1.5, 2.0]`, max 2.0.
-        case standard
-        /// 4배속 상한 (강의) — preset `[1.0, 1.2, 1.5, 2.0, 3.0]`, max 4.0.
-        case extended
-    }
 
     /// 사용자가 배속을 변경했을 때 호출. `shouldDismiss` 가 true 면 패널이 자동으로 닫힌다.
     public var onSelectRate: ((Double, _ shouldDismiss: Bool) -> Void)?
@@ -27,18 +22,20 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
     public var onDismiss: (() -> Void)?
 
     private let initialRate: Double
-    private let mode: Mode
+    private let availableRates: [Float]
     private let isFullScreenMode: Bool
     private let anchorFrameInPresenter: CGRect?
 
     public init(
         initialRate: Double,
-        mode: Mode,
+        availableRates: [Double],
         isFullScreenMode: Bool = false,
         anchorFrameInPresenter: CGRect? = nil
     ) {
         self.initialRate = initialRate
-        self.mode = mode
+        // 양수만, 중복 제거 후 오름차순. 비면 1.0 단일 — 정책(PlayerFeaturePolicy)과 같은 정규화.
+        let normalized = Array(Set(availableRates.filter { $0 > 0 })).sorted().map(Float.init)
+        self.availableRates = normalized.isEmpty ? [1.0] : normalized
         self.isFullScreenMode = isFullScreenMode
         self.anchorFrameInPresenter = anchorFrameInPresenter
         super.init(nibName: nil, bundle: nil)
@@ -72,14 +69,9 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
     private var isSyncingSlider = false
 
-    private var minRate: Float { Metrics.minRate }
+    private var minRate: Float { availableRates.first ?? 1.0 }
 
-    private var maxRate: Float {
-        switch mode {
-        case .standard: return Metrics.maxRateStandard
-        case .extended: return Metrics.maxRateExtended
-        }
-    }
+    private var maxRate: Float { availableRates.last ?? 1.0 }
 
     private var isPadDevice: Bool {
         traitCollection.userInterfaceIdiom == .pad
@@ -91,7 +83,7 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .clear
 
-        playbackRate = Self.snapAndClamp(Float(initialRate), min: minRate, max: maxRate)
+        playbackRate = snapToAllowed(Float(initialRate))
 
         configureHierarchy()
         configureAppearance()
@@ -271,12 +263,7 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
             view.removeFromSuperview()
         }
 
-        let presets: [Float] = {
-            switch mode {
-            case .standard: return Metrics.presetRatesUpTo2x
-            case .extended: return Metrics.presetRatesUpTo4x
-            }
-        }()
+        let presets: [Float] = availableRates
 
         let height = isPadDevice ? Metrics.presetButtonHeightPad : Metrics.presetButtonHeightPhone
         let fontSize = isPadDevice ? Metrics.presetButtonPadFontSize : Metrics.presetButtonPhoneFontSize
@@ -308,22 +295,22 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
     }
 
     @objc private func handleMinusTap() {
-        stepPlaybackRate(delta: -Metrics.step)
+        stepPlaybackRate(direction: -1)
     }
 
     @objc private func handlePlusTap() {
-        stepPlaybackRate(delta: +Metrics.step)
+        stepPlaybackRate(direction: +1)
     }
 
     @objc private func handleSliderChanged(_ sender: UISlider) {
         guard !isSyncingSlider else { return }
-        let snapped = Self.snapAndClamp(sender.value, min: minRate, max: maxRate)
+        let snapped = snapToAllowed(sender.value)
         rateLabel.text = Self.rateText(for: snapped)
     }
 
     @objc private func handleSliderFinished(_ sender: UISlider) {
         guard !isSyncingSlider else { return }
-        let snapped = Self.snapAndClamp(sender.value, min: minRate, max: maxRate)
+        let snapped = snapToAllowed(sender.value)
         sender.value = snapped
         if snapped != playbackRate {
             playbackRate = snapped
@@ -333,7 +320,7 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
     @objc private func handlePresetTap(_ sender: UIButton) {
         let raw = Float(sender.tag) / 100.0
-        let snapped = Self.snapAndClamp(raw, min: minRate, max: maxRate)
+        let snapped = snapToAllowed(raw)
         guard snapped != playbackRate else {
             onSelectRate?(Double(snapped), true)
             return
@@ -342,11 +329,19 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
         onSelectRate?(Double(snapped), true)
     }
 
-    private func stepPlaybackRate(delta: Float) {
-        let next = Self.snapAndClamp(playbackRate + delta, min: minRate, max: maxRate)
+    private func stepPlaybackRate(direction: Int) {
+        guard let index = availableRates.firstIndex(of: snapToAllowed(playbackRate)) else { return }
+        let nextIndex = index + direction
+        guard availableRates.indices.contains(nextIndex) else { return }
+        let next = availableRates[nextIndex]
         guard next != playbackRate else { return }
         playbackRate = next
         onSelectRate?(Double(next), false)
+    }
+
+    /// 주입된 허용 배속 중 가장 가까운 값으로 스냅한다.
+    private func snapToAllowed(_ value: Float) -> Float {
+        availableRates.min(by: { abs($0 - value) < abs($1 - value) }) ?? 1.0
     }
 
     private func refreshRateUI(animated: Bool) {
@@ -373,11 +368,6 @@ public final class PlayerPlaybackRatePanelViewController: UIViewController {
 
     private static func roundOneDecimal(_ value: Float) -> Float {
         (value * 10).rounded() / 10
-    }
-
-    private static func snapAndClamp(_ value: Float, min minV: Float, max maxV: Float) -> Float {
-        let snapped = roundOneDecimal(value)
-        return Swift.min(Swift.max(snapped, minV), maxV)
     }
 
     private static func circularSliderThumbImage(diameter: CGFloat, fillColor: UIColor) -> UIImage {
@@ -422,16 +412,8 @@ private extension PlayerPlaybackRatePanelViewController {
         static let presetButtonHeightPhone: CGFloat = 32
         static let presetButtonHeightPad: CGFloat = 36
 
-        static let step: Float = 0.1
         static let syncAnimationDuration: TimeInterval = 0.15
         static let sliderThumbDiameter: CGFloat = 16
-
-        static let minRate: Float = 0.5
-        static let maxRateStandard: Float = 2.0
-        static let maxRateExtended: Float = 4.0
-
-        static let presetRatesUpTo2x: [Float] = [0.8, 1.0, 1.2, 1.5, 2.0]
-        static let presetRatesUpTo4x: [Float] = [1.0, 1.2, 1.5, 2.0, 3.0]
 
         static func contentLayoutMargins(isPad: Bool) -> UIEdgeInsets {
             let vertical = isPad ? contentVerticalPaddingPad : contentVerticalPaddingPhone

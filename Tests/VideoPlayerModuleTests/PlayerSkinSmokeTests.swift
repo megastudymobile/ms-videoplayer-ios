@@ -114,7 +114,7 @@ struct PlayerSkinSmokeTests {
         let skin: PlayerSkin = AssembledPlayerSkin()
         #expect(skin.view.subviews.isEmpty == false)
 
-        skin.configure(title: "T", maxPlaybackRate: 4.0)
+        skin.configure(title: "T", availablePlaybackRates: [1.0, 2.0, 4.0])
         skin.updateSkipIntervalLabel(seconds: 10)
         skin.setExtraControls([
             ExtraControl(id: "q", iconName: "PlayerWriteNormal", title: "Q", placement: .topMenu),

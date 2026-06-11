@@ -49,7 +49,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
 
     // MARK: PlayerSkin
-    public func configure(title: String, maxPlaybackRate: Double) {
+    public func configure(title: String, availablePlaybackRates: [Double]) {
         blocks.compactMap { $0 as? TitleBlock }.forEach { $0.setTitle(title) }
     }
     public func updateSkipIntervalLabel(seconds: Int) {

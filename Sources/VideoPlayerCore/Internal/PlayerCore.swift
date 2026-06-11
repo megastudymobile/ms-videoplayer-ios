@@ -404,7 +404,7 @@ public actor PlayerCore {
             return (
                 PlayerFeaturePolicy(
                     allowsBackgroundPlayback: false,
-                    maxPlaybackRate: policy.maxPlaybackRate,
+                    allowedPlaybackRates: policy.allowedPlaybackRates,
                     allowsAutoplay: policy.allowsAutoplay,
                     skipInterval: policy.skipInterval,
                     nextEpisodeButtonLeadTime: policy.nextEpisodeButtonLeadTime
@@ -421,8 +421,8 @@ public actor PlayerCore {
             throw PlayerError.engineError("Playback rate must be greater than 0. rate=\(rate)")
         }
 
-        guard rate <= currentPolicy.maxPlaybackRate else {
-            throw PlayerError.engineError("Playback rate \(rate)x exceeds max policy rate \(currentPolicy.maxPlaybackRate)x.")
+        guard currentPolicy.allowsPlaybackRate(rate) else {
+            throw PlayerError.engineError("Playback rate \(rate)x is not allowed by policy. allowed=\(currentPolicy.allowedPlaybackRates)")
         }
 
         guard let rateEngine = engine as? any PlayerPlaybackRateEngine else {
@@ -439,7 +439,7 @@ public actor PlayerCore {
 
         currentPolicy = PlayerFeaturePolicy(
             allowsBackgroundPlayback: currentPolicy.allowsBackgroundPlayback,
-            maxPlaybackRate: currentPolicy.maxPlaybackRate,
+            allowedPlaybackRates: currentPolicy.allowedPlaybackRates,
             allowsAutoplay: currentPolicy.allowsAutoplay,
             skipInterval: interval,
             nextEpisodeButtonLeadTime: currentPolicy.nextEpisodeButtonLeadTime
