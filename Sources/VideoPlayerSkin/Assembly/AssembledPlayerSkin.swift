@@ -20,6 +20,8 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private let loadingOverlay: PlayerSkinLoadingOverlay
     private let gestureHUDOverlay: PlayerSkinGestureHUDOverlay
     private let seekPreviewPresenter = PlayerSeekPreviewPresenter()
+    /// 스크럽 동안 블록 렌더를 보류하기 위한 플래그 — seekBegan/seekEnded 가로채기로 갱신.
+    private var isScrubbing = false
     private let captureShield = PlayerScreenCaptureShieldView()
     private var captureMonitor: PlayerScreenCaptureMonitor?
     private var isCaptureProtectionEnabled = false
@@ -40,7 +42,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         buildSkeleton()
         assembleBlocks()
         configureCaptureMonitor()
-        render(.initial)
+        forceRender(.initial)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
 
@@ -56,9 +58,25 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         blocks.compactMap { $0 as? TopMenuExtraControlsBlock }.forEach { $0.setExtraControls(controls) }
         blocks.compactMap { $0 as? ExtraControlsRailBlock }.forEach { $0.setExtraControls(controls) }
         blocks.compactMap { $0 as? ExtraFloatingBlock }.forEach { $0.setExtraControls(controls) }
-        render(latestState)
+        forceRender(latestState)
     }
     public func render(_ state: PlayerSkinState) {
+        // 동일 상태 재렌더 스킵.
+        guard state != latestState else { return }
+        // 스크럽 중에는 블록 전체 렌더(아이콘 재조회 포함)를 보류한다 — 시간 갱신으로
+        // 상태가 매 이벤트 달라 dedup으로 못 거르고, 터치 추적과 경합해 프레임이 끊긴다
+        // (실기기 프로파일 확인). 보류분은 seekEnded에서 한 번에 따라잡는다.
+        if isScrubbing {
+            latestState = state
+            // 잠금 전환만은 즉시 반영 — 드래그 중 모달을 닫아야 한다.
+            if state.isLocked { seekPreviewPresenter.end() }
+            return
+        }
+        forceRender(state)
+    }
+
+    /// 상태가 같아도 다시 그려야 하는 경로(초기 1회, ExtraControl 재주입)용.
+    private func forceRender(_ state: PlayerSkinState) {
         latestState = state
         // 드래그 도중 잠금되면 touchCancel을 기다리지 않고 모달을 닫는다.
         if state.isLocked { seekPreviewPresenter.end() }
@@ -309,6 +327,7 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
     private func interceptForSeekPreview(_ action: PlayerSkinAction) {
         switch action {
         case .seekBegan:
+            isScrubbing = true
             guard latestState.isSeekEnabled, latestState.duration > 0 else { return }
             // 캡처 중엔 모달을 띄우지 않는다 — 차단막이 가리긴 하지만 디코드 비용도 아낀다.
             if isCaptureProtectionEnabled, isScreenCaptured { return }
@@ -319,7 +338,10 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         case .seekPreviewChanged(let time):
             seekPreviewPresenter.requestImage(at: time)
         case .seekEnded:
+            isScrubbing = false
             seekPreviewPresenter.end()
+            // 스크럽 동안 보류한 상태를 한 번에 따라잡는다.
+            forceRender(latestState)
         default:
             break
         }
