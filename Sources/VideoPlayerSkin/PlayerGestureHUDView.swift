@@ -131,13 +131,13 @@ extension PlayerGestureHUDView: PlayerSkinGestureHUDOverlay {
 
 private extension PlayerGestureHUDView {
     func configureUI() {
-        accessibilityIdentifier = "lecturePlayer.gestureHUDView"
+        accessibilityIdentifier = "videoPlayer.skin.gestureHUDView"
         isHidden = true
         alpha = 0
         isUserInteractionEnabled = false
 
         contentView.backgroundColor = .clear
-        rateBadgeView.accessibilityIdentifier = "lecturePlayer.gestureHUD.rateBadgeView"
+        rateBadgeView.accessibilityIdentifier = "videoPlayer.skin.gestureHUD.rateBadgeView"
         rateBadgeView.backgroundColor = UIColor.black.withAlphaComponent(0.55)
         rateBadgeView.isHidden = true
         rateBadgeView.clipsToBounds = true
@@ -159,11 +159,11 @@ private extension PlayerGestureHUDView {
         detailLabel.numberOfLines = 1
         detailLabel.adjustsFontSizeToFitWidth = true
         detailLabel.minimumScaleFactor = 0.75
-        rateBadgeLabel.accessibilityIdentifier = "lecturePlayer.gestureHUD.rateBadgeLabel"
+        rateBadgeLabel.accessibilityIdentifier = "videoPlayer.skin.gestureHUD.rateBadgeLabel"
         rateBadgeLabel.backgroundColor = .clear
         rateBadgeLabel.textAlignment = .center
         rateBadgeLabel.numberOfLines = 1
-        rateBadgeImageView.accessibilityIdentifier = "lecturePlayer.gestureHUD.rateBadgeImageView"
+        rateBadgeImageView.accessibilityIdentifier = "videoPlayer.skin.gestureHUD.rateBadgeImageView"
         rateBadgeImageView.backgroundColor = .clear
         rateBadgeImageView.contentMode = .scaleAspectFit
 

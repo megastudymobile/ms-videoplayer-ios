@@ -74,8 +74,8 @@ public final class ProgressBarBlock: UIView, PlayerSkinBlock {
     private func configure() {
         slider.minimumValue = 0; slider.maximumValue = 1
         currentTimeLabel.textAlignment = .left; durationLabel.textAlignment = .right
-        screenModeButton.accessibilityIdentifier = "lecturePlayer.skin.screenModeButton"
-        slider.accessibilityIdentifier = "lecturePlayer.skin.progressSlider"
+        screenModeButton.accessibilityIdentifier = "videoPlayer.skin.screenModeButton"
+        slider.accessibilityIdentifier = "videoPlayer.skin.progressSlider"
         [slider, currentTimeLabel, durationLabel, screenModeButton].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false; addSubview($0)
         }

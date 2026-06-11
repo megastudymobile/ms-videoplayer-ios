@@ -7,7 +7,7 @@ public final class CloseButtonBlock: UIView, PlayerSkinBlock {
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
-        pin(button); button.accessibilityIdentifier = "lecturePlayer.skin.closeButton"
+        pin(button); button.accessibilityIdentifier = "videoPlayer.skin.closeButton"
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }

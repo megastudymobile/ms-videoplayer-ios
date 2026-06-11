@@ -56,7 +56,7 @@ public final class ExtraFloatingBlock: UIView, PlayerSkinBlock {
         for control in controls where control.placement == .floating {
             let button = UIButton(type: .system)
             button.layer.masksToBounds = true
-            button.accessibilityIdentifier = "lecturePlayer.skin.extra.\(control.id)"
+            button.accessibilityIdentifier = "videoPlayer.skin.extra.\(control.id)"
             button.addTarget(self, action: #selector(tap(_:)), for: .touchUpInside)
             stack.addArrangedSubview(button)
             let width = button.widthAnchor.constraint(equalToConstant: 85)

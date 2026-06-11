@@ -56,7 +56,7 @@ public final class RateControlBlock: UIView, PlayerSkinBlock {
         centerButton.layer.masksToBounds = true
         centerButton.titleLabel?.adjustsFontSizeToFitWidth = true
         centerButton.titleLabel?.minimumScaleFactor = 0.7
-        centerButton.accessibilityIdentifier = "lecturePlayer.skin.rateButton"
+        centerButton.accessibilityIdentifier = "videoPlayer.skin.rateButton"
         upButton.accessibilityLabel = "배속 빠르게"
         downButton.accessibilityLabel = "배속 느리게"
 

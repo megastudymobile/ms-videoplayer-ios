@@ -74,8 +74,8 @@ extension PlayerCaptionView: PlayerSkinCaptionOverlay {
 private extension PlayerCaptionView {
     func configureUI() {
         isUserInteractionEnabled = false
-        accessibilityIdentifier = "lecturePlayer.captionView"
-        captionStackView.accessibilityIdentifier = "lecturePlayer.caption.stackView"
+        accessibilityIdentifier = "videoPlayer.skin.captionView"
+        captionStackView.accessibilityIdentifier = "videoPlayer.skin.caption.stackView"
         captionStackView.axis = .vertical
         captionStackView.alignment = .center
         captionStackView.distribution = .fill
@@ -95,8 +95,8 @@ private extension PlayerCaptionView {
             $0.layer.shouldRasterize = true
             $0.layer.rasterizationScale = UIScreen.main.scale
         }
-        primaryLabel.accessibilityIdentifier = "lecturePlayer.caption.primaryLabel"
-        secondaryLabel.accessibilityIdentifier = "lecturePlayer.caption.secondaryLabel"
+        primaryLabel.accessibilityIdentifier = "videoPlayer.skin.caption.primaryLabel"
+        secondaryLabel.accessibilityIdentifier = "videoPlayer.skin.caption.secondaryLabel"
 
         captionStackView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(captionStackView)

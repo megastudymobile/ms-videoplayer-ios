@@ -35,9 +35,9 @@ struct PlayerGestureHUDViewTests {
         let hud = PlayerGestureHUDView()
         hud.presentRate(2.0)
 
-        let badge = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeView")
-        let label = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeLabel") as? UILabel
-        let image = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeImageView") as? UIImageView
+        let badge = hud.descendant(accessibilityIdentifier: "videoPlayer.skin.gestureHUD.rateBadgeView")
+        let label = hud.descendant(accessibilityIdentifier: "videoPlayer.skin.gestureHUD.rateBadgeLabel") as? UILabel
+        let image = hud.descendant(accessibilityIdentifier: "videoPlayer.skin.gestureHUD.rateBadgeImageView") as? UIImageView
 
         #expect(hud.isHidden == false)
         #expect(badge?.isHidden == false)
@@ -53,7 +53,7 @@ struct PlayerGestureHUDViewTests {
         let hud = PlayerGestureHUDView()
         hud.presentRate(1.5)
 
-        let label = hud.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUD.rateBadgeLabel") as? UILabel
+        let label = hud.descendant(accessibilityIdentifier: "videoPlayer.skin.gestureHUD.rateBadgeLabel") as? UILabel
         #expect(label?.attributedText?.string == "1.5배속")
     }
 }

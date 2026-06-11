@@ -66,7 +66,7 @@ public final class TopMenuExtraControlsBlock: UIView, PlayerSkinBlock {
                 theme: theme
             )
             button.accessibilityLabel = control.title
-            button.accessibilityIdentifier = "lecturePlayer.skin.extra.\(control.id)"
+            button.accessibilityIdentifier = "videoPlayer.skin.extra.\(control.id)"
             button.addTarget(self, action: #selector(tap(_:)), for: .touchUpInside)
             stack.addArrangedSubview(button)
             buttons.append((control.id, button))

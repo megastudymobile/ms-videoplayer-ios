@@ -115,8 +115,8 @@ struct PlayerSkinSmokeTests {
                                       isFullScreenMode: true, isLocked: true, layoutMode: .fullScreen))
         skin.view.layoutIfNeeded()
 
-        let playButton = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.playPauseButton")
-        let progressSlider = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.progressSlider") as? UIControl
+        let playButton = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.playPauseButton")
+        let progressSlider = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.progressSlider") as? UIControl
 
         #expect(playButton?.isEffectivelyHidden == true)
         #expect(progressSlider?.isEnabled == false)

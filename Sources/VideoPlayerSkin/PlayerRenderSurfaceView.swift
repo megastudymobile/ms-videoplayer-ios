@@ -72,7 +72,7 @@ public final class PlayerRenderSurfaceView: UIView {
         placeholderLabel.textColor = UIColor.white.withAlphaComponent(0.7)
         placeholderLabel.font = .systemFont(ofSize: 15, weight: .regular)
         placeholderLabel.textAlignment = .center
-        placeholderLabel.accessibilityIdentifier = "lecturePlayer.renderSurface.placeholderLabel"
+        placeholderLabel.accessibilityIdentifier = "videoPlayer.skin.renderSurface.placeholderLabel"
 
         addSubview(placeholderLabel)
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -101,7 +101,7 @@ public final class PlayerRenderSurfaceView: UIView {
         unsupportedOverlay.alignment = .center
         unsupportedOverlay.spacing = 12
         unsupportedOverlay.isHidden = true
-        unsupportedOverlay.accessibilityIdentifier = "lecturePlayer.renderSurface.unsupportedOverlay"
+        unsupportedOverlay.accessibilityIdentifier = "videoPlayer.skin.renderSurface.unsupportedOverlay"
         unsupportedOverlay.addArrangedSubview(unsupportedIconView)
         unsupportedOverlay.addArrangedSubview(unsupportedLabel)
 

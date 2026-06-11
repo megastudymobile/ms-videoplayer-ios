@@ -7,7 +7,7 @@ public final class DisplayScaleBlock: UIView, PlayerSkinBlock {
     private let button = PlayerSkinIconButtonFactory.make()
     public override init(frame: CGRect) {
         super.init(frame: frame); pin(button)
-        button.accessibilityIdentifier = "lecturePlayer.skin.displayScalingButton"
+        button.accessibilityIdentifier = "videoPlayer.skin.displayScalingButton"
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }

@@ -18,7 +18,7 @@ public final class RateButtonBlock: UIView, PlayerSkinBlock {
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.titleLabel?.minimumScaleFactor = 0.7
         button.layer.masksToBounds = true
-        button.accessibilityIdentifier = "lecturePlayer.skin.rateButton"
+        button.accessibilityIdentifier = "videoPlayer.skin.rateButton"
         addSubview(button)
         let width = button.widthAnchor.constraint(equalToConstant: 36)
         let height = button.heightAnchor.constraint(equalToConstant: 36)

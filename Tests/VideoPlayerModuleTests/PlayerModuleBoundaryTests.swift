@@ -16,6 +16,7 @@ struct PlayerModuleBoundaryTests {
             "QnA",
             "Megaling",
             "AISummary",
+            "lecturePlayer.",
             // Core 도메인에 벤더 케이스 재유입 금지 (PlaybackSource는 .mediaKey로 중립화됨)
             "case kollus"
         ]

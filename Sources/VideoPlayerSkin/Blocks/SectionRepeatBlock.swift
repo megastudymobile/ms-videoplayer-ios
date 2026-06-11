@@ -6,7 +6,7 @@ public final class SectionRepeatBlock: UIView, PlayerSkinBlock {
     private let button = PlayerSkinIconButtonFactory.make()
     public override init(frame: CGRect) {
         super.init(frame: frame); pin(button)
-        button.accessibilityIdentifier = "lecturePlayer.skin.sectionRepeatButton"; button.accessibilityLabel = "구간 반복"
+        button.accessibilityIdentifier = "videoPlayer.skin.sectionRepeatButton"; button.accessibilityLabel = "구간 반복"
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }

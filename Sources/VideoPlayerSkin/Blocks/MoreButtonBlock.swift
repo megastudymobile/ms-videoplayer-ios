@@ -6,7 +6,7 @@ public final class MoreButtonBlock: UIView, PlayerSkinBlock {
     private let button = PlayerSkinIconButtonFactory.make()
     public override init(frame: CGRect) {
         super.init(frame: frame); pin(button)
-        button.accessibilityIdentifier = "lecturePlayer.skin.moreButton"; button.accessibilityLabel = "더보기"
+        button.accessibilityIdentifier = "videoPlayer.skin.moreButton"; button.accessibilityLabel = "더보기"
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }

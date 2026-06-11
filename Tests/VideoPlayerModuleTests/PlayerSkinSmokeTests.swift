@@ -152,9 +152,9 @@ struct PlayerSkinSmokeTests {
         skin.render(.initial.updating(isLoading: false, isFullScreenMode: true, layoutMode: .fullScreen))
         skin.view.layoutIfNeeded()
 
-        #expect(skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.extra.top") != nil)
-        #expect(skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.extra.left") != nil)
-        #expect(skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.extra.float") != nil)
+        #expect(skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.extra.top") != nil)
+        #expect(skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.extra.left") != nil)
+        #expect(skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.extra.float") != nil)
     }
 
     @Test("구간반복 range block은 started/looping에서 렌더링")
@@ -168,8 +168,8 @@ struct PlayerSkinSmokeTests {
         ))
         skin.view.layoutIfNeeded()
 
-        let startButton = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.sectionRepeatStartButton")
-        let endButton = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.sectionRepeatEndButton")
+        let startButton = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.sectionRepeatStartButton")
+        let endButton = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.sectionRepeatEndButton")
         #expect(startButton?.isHidden == false)
         #expect(endButton?.isHidden == false)
     }
@@ -186,8 +186,8 @@ struct PlayerSkinSmokeTests {
         ))
         skin.view.layoutIfNeeded()
 
-        let playButton = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.playPauseButton")
-        let progressSlider = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.skin.progressSlider") as? UIControl
+        let playButton = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.playPauseButton")
+        let progressSlider = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.progressSlider") as? UIControl
         #expect(playButton?.isEffectivelyHidden == true)
         #expect(progressSlider?.isEnabled == false)
     }
@@ -203,7 +203,7 @@ struct PlayerSkinSmokeTests {
     @Test("AssembledPlayerSkin은 제스처 HUD를 내장하고 PlayerSkin 계약으로 표시한다")
     func assembledPlayerSkinOwnsGestureHUD() {
         let skin: PlayerSkin = AssembledPlayerSkin()
-        let hud = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.gestureHUDView")
+        let hud = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.gestureHUDView")
 
         #expect(hud != nil)
         #expect(hud?.isHidden == true)
@@ -220,8 +220,8 @@ struct PlayerSkinSmokeTests {
     @Test("AssembledPlayerSkin은 자막 overlay를 내장하고 PlayerSkin 계약으로 갱신한다")
     func assembledPlayerSkinOwnsCaptionOverlay() {
         let skin: PlayerSkin = AssembledPlayerSkin()
-        let caption = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.captionView") as? PlayerCaptionView
-        let primaryLabel = skin.view.descendant(accessibilityIdentifier: "lecturePlayer.caption.primaryLabel") as? UILabel
+        let caption = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.captionView") as? PlayerCaptionView
+        let primaryLabel = skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.caption.primaryLabel") as? UILabel
 
         #expect(caption != nil)
         #expect(caption?.isHidden == true)
@@ -286,7 +286,7 @@ struct PlayerSkinSmokeTests {
     @Test("HTML 자막의 끝 BR은 빈 줄 높이를 만들지 않는다")
     func captionTrimsTrailingHTMLLineBreak() {
         let caption = PlayerCaptionView()
-        let primaryLabel = caption.descendant(accessibilityIdentifier: "lecturePlayer.caption.primaryLabel") as? UILabel
+        let primaryLabel = caption.descendant(accessibilityIdentifier: "videoPlayer.skin.caption.primaryLabel") as? UILabel
 
         caption.applyFontSize(18)
         caption.setVisible(true)
@@ -305,7 +305,7 @@ struct PlayerSkinSmokeTests {
         primaryOnly.layoutIfNeeded()
 
         let primaryOnlyLabel = try #require(
-            primaryOnly.descendant(accessibilityIdentifier: "lecturePlayer.caption.primaryLabel") as? UILabel
+            primaryOnly.descendant(accessibilityIdentifier: "videoPlayer.skin.caption.primaryLabel") as? UILabel
         )
         let primaryStack = try #require(primaryOnlyLabel.superview as? UIStackView)
         #expect(primaryStack.axis == .vertical)
@@ -318,7 +318,7 @@ struct PlayerSkinSmokeTests {
         secondaryOnly.layoutIfNeeded()
 
         let secondaryOnlyLabel = try #require(
-            secondaryOnly.descendant(accessibilityIdentifier: "lecturePlayer.caption.secondaryLabel") as? UILabel
+            secondaryOnly.descendant(accessibilityIdentifier: "videoPlayer.skin.caption.secondaryLabel") as? UILabel
         )
         let secondaryStack = try #require(secondaryOnlyLabel.superview as? UIStackView)
         #expect(secondaryStack.axis == .vertical)
@@ -333,10 +333,10 @@ struct PlayerSkinSmokeTests {
         dualCaption.layoutIfNeeded()
 
         let primaryLabel = try #require(
-            dualCaption.descendant(accessibilityIdentifier: "lecturePlayer.caption.primaryLabel") as? UILabel
+            dualCaption.descendant(accessibilityIdentifier: "videoPlayer.skin.caption.primaryLabel") as? UILabel
         )
         let secondaryLabel = try #require(
-            dualCaption.descendant(accessibilityIdentifier: "lecturePlayer.caption.secondaryLabel") as? UILabel
+            dualCaption.descendant(accessibilityIdentifier: "videoPlayer.skin.caption.secondaryLabel") as? UILabel
         )
         #expect(primaryLabel.superview === secondaryLabel.superview)
         #expect(primaryLabel.isHidden == false)

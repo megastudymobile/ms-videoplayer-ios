@@ -67,8 +67,8 @@ public final class SectionRepeatRangeBlock: UIView, PlayerSkinBlock {
                 $0.heightAnchor.constraint(equalToConstant: 40)
             ])
         }
-        startButton.accessibilityIdentifier = "lecturePlayer.skin.sectionRepeatStartButton"
-        endButton.accessibilityIdentifier = "lecturePlayer.skin.sectionRepeatEndButton"
+        startButton.accessibilityIdentifier = "videoPlayer.skin.sectionRepeatStartButton"
+        endButton.accessibilityIdentifier = "videoPlayer.skin.sectionRepeatEndButton"
         startButton.addTarget(self, action: #selector(startTap), for: .touchUpInside)
         endButton.addTarget(self, action: #selector(endTap), for: .touchUpInside)
 

@@ -6,7 +6,7 @@ public final class LockButtonBlock: UIView, PlayerSkinBlock {
     private let button = PlayerSkinIconButtonFactory.make()
     public override init(frame: CGRect) {
         super.init(frame: frame); pin(button)
-        button.accessibilityIdentifier = "lecturePlayer.skin.lockButton"
+        button.accessibilityIdentifier = "videoPlayer.skin.lockButton"
         button.addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
