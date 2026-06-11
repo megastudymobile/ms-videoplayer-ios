@@ -26,6 +26,7 @@ final class BookmarkButtonBlock: PlayerSkinBlock {
     var onAction: ((PlayerSkinAction) -> Void)?
 
     init() {
+        button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "bookmark"), for: .normal)
         button.tintColor = .white
         button.accessibilityLabel = "북마크"

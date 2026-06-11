@@ -48,6 +48,7 @@ extension PlayerSkinBlueprint {
             visibleSlots: [
                 .verticalSplit: [
                     .topLeading,
+                    .topCenter,
                     .topTrailing,
                     .centerControls,
                     .bottomBar,

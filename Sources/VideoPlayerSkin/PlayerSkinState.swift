@@ -29,6 +29,7 @@ public struct PlayerSkinState: Equatable {
 
     public var isPlaying: Bool
     public var isLoading: Bool
+    public var isLive: Bool
     public var isSeekEnabled: Bool
     public var controlsVisible: Bool
     public var currentTime: TimeInterval
@@ -51,6 +52,7 @@ public struct PlayerSkinState: Equatable {
     public static let initial = PlayerSkinState(
         isPlaying: false,
         isLoading: true,
+        isLive: false,
         isSeekEnabled: false,
         controlsVisible: true,
         currentTime: 0,
@@ -68,6 +70,7 @@ public struct PlayerSkinState: Equatable {
     public init(
         isPlaying: Bool,
         isLoading: Bool,
+        isLive: Bool = false,
         isSeekEnabled: Bool,
         controlsVisible: Bool,
         currentTime: TimeInterval,
@@ -86,6 +89,7 @@ public struct PlayerSkinState: Equatable {
     ) {
         self.isPlaying = isPlaying
         self.isLoading = isLoading
+        self.isLive = isLive
         self.isSeekEnabled = isSeekEnabled
         self.controlsVisible = controlsVisible
         self.currentTime = currentTime
@@ -120,6 +124,7 @@ public struct PlayerSkinState: Equatable {
         self.init(
             isPlaying: playbackState.status == .playing,
             isLoading: playbackState.status.isLoading || playbackState.isBuffering,
+            isLive: playbackState.isLive,
             isSeekEnabled: sanitizedDuration > 0 && playbackState.isLive == false,
             controlsVisible: controlsVisible,
             currentTime: sanitizedCurrentTime,
@@ -138,6 +143,7 @@ public struct PlayerSkinState: Equatable {
     public func updating(
         isPlaying: Bool? = nil,
         isLoading: Bool? = nil,
+        isLive: Bool? = nil,
         isSeekEnabled: Bool? = nil,
         controlsVisible: Bool? = nil,
         currentTime: TimeInterval? = nil,
@@ -166,6 +172,7 @@ public struct PlayerSkinState: Equatable {
         return PlayerSkinState(
             isPlaying: isPlaying ?? self.isPlaying,
             isLoading: isLoading ?? self.isLoading,
+            isLive: isLive ?? self.isLive,
             isSeekEnabled: isSeekEnabled ?? self.isSeekEnabled,
             controlsVisible: controlsVisible ?? self.controlsVisible,
             currentTime: currentTime ?? self.currentTime,

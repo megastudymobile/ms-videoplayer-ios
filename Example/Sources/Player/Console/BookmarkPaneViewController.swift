@@ -16,6 +16,12 @@ final class BookmarkPaneViewController: UIViewController {
     private weak var channel: PlayerControlChannel?
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var bookmarks: [Bookmark] = []
+    private var supportsBookmarks: Bool {
+        channel?.availableFeatures.contains(.bookmarks) ?? false
+    }
+    private var supportsBookmarkRemoval: Bool {
+        channel?.availableFeatures.contains(.titledBookmarks) ?? false
+    }
 
     init(channel: PlayerControlChannel) {
         self.channel = channel
@@ -39,7 +45,6 @@ final class BookmarkPaneViewController: UIViewController {
 
     /// 빈 상태/미지원 안내 — 엔진이 북마크 미지원이면 추가 행도 의미가 없으므로 명시한다.
     private func updateBackgroundMessage() {
-        let supportsBookmarks = channel?.availableFeatures.contains(.bookmarks) ?? false
         let message: String?
         if supportsBookmarks == false {
             message = "현재 엔진은 북마크를 지원하지 않습니다"
@@ -103,7 +108,7 @@ extension BookmarkPaneViewController: UITableViewDataSource, UITableViewDelegate
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        section == 0 ? 1 : bookmarks.count
+        section == 0 ? (supportsBookmarks ? 1 : 0) : bookmarks.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -124,8 +129,10 @@ extension BookmarkPaneViewController: UITableViewDataSource, UITableViewDelegate
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         if indexPath.section == 0 {
+            guard supportsBookmarks else { return }
             channel?.addBookmarkAtCurrentTime()
         } else {
+            guard bookmarks.indices.contains(indexPath.row) else { return }
             channel?.seek(to: bookmarks[indexPath.row].position)
         }
     }
@@ -134,7 +141,7 @@ extension BookmarkPaneViewController: UITableViewDataSource, UITableViewDelegate
         _ tableView: UITableView,
         canEditRowAt indexPath: IndexPath
     ) -> Bool {
-        indexPath.section == 1
+        indexPath.section == 1 && supportsBookmarkRemoval
     }
 
     func tableView(
@@ -142,7 +149,11 @@ extension BookmarkPaneViewController: UITableViewDataSource, UITableViewDelegate
         commit editingStyle: UITableViewCell.EditingStyle,
         forRowAt indexPath: IndexPath
     ) {
-        guard editingStyle == .delete, indexPath.section == 1 else { return }
+        guard editingStyle == .delete,
+              indexPath.section == 1,
+              supportsBookmarkRemoval,
+              bookmarks.indices.contains(indexPath.row)
+        else { return }
         channel?.removeBookmark(at: bookmarks[indexPath.row].position)
         // 엔진의 bookmarksDidLoad 재방출을 기다리지 않고 즉시 로컬 반영 (낙관적 갱신).
         bookmarks.remove(at: indexPath.row)

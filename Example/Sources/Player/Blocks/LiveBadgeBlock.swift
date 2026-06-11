@@ -26,7 +26,6 @@ final class LiveBadgeBlock: PlayerSkinBlock {
     }
 
     func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
-        // isSeekEnabled=false = 라이브(또는 duration 미해석). 로딩 중 오표시는 isLoading으로 차단.
-        label.isHidden = state.isSeekEnabled || state.isLoading
+        label.isHidden = state.isLive == false || state.isLoading
     }
 }
