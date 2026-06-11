@@ -803,7 +803,7 @@ Title: 눌러보고 실패하는 기능을 만들지 않습니다.
 
 Cards:
 
-- EngineCapabilities: 백그라운드 재생, surface 유지, PiP 같은 엔진 특성 선언
+- EngineRuntimeTraits: 백그라운드 재생, surface 유지, PiP 같은 엔진 특성 선언
 - Optional protocols: 배속, 자막, 북마크, 미리보기, 디스플레이, 다운로드 등 기능별 지원 선언
 - PlayerFeatureAvailability: 앱 정책과 엔진 지원의 교집합만 UI에 노출
 
@@ -860,7 +860,7 @@ Code note:
 ```swift
 let module = await PlayerModuleWiring.makeModule(
     engine: AVPlayerAdapter(),
-    engineCapabilities: AVPlayerAdapter.capabilities
+    engineRuntimeTraits: AVPlayerAdapter.runtimeTraits
 )
 
 for await state in module.core.stateStream {
@@ -1232,7 +1232,7 @@ Cards:
 
 - mandatory / PlayerEngineAdapter: prepare · play · pause · seek · stop — 전 명령 async throws. 실패 가능성을 숨기지 않습니다.
 - optional × 12 / 기능별 프로토콜: rate · subtitle · bookmark · zoom · streaming · PiP · display · metadata · preview · background audio …
-- 기능 가용성 사전 협상 — PlayerFeatureAvailability: 앱 정책(PlayerFeaturePolicy) ∩ 엔진 실제 지원(EngineCapabilities) = 화면에 노출할 기능. Skin 버튼이 시작 시점에 게이트됩니다 — 눌러보고 실패하는 UX 없음.
+- 기능 가용성 사전 협상 — PlayerFeatureAvailability: 앱 정책(PlayerFeaturePolicy) ∩ 엔진 실제 지원(EngineRuntimeTraits) = 화면에 노출할 기능. Skin 버튼이 시작 시점에 게이트됩니다 — 눌러보고 실패하는 UX 없음.
 
 ### 개선 후보
 
@@ -1271,7 +1271,7 @@ Title: 재생 품질 이슈도 같은 원리로.
 
 | 레거시 문제 | 해결 |
 | --- | --- |
-| play 직후 배속 설정 실패 | emitsObservedCommandState capability — 엔진별 콜백 권위 차이 흡수 |
+| play 직후 배속 설정 실패 | emitsAuthoritativeStateEvents capability — 엔진별 콜백 권위 차이 흡수 |
 | 연타 seek 끊김 | seek chase — in-flight seek 1개만 유지, 최신 목표만 추적 |
 | 만료 라이선스 사후 감지 | KollusOfflinePlaybackValidator — 재생 전 DRM 4조건 사전 검증 |
 | 다운로드가 앱 코드와 얽힘 | PlayerDownloadCenter 중립 프로토콜 — Kollus 타입은 조립 지점에만 |
@@ -1319,7 +1319,7 @@ Title: 일반 URL 재생 — 전부입니다.
 ```swift
 let module = await PlayerModuleWiring.makeModule(
     engine: AVPlayerAdapter(),
-    engineCapabilities: AVPlayerAdapter.capabilities)
+    engineRuntimeTraits: AVPlayerAdapter.runtimeTraits)
 
 Task { for await state in module.core.stateStream { render(state) } }
 

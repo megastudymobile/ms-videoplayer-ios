@@ -218,7 +218,7 @@ Swift 예시:
 ```swift
 let policy = PlayerFeaturePolicy(
     allowsBackgroundPlayback: true,
-    maxPlaybackRate: 2.0,
+    allowedPlaybackRates: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0],
     allowsAutoplay: true,
     skipInterval: 10
 )
@@ -488,7 +488,7 @@ flowchart LR
 
 ```text
 execute(command):
-    negotiatedPolicy = policy ∩ engine.capabilities
+    negotiatedPolicy = policy ∩ engine.runtimeTraits
 
     try await engine.execute(command)
 
@@ -586,7 +586,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     Policy[앱 정책<br/>PlayerFeaturePolicy] --> Intersect[교집합 계산]
-    Capability[엔진 지원<br/>EngineCapabilities + optional protocols] --> Intersect
+    Capability[엔진 지원<br/>EngineRuntimeTraits + optional protocols] --> Intersect
     Intersect --> Available[PlayerFeatureAvailability]
     Available -->|지원| Show[UI 노출 + 명령 허용]
     Available -->|미지원| Hide[UI 숨김 또는 명시 거부]
@@ -599,7 +599,7 @@ availability(feature):
     if appPolicy.disables(feature):
         return disabledByPolicy
 
-    if engineCapabilities.missing(feature):
+    if engineRuntimeTraits.missing(feature):
         return unavailable(reason: missingEngineCapability)
 
     if engine does not conform to requiredProtocol(feature):
@@ -684,7 +684,7 @@ refreshPresentationMetrics():
 ```swift
 let module = await PlayerModuleWiring.makeModule(
     engine: AVPlayerAdapter(),
-    engineCapabilities: AVPlayerAdapter.capabilities
+    engineRuntimeTraits: AVPlayerAdapter.runtimeTraits
 )
 
 let stateTask = Task {

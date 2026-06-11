@@ -1833,7 +1833,7 @@ window.__initialSlideHash = window.location.hash;
                 <span class="filename">Host assembly pseudo Swift</span>
 <pre><span class="kw">let</span> policy = <span class="ty">PlayerFeaturePolicy</span>(
     allowsBackgroundPlayback: <span class="kw">true</span>,
-    maxPlaybackRate: 2.0,
+    allowedPlaybackRates: [0.5, 0.8, 1.0, 1.2, 1.5, 2.0],
     allowsAutoplay: <span class="kw">true</span>,
     skipInterval: 10
 )
@@ -1989,9 +1989,9 @@ reduce(currentState, input):
         <h2 class="reveal">엔진 계약은 명령 5개와 출력 1개</h2>
         <div class="split-visual reveal">
             <div class="code-editor">
-                <span class="filename">PlayerEngineAdapter.swift · 모든 엔진의 공통 계약</span>
+                <span class="filename">PlayerPlaybackEngine.swift · 모든 엔진의 공통 계약</span>
 <pre><span class="kw">public protocol</span> <span class="ty">PlayerPlaybackEngine</span>: <span class="ty">Actor</span> {
-    <span class="kw">nonisolated static var</span> capabilities: <span class="ty">EngineCapabilities</span> { <span class="kw">get</span> }
+    <span class="kw">nonisolated static var</span> runtimeTraits: <span class="ty">EngineRuntimeTraits</span> { <span class="kw">get</span> }
 
     <span class="kw">func</span> <span class="fn">prepare</span>(source: <span class="ty">PlaybackSource</span>) <span class="callout-token">async throws</span>
     <span class="kw">func</span> <span class="fn">play</span>() <span class="callout-token">async throws</span>
@@ -2004,7 +2004,7 @@ reduce(currentState, input):
 }</pre>
             </div>
             <ul class="feature-list">
-                <li><strong>capabilities</strong> — 엔진 동작 특성을 선언하고 Core가 정책 협상에 사용합니다.</li>
+                <li><strong>runtimeTraits</strong> — 엔진 동작 특성을 선언하고 Core가 정책 협상에 사용합니다.</li>
                 <li><strong>prepare(source)</strong> — URL이든 mediaKey든 source를 해석해 재생을 준비합니다.</li>
                 <li><strong>play() / pause()</strong> — 재생 제어. 성공해도 상태는 outputStream 신호로 확정됩니다.</li>
                 <li><strong>seek(to)</strong> — 위치 이동 명령입니다.</li>
@@ -2012,23 +2012,23 @@ reduce(currentState, input):
                 <li><strong>outputStream</strong> — 엔진의 유일한 출력. Core가 소비해 상태를 만듭니다.</li>
             </ul>
         </div>
-        <p class="takeaway reveal">명령은 async throws로 실패를 드러내고, 배속·자막·PiP는 optional protocol로 확장합니다.</p>
+        <p class="takeaway reveal">명령은 async throws로 실패를 드러내고, 배속·자막·PiP는 ability protocol로 확장합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 14. 엔진 계약은 명령 5개와 출력 1개</h3>
-        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>capabilities는 엔진 동작 특성이고, prepare는 source를 해석해 재생 준비를 합니다.<br>play, pause, seek, stop은 모두 async throws 명령이고, 성공해도 최종 상태 확정은 outputStream 신호를 Core가 해석해서 만듭니다.<br>Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막·PiP 같은 기능은 다음 슬라이드의 optional protocol로 확장합니다.</p>
+        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성이고, prepare는 source를 해석해 재생 준비를 합니다.<br>play, pause, seek, stop은 모두 async throws 명령이고, 성공해도 최종 상태 확정은 outputStream 신호를 Core가 해석해서 만듭니다.<br>Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막·PiP 같은 기능은 다음 슬라이드의 ability protocol로 확장합니다.</p>
         <p><strong>전환:</strong> 이 기본 계약 위에서 엔진별 기능 차이를 어떻게 다루는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 코드는 capabilities, prepare, play/pause, seek, stop, outputStream 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 유일한 단방향 출력입니다.<br>4. 마지막 takeaway는 기본 계약 밖의 기능은 optional protocol로 확장한다는 뜻입니다.</p>
+        <p><strong>화면:</strong><br>1. 코드는 runtimeTraits, prepare, play/pause, seek, stop, outputStream 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 유일한 단방향 출력입니다.<br>4. 마지막 takeaway는 기본 계약 밖의 기능은 ability protocol로 확장한다는 뜻입니다.</p>
     </aside>
 </section>
 
 <!-- 15. capability -->
 <section class="slide">
     <div class="slide-content">
-        <div class="eyebrow reveal">capability model</div>
-        <h2 class="reveal">기능 차이는 availability와 capability로 관리</h2>
+        <div class="eyebrow reveal">availability · runtime traits</div>
+        <h2 class="reveal">기능 차이는 availability와 runtime traits로 관리</h2>
         <div class="visual-panel reveal">
-            <svg class="svg-frame" viewBox="0 0 960 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="availability와 capability가 각각 버튼 노출과 런타임 정책을 결정하는 흐름">
+            <svg class="svg-frame" viewBox="0 0 960 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="availability와 runtime traits가 각각 버튼 노출과 런타임 정책을 결정하는 흐름">
                 <rect width="960" height="250" fill="#ffffff"/>
                 <g font-family="Arial">
                     <defs>
@@ -2045,7 +2045,7 @@ reduce(currentState, input):
                     <text x="106" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">배속 버튼</text>
                     <line x1="158" y1="73" x2="198" y2="73" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
                     <rect x="200" y="43" width="196" height="60" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
-                    <text x="298" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">RateEngine protocol</text>
+                    <text x="298" y="68" text-anchor="middle" font-size="12.5" font-weight="700" fill="#171717">EnginePlaybackRateAbility</text>
                     <text x="298" y="87" text-anchor="middle" font-size="13" fill="#4d4d4d">채택?</text>
                     <line x1="396" y1="73" x2="438" y2="73" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
                     <rect x="440" y="43" width="160" height="60" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
@@ -2061,9 +2061,9 @@ reduce(currentState, input):
                     <rect x="458" y="124" width="124" height="28" rx="8" fill="#ffefcf" stroke="#f5a623"/>
                     <text x="520" y="143" text-anchor="middle" font-size="12" fill="#171717">아니오 → 비노출</text>
 
-                    <text x="32" y="174" font-size="15" font-weight="700" fill="#171717">어떻게 동작하는가 · capability</text>
+                    <text x="32" y="174" font-size="15" font-weight="700" fill="#171717">어떻게 동작하는가 · runtime traits</text>
                     <rect x="54" y="194" width="162" height="42" rx="9" fill="#fafafa" stroke="#e5e5e5"/>
-                    <text x="135" y="220" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">EngineCapabilities</text>
+                    <text x="135" y="220" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">EngineRuntimeTraits</text>
                     <line x1="216" y1="215" x2="298" y2="215" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
                     <rect x="300" y="186" width="280" height="58" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
                     <text x="440" y="210" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">Core가 Host 정책을</text>
@@ -2079,20 +2079,20 @@ reduce(currentState, input):
             <table>
                 <thead><tr><th>기능</th><th>Native engine</th><th>Kollus engine</th><th>Skin 버튼</th></tr></thead>
                 <tbody>
-                    <tr><td>배속</td><td>○ Rate</td><td>○ Rate</td><td>지원 시 노출</td></tr>
-                    <tr><td>자막</td><td>— 미채택</td><td>○ Subtitle</td><td>Native 비노출</td></tr>
-                    <tr><td>PiP</td><td>— 미채택</td><td>— capability로 열지 않음</td><td>자동 비노출</td></tr>
+                    <tr><td>배속</td><td>○ RateAbility</td><td>○ RateAbility</td><td>지원 시 노출</td></tr>
+                    <tr><td>자막</td><td>— 미채택</td><td>○ SubtitleAbility</td><td>Native 비노출</td></tr>
+                    <tr><td>PiP</td><td>— 미채택</td><td>— 의도적으로 미채택</td><td>자동 비노출</td></tr>
                     <tr><td>다운로드</td><td>— 없음</td><td>○ DownloadCenter 계약</td><td>재생 버튼과 분리</td></tr>
                 </tbody>
             </table>
         </div>
-        <p class="takeaway reveal">버튼 노출은 availability가, 동작 방식은 capability가 결정합니다.</p>
+        <p class="takeaway reveal">버튼 노출은 availability가, 동작 방식은 runtime traits가 결정합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 15. 기능 차이는 availability와 capability로 관리</h3>
-        <p><strong>말할 내용:</strong> 기능 차이는 두 질문으로 나눠 봐야 합니다.<br>첫 번째, 이 엔진이 이 기능을 할 수 있는가는 protocol 채택을 조사하는 availability가 답하고 버튼 노출을 결정합니다.<br>배속 버튼은 엔진이 RateEngine protocol을 채택하고 Host 정책도 허용해야 보입니다.<br>두 번째, 이 엔진이 어떤 방식으로 동작하는가는 capability가 답하고, Core가 Host 정책을 엔진 능력에 맞춰 하향 조정합니다.</p>
+        <h3>Script 15. 기능 차이는 availability와 runtime traits로 관리</h3>
+        <p><strong>말할 내용:</strong> 기능 차이는 두 질문으로 나눠 봐야 합니다.<br>첫 번째, 이 엔진이 이 기능을 할 수 있는가는 protocol 채택을 조사하는 availability가 답하고 버튼 노출을 결정합니다.<br>배속 버튼은 엔진이 EnginePlaybackRateAbility protocol을 채택하고 Host 정책도 허용해야 보입니다.<br>두 번째, 이 엔진이 어떤 방식으로 동작하는가는 runtime traits가 답하고, Core가 Host 정책을 엔진 특성에 맞춰 하향 조정합니다.</p>
         <p><strong>전환:</strong> 이제 실제 조립 코드를 Native와 Kollus 두 경로로 비교해 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 위 레인은 배속 버튼이 protocol 채택과 Host 정책 두 게이트를 통과해야 노출되는 흐름입니다.<br>2. 아래 레인은 EngineCapabilities를 보고 Core가 정책을 하향 조정한 뒤 policyDowngraded 이벤트로 알리는 흐름입니다.<br>3. 표는 같은 기준을 Native와 Kollus 기능별로 정리한 매트릭스입니다.</p>
+        <p><strong>화면:</strong><br>1. 위 레인은 배속 버튼이 protocol 채택과 Host 정책 두 게이트를 통과해야 노출되는 흐름입니다.<br>2. 아래 레인은 EngineRuntimeTraits를 보고 Core가 정책을 하향 조정한 뒤 policyDowngraded 이벤트로 알리는 흐름입니다.<br>3. 표는 같은 기준을 Native와 Kollus 기능별로 정리한 매트릭스입니다.</p>
     </aside>
 </section>
 
@@ -2105,9 +2105,8 @@ reduce(currentState, input):
             <div class="code-editor compact">
                 <span class="filename">NativePlayerAssembly.swift</span>
 <pre><span class="kw">let</span> module = <span class="kw">await</span> <span class="ty">PlayerModuleWiring</span>.makeModule(
-    engine: <span class="ty callout-token">AVPlayerAdapter</span>(),
-    engineCapabilities: <span class="ty">AVPlayerAdapter</span>.capabilities
-)
+    engine: <span class="ty callout-token">AVPlayerAdapter</span>()
+)   <span class="cm">// runtimeTraits는 엔진 타입 선언에서 읽는다</span>
 
 <span class="kw">try await</span> module.core.start(
     source: <span class="callout-token">.url(videoURL)</span>,
@@ -2244,7 +2243,7 @@ reduce(currentState, input):
                 <tbody>
                     <tr><td>더 좋은 VOD SDK 도입</td><td>새 EngineAdapter 추가</td></tr>
                     <tr><td>서비스별 UI 요구</td><td>Skin block/theme 추가</td></tr>
-                    <tr><td>기능 지원 차이</td><td>optional protocol과 availability probe 추가</td></tr>
+                    <tr><td>기능 지원 차이</td><td>ability protocol과 availability probe 추가</td></tr>
                     <tr><td>다운로드 정책 변경</td><td>DownloadCenter contract 확장</td></tr>
                     <tr><td>해외 서비스 요구</td><td>Host policy와 localization 주입</td></tr>
                 </tbody>
@@ -2256,7 +2255,7 @@ reduce(currentState, input):
         <h3>Script 19. 미래 확장은 정해진 경계로 흡수</h3>
         <p><strong>말할 내용:</strong> 앞으로의 확장은 Host 전체 수정이 아니라 정해진 경계의 확장으로 처리합니다.<br>더 좋은 VOD SDK가 나오면 새 EngineAdapter를 추가하고, UI 요구는 Skin block이나 theme으로 받습니다.<br>다운로드 정책과 해외 서비스 요구는 DownloadCenter, policy, localization 주입으로 대응합니다.</p>
         <p><strong>전환:</strong> 공통 모듈이 되려면 검증 경계도 함께 분리되어야 합니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 optional protocol과 availability로 확장합니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 ability protocol과 availability로 확장합니다.</p>
     </aside>
 </section>
 
@@ -2281,7 +2280,7 @@ reduce(currentState, input):
             <div class="card">
                 <h3>남은 한계</h3>
                 <ul class="feature-list" style="margin-top:0.6rem;">
-                    <li>Kollus PiP는 현재 capability로 열지 않습니다.</li>
+                    <li>Kollus PiP는 현재 의도적으로 열지 않습니다(EnginePiPAbility 미채택).</li>
                     <li>Kollus 실재생/DRM/다운로드/백그라운드 오디오는 실기기 QA가 필요합니다.</li>
                     <li>고등 서비스 기준 UX와 새 Skin의 제스처/HUD 정렬이 더 필요합니다.</li>
                 </ul>

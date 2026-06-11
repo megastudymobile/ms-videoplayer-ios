@@ -425,7 +425,7 @@ Title: 일반 URL/HLS는 Native engine으로 조립합니다.
 ```swift
 let module = await PlayerModuleWiring.makeModule(
     engine: AVPlayerAdapter(),
-    engineCapabilities: AVPlayerAdapter.capabilities
+    engineRuntimeTraits: AVPlayerAdapter.runtimeTraits
 )
 
 try await module.core.start(source: .url(videoURL), policy: .default)
