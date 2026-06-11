@@ -109,6 +109,11 @@ final class PlayerViewController: UIViewController {
         skin.configure(title: "VideoPlayer Example", availablePlaybackRates: interactor.featurePolicy.allowedPlaybackRates)
         skin.setCaptionBottomInset(Metric.captionBottomInset)
         skin.setCaptionFontSize(PreferenceManager.captionFontSize)
+        // 노출 여부는 skin 이 apply(availableFeatures:) 로 결정 — provider 연결 자체는
+        // 무조건 해도 안전하다 (interactor 가 정책 가드 보유).
+        skin.seekPreviewImageProvider = { [weak self] time in
+            await self?.interactor.seekPreviewImage(at: time)
+        }
         // 화면 녹화/미러링 감지 시 영상 영역을 차단막으로 가리고 재생을 멈춘다.
         skin.setScreenCaptureProtectionEnabled(true)
         skin.onScreenCaptureChanged = { [weak self] captured in
@@ -133,8 +138,9 @@ final class PlayerViewController: UIViewController {
             guard let self else { return }
             do {
                 try await self.interactor.setUp(renderSurface: self.renderSurfaceView)
-                // 기능 게이팅 — 엔진이 지원하는 기능만 버튼 노출 (런타임 실패 대신 사전 숨김).
-                self.applyFeatureGating(self.interactor.availableFeatures)
+                // 기능 게이팅 — 노출 조건은 블록이 requiredFeatures 로 신고했고,
+                // 여기서는 확정된 가용성∩정책 집합을 전달만 한다.
+                self.skin.apply(availableFeatures: self.interactor.resolvedFeatures)
                 try await self.interactor.start()
                 // 기본 배속 반영 — 설정값을 재생 시작 시 1회 적용 (SL 화면/재생 설정 parity).
                 self.applyPlaybackRate(PlaybackRate.clamped(PreferenceManager.playbackRate))
@@ -176,28 +182,6 @@ final class PlayerViewController: UIViewController {
     /// 컨테이너가 split/fullscreen 레이아웃 전환 시 호출 — skin 모드 명시 주입.
     func applySkinLayoutMode(_ mode: PlayerSkinLayoutMode) {
         emitRender(viewModel.resolveLayoutMode(mode))
-    }
-
-    // MARK: - 기능 게이팅 (availableFeatures)
-
-    /// setUp 완료 후 1회 — 엔진 미지원 기능의 진입점을 사전에 숨긴다.
-    private func applyFeatureGating(_ features: PlayerFeatureAvailability) {
-        var extraControls: [ExtraControl] = []
-        if features.contains(.bookmarks) {
-            extraControls.append(
-                ExtraControl(id: ExtraControlID.bookmark, iconName: "bookmark", title: "북마크", placement: .topMenu)
-            )
-        }
-        // 시킹 프리뷰는 런타임 토글 없음 — 플레이어 생성 시 정책으로 주입된 값만 따른다.
-        let seekPreviewEnabled = features.contains(.seekPreview)
-            && interactor.featurePolicy.allowsSeekPreview
-        if seekPreviewEnabled {
-            skin.seekPreviewImageProvider = { [weak self] time in
-                await self?.interactor.seekPreviewImage(at: time)
-            }
-        }
-        skin.setSeekPreviewEnabled(seekPreviewEnabled)
-        skin.setExtraControls(extraControls)
     }
 
     // MARK: - 렌더 fan-out
@@ -502,12 +486,8 @@ final class PlayerViewController: UIViewController {
 
     // MARK: - ExtraControl (북마크)
 
-    private enum ExtraControlID {
-        static let bookmark = "bookmark"
-    }
-
     private func handleExtraControl(_ id: String) {
-        guard id == ExtraControlID.bookmark else { return }
+        guard id == BookmarkButtonBlock.actionID else { return }
         presentBookmarkSheet()
     }
 
@@ -663,7 +643,7 @@ final class PlayerViewController: UIViewController {
 extension PlayerViewController: PlayerControlChannel {
     var currentSkinState: PlayerSkinState { viewModel.state }
     var loadedBookmarks: [Bookmark] { bookmarks }
-    var availableFeatures: PlayerFeatureAvailability { interactor.availableFeatures }
+    var availableFeatures: Set<PlayerFeature> { interactor.availableFeatures }
 
     func togglePlayPause() {
         interactor.togglePlayPause()

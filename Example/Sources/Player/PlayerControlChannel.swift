@@ -20,7 +20,7 @@ protocol PlayerControlChannel: AnyObject {
     /// 마지막으로 로드된 북마크 목록 (pane 활성화 시 초기값 pull 용 — bookmarksDidLoad 이벤트 누락 대비).
     var loadedBookmarks: [Bookmark] { get }
     /// 엔진 가용 기능 — pane이 미지원 기능 UI를 사전에 비활성/안내한다.
-    var availableFeatures: PlayerFeatureAvailability { get }
+    var availableFeatures: Set<PlayerFeature> { get }
 
     func togglePlayPause()
     func skip(by delta: TimeInterval)

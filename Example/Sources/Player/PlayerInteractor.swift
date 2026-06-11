@@ -31,7 +31,13 @@ final class PlayerInteractor {
 
     let featurePolicy: PlayerFeaturePolicy
     /// 엔진 가용 기능 — setUp 완료 후 확정. UI 버튼 사전 게이트용.
-    private(set) var availableFeatures: PlayerFeatureAvailability = []
+    private(set) var availableFeatures: Set<PlayerFeature> = []
+
+    /// 엔진 가용성 ∩ 앱 정책 — UI 노출 결정은 이 값 하나만 본다.
+    /// 정책으로 꺼진 기능은 엔진이 지원해도 노출 대상에서 제거된다.
+    var resolvedFeatures: Set<PlayerFeature> {
+        availableFeatures.filter { featurePolicy.allows($0) }
+    }
 
     private var playerModule: PlayerModule?
     private let binder = PlayerStateBinder()
