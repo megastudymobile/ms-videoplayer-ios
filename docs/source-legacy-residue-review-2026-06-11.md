@@ -266,11 +266,25 @@ AGENTS 주석 규칙은 작업번호, 설계안 식별자, 레거시 참조, spe
 - `swift test`
 - host build
 
-## 6. Skin asset catalog 원본 export 잔재
+## 6. Skin asset catalog 원본 export 잔재 — 정리 완료 (2026-06-11)
 
 ### 결론
 
-`PlayerSkin.xcassets`에 원본 디자인 툴 export 흔적으로 보이는 파일명과 중복 리소스명이 많이 남아 있다. 일부는 `Contents.json`에서 실제 참조되므로 단순 삭제 대상은 아니지만, 리소스 정리 잔재로 분류할 수 있다.
+`PlayerSkin.xcassets`에 원본 디자인 툴 export 흔적으로 보이는 파일명과 중복 리소스명이 많이 남아 있었다. 모든 후보가 `Contents.json`에서 실제 참조 중인 파일이라 삭제하지 않고, 의미 기반 파일명으로 rename했다.
+
+### 처리 결과
+
+권장 정리 방향에 따라 imageset 이름은 외부 asset API로 유지하고, 내부 PNG 파일명과 `Contents.json`의 `filename`만 갱신했다.
+
+- 44개 imageset의 PNG 210개를 현재 asset 의미, appearance, scale 기준으로 rename.
+- dark appearance 리소스는 `_dark` suffix로 구분.
+- scale 리소스는 `@2x` / `@3x` suffix로 정규화.
+- `PlayerIndexlList*`의 내부 파일명은 `player_index_list_*`로 오타성 표기를 보정.
+- 후속: `PlayerIndexlList*` imageset 디렉터리명 오타도 `PlayerIndexList*`로 정정. host 앱 `LectureExtraControlFactory`의 iconName 문자열을 함께 갱신했다(스킨 theme은 패키지 번들 → main 번들 순으로 해석). 레거시 ObjC 화면(`MGPlayerSkinView`)은 host 자체 asset 복사본을 참조하므로 영향 없다.
+- `plusDarkButton@@x.png`는 `player_rate_minus_button_dark@2x.png`로 정정.
+- 모든 `Contents.json` filename 참조와 실제 파일 존재 여부를 검증.
+- 미참조 PNG는 남아 있지 않음을 확인.
+- 검증: asset filename 참조 무결성 스크립트, 잔재 패턴 검색, `swift test`, Example 앱 iPhone 15 simulator build 통과.
 
 ### 코드 근거
 
@@ -289,7 +303,7 @@ AGENTS 주석 규칙은 작업번호, 설계안 식별자, 레거시 참조, spe
 - `Sources/VideoPlayerSkin/Resources/PlayerSkin.xcassets/PlayerNextLectureButtonIcon.imageset/Contents.json:4`
   - `Vector.png`
 
-검색 기준으로 `* 1.png`, `Property 1=*`, `Group *`, `Vector*`, `Ellipse*`, `btn_____*`, `*@@x.png` 후보가 70개 확인됐다.
+검색 기준으로 `* 1.png`, `Property 1=*`, `Group *`, `Vector*`, `Ellipse*`, `btn_____*`, `*@@x.png` 후보가 70개 확인됐다. 정리 후 동일 검색 패턴은 0건이다.
 
 ### 왜 레거시 잔재인가
 
@@ -338,4 +352,3 @@ Group 98@3x.png            -> player_rate_down_dark@3x.png
 5. ~~전환기 mirror 주석/계약 정리~~ — 완료 (mirror 제거, 위 5번 처리 결과 참조)
 6. asset catalog 정리
    - 영향 범위는 낮지만 파일 수가 많아 별도 PR로 분리하는 편이 안전하다.
-
