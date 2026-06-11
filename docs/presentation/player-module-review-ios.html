@@ -1214,7 +1214,7 @@ window.__initialSlideHash = window.location.hash;
 </script>
 <div class="progress" id="progress"></div>
 <nav class="nav-dots" id="navDots" aria-label="슬라이드 이동"></nav>
-<div class="slide-counter" id="counter">01 / 24</div>
+<div class="slide-counter" id="counter">01 / 23</div>
 <div class="keyboard-hint">←→ · ↑↓ · space</div>
 <div class="script-tools" aria-label="발표 스크립트 도구">
     <button class="script-toggle" id="scriptToggle" type="button" aria-pressed="false" aria-label="발표 스크립트 표시">Script</button>
@@ -1249,12 +1249,12 @@ window.__initialSlideHash = window.location.hash;
             <div class="cover-agenda-item"><span class="num">01</span><strong>문제</strong><span>반복 구현 비용</span></div>
             <div class="cover-agenda-item"><span class="num">02</span><strong>구조</strong><span>Core / Engine / Skin</span></div>
             <div class="cover-agenda-item"><span class="num">03</span><strong>적용</strong><span>Native · Kollus · Skin</span></div>
-            <div class="cover-agenda-item"><span class="num">04</span><strong>결정</strong><span>검증 경계와 파일럿</span></div>
+            <div class="cover-agenda-item"><span class="num">04</span><strong>결정</strong><span>구조 승인 · 파일럿 착수 · 정책 원칙(D1~D3)</span></div>
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 00. 플레이어 공통 재생 모듈</h3>
-        <p><strong>말할 내용:</strong> 오늘 발표의 주제는 서비스별로 다시 만들던 플레이어를 공통 재생 모듈로 바꾸자는 제안입니다.<br>순서는 문제와 비용, 목표 구조, 적용 방식, 검증과 결정 순서로 보겠습니다.<br>먼저 왜 지금 이 논의를 해야 하는지부터 시작하겠습니다.</p>
+        <p><strong>말할 내용:</strong> 오늘 발표의 주제는 서비스별로 다시 만들던 플레이어를 공통 재생 모듈로 바꾸자는 제안입니다.<br>순서는 문제와 비용, 목표 구조, 적용 방식, 검증과 결정 순서로 보겠습니다.<br>오늘 마지막에는 구조 승인, 파일럿 범위, 정책 원칙 세 가지 결정을 요청드립니다.<br>먼저 왜 지금 이 논의를 해야 하는지부터 시작하겠습니다.</p>
         <p><strong>전환:</strong> 먼저 현재 반복 구현 문제가 왜 생겼는지 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 큰 제목으로 오늘 주제가 플레이어 공통 재생 모듈임을 말합니다.<br>2. 배경 mesh는 기존 도입 슬라이드의 분위기를 커버로 옮긴 것입니다.<br>3. 하단 발표 순서를 문제, 구조, 적용, 결정 순서로 안내합니다.</p>
     </aside>
@@ -1291,28 +1291,58 @@ window.__initialSlideHash = window.location.hash;
         <h2 class="reveal">반복 구현이 키우는 비용</h2>
         <div class="grid grid-4 reveal">
             <div class="card"><span class="num">UX</span><h3>제스처·자막·배속</h3><p class="body-text">서비스별로 다시 구현하고 다시 맞춥니다.</p></div>
-            <div class="card"><span class="num">KOLLUS</span><h3>실재생 제약</h3><p class="body-text">Kollus 실재생 경로는 시뮬레이터 대신 실기기 검증이 필요합니다.</p></div>
+            <div class="card"><span class="num">QA</span><h3>검증 반복</h3><p class="body-text">같은 재생 시나리오를 서비스 수만큼 다시 검증합니다.</p></div>
             <div class="card"><span class="num">SDK</span><h3>버전 대응</h3><p class="body-text">각 앱의 빌드, 링크, 런타임 영향 범위가 커집니다.</p></div>
             <div class="card"><span class="num">PRODUCT</span><h3>경험 분산</h3><p class="body-text">서비스마다 다른 플레이어 경험이 누적됩니다.</p></div>
         </div>
         <div class="visual-panel reveal" style="margin-top:var(--content-gap);">
-            <svg class="svg-frame" viewBox="0 0 960 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="서비스별 플레이어 중복 비용">
+            <svg class="svg-frame" viewBox="0 0 960 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="플레이어 버그가 서비스별 수정과 검증으로 반복되는 비용 흐름">
                 <rect width="960" height="210" fill="#ffffff"/>
                 <g font-family="Arial">
-                    <rect x="30" y="42" width="190" height="110" rx="10" fill="#fafafa" stroke="#e5e5e5"/><text x="60" y="80" font-size="20" font-weight="700" fill="#171717">고등</text><text x="60" y="112" font-size="15" fill="#4d4d4d">오래된 코드 유지</text>
-                    <rect x="260" y="42" width="190" height="110" rx="10" fill="#fafafa" stroke="#e5e5e5"/><text x="290" y="80" font-size="20" font-weight="700" fill="#171717">유초등</text><text x="290" y="112" font-size="15" fill="#4d4d4d">네이티브 재구현</text>
-                    <rect x="490" y="42" width="190" height="110" rx="10" fill="#fafafa" stroke="#e5e5e5"/><text x="520" y="80" font-size="20" font-weight="700" fill="#171717">해외사업부</text><text x="520" y="112" font-size="15" fill="#4d4d4d">별도 정책 반복</text>
-                    <rect x="720" y="42" width="190" height="110" rx="10" fill="#171717"/><text x="750" y="80" font-size="20" font-weight="700" fill="#ffffff">공통 모듈</text><text x="750" y="112" font-size="15" fill="#d4d4d4">재사용 가능한 경계</text>
-                    <path d="M220 97H260M450 97H490M680 97H720" stroke="#a1a1a1" stroke-width="2" stroke-dasharray="5 5"/>
+                    <defs>
+                        <marker id="costArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                            <path d="M0 0L8 4L0 8Z" fill="#a1a1a1"/>
+                        </marker>
+                    </defs>
+                    <rect x="24" y="74" width="148" height="62" rx="10" fill="#ffefcf" stroke="#f5a623"/>
+                    <text x="53" y="100" font-size="17" font-weight="700" fill="#171717">플레이어</text>
+                    <text x="61" y="122" font-size="17" font-weight="700" fill="#171717">버그 1건</text>
+                    <path d="M172 105H230" stroke="#a1a1a1" stroke-width="2.2" marker-end="url(#costArrow)"/>
+                    <path d="M230 105C250 46 270 45 292 45" stroke="#a1a1a1" stroke-width="2" fill="none" marker-end="url(#costArrow)"/>
+                    <path d="M230 105H292" stroke="#a1a1a1" stroke-width="2" fill="none" marker-end="url(#costArrow)"/>
+                    <path d="M230 105C250 164 270 165 292 165" stroke="#a1a1a1" stroke-width="2" fill="none" marker-end="url(#costArrow)"/>
+                    <rect x="292" y="24" width="116" height="42" rx="9" fill="#fafafa" stroke="#e5e5e5"/>
+                    <text x="331" y="51" font-size="17" font-weight="700" fill="#171717">고등</text>
+                    <text x="426" y="41" font-size="14" fill="#4d4d4d">개별 수정 · 개별 QA</text>
+                    <text x="426" y="59" font-size="14" fill="#4d4d4d">(실기기)</text>
+                    <rect x="292" y="84" width="116" height="42" rx="9" fill="#fafafa" stroke="#e5e5e5"/>
+                    <text x="323" y="111" font-size="17" font-weight="700" fill="#171717">유초등</text>
+                    <text x="426" y="101" font-size="14" fill="#4d4d4d">개별 수정 · 개별 QA</text>
+                    <text x="426" y="119" font-size="14" fill="#4d4d4d">(실기기)</text>
+                    <rect x="292" y="144" width="116" height="42" rx="9" fill="#fafafa" stroke="#e5e5e5"/>
+                    <text x="306" y="171" font-size="17" font-weight="700" fill="#171717">해외사업부</text>
+                    <text x="426" y="161" font-size="14" fill="#4d4d4d">개별 수정 · 개별 QA</text>
+                    <text x="426" y="179" font-size="14" fill="#4d4d4d">(실기기)</text>
+                    <path d="M558 45C584 58 596 75 608 105" stroke="#a1a1a1" stroke-width="2" fill="none" stroke-dasharray="5 5" marker-end="url(#costArrow)"/>
+                    <path d="M558 105H608" stroke="#a1a1a1" stroke-width="2" fill="none" stroke-dasharray="5 5" marker-end="url(#costArrow)"/>
+                    <path d="M558 165C584 152 596 135 608 105" stroke="#a1a1a1" stroke-width="2" fill="none" stroke-dasharray="5 5" marker-end="url(#costArrow)"/>
+                    <rect x="608" y="66" width="136" height="78" rx="10" fill="#fafafa" stroke="#e5e5e5"/>
+                    <text x="640" y="98" font-size="18" font-weight="700" fill="#171717">서비스별</text>
+                    <text x="627" y="123" font-size="14" fill="#4d4d4d">수정 3회 · QA 3회</text>
+                    <path d="M744 105H790" stroke="#a1a1a1" stroke-width="2" marker-end="url(#costArrow)"/>
+                    <rect x="790" y="54" width="146" height="102" rx="10" fill="#171717"/>
+                    <text x="820" y="88" font-size="18" font-weight="700" fill="#ffffff">공통 모듈</text>
+                    <text x="820" y="118" font-size="15" fill="#d4d4d4">수정 1회</text>
+                    <text x="820" y="139" font-size="15" fill="#d4d4d4">검증 1회</text>
                 </g>
             </svg>
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 02. 반복 구현이 키우는 비용</h3>
-        <p><strong>말할 내용:</strong> 반복 구현이 키우는 비용은 기능 개발비보다 유지보수와 검증 비용입니다.<br>특히 Kollus 실재생 경로는 시뮬레이터에서 닫기 어렵기 때문에 실기기 검증이 필요합니다.<br>공통 경계가 없으면 SDK 버전 대응과 사용자 경험 차이도 계속 서비스별 비용으로 남습니다.</p>
+        <p><strong>말할 내용:</strong> 반복 구현이 키우는 비용은 기능 개발비보다 유지보수와 검증 비용입니다.<br>같은 재생 버그라도 서비스별 코드가 나뉘어 있으면 수정과 QA가 서비스 수만큼 반복됩니다.<br>공통 경계가 없으면 SDK 버전 대응과 사용자 경험 차이도 계속 서비스별 비용으로 남습니다.</p>
         <p><strong>전환:</strong> 이 비용이 실제 코드 표면에 어떻게 남아 있는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. UX 카드는 제스처, 자막, 배속 반복 구현을 뜻합니다.<br>2. KOLLUS 카드는 실재생 경로가 실기기 검증 대상이라는 제약입니다.<br>3. SDK와 PRODUCT 카드는 버전 대응과 경험 분산 비용입니다.</p>
+        <p><strong>화면:</strong><br>1. UX 카드는 제스처, 자막, 배속 반복 구현을 뜻합니다.<br>2. QA 카드는 같은 재생 시나리오를 서비스 수만큼 다시 검증한다는 뜻입니다.<br>3. 하단 흐름은 플레이어 버그 1건이 서비스별 수정과 실기기 QA로 분기되는 모습을 보여줍니다.<br>4. 오른쪽 공통 모듈 박스는 수정 1회, 검증 1회로 줄이는 목표입니다.</p>
     </aside>
 </section>
 
@@ -1330,7 +1360,7 @@ window.__initialSlideHash = window.location.hash;
             <div class="card stat">
                 <span class="v">82</span>
                 <span class="k">SDK touchpoints</span>
-                <p class="body-text" style="margin-top:0.8rem;">host 레거시 코드 검색 기준 `KollusPlayerView`, storage, delegate, 다운로드 API 접점입니다.</p>
+                <p class="body-text" style="margin-top:0.8rem;">host 레거시 코드에서 `KollusPlayerView`, storage, delegate, 다운로드 API 호출 지점을 검색한 결과입니다.</p>
             </div>
             <div class="card stat">
                 <span class="v">QA</span>
@@ -1350,12 +1380,66 @@ window.__initialSlideHash = window.location.hash;
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 03. 코드와 QA 표면에 남은 반복 비용</h3>
         <p><strong>말할 내용:</strong> 반복 비용은 SDK 접점, delegate, storage, 다운로드 API가 여러 곳에 흩어진 형태로 남아 있습니다.<br>이 숫자는 “느낌상 복잡하다”가 아니라 코드 표면에 이미 비용이 남아 있다는 근거입니다.<br>흩어진 변경과 검증을 줄이려면 공통 경계가 필요합니다.</p>
-        <p><strong>전환:</strong> 이제 목표 구조를 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 72는 host 레거시 플레이어 영역 기준 Objective-C 파일 수입니다.<br>2. 82는 같은 기준의 Kollus 관련 SDK 접점 검색 결과입니다.<br>3. QA 카드는 Kollus 실재생/DRM/다운로드가 실기기 검증 대상임을 뜻합니다.</p>
+        <p><strong>전환:</strong> 반복 비용을 줄이려면 SDK를 어떤 태도로 다룰지 먼저 정해야 합니다.</p>
+        <p><strong>화면:</strong><br>1. 72는 host 레거시 플레이어 영역 기준 Objective-C 파일 수입니다.<br>2. 82는 `KollusPlayerView`, storage, delegate, 다운로드 API 호출 지점을 검색한 결과입니다.<br>3. QA 카드는 Kollus 실재생/DRM/다운로드가 실기기 검증 대상임을 뜻합니다.</p>
     </aside>
 </section>
 
-<!-- 4. 목표는 공통 재사용 모듈 -->
+<!-- 4. SDK 의존도는 왜 줄여야 할까? -->
+<section class="slide sdk-strategy-slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">sdk strategy</div>
+        <h2 class="reveal">SDK는 구매하고, 구조는 소유합니다</h2>
+        <div class="grid grid-3 reveal">
+            <div class="card"><span class="num">BUY</span><h3>VOD/DRM은 구매</h3><p class="body-text">트랜스코딩, CDN, DRM, 라이선스 서버는 전문 SDK를 쓰는 편이 효율적입니다.</p></div>
+            <div class="card"><span class="num">RISK</span><h3>의존 리스크</h3><p class="body-text">SDK 정책, 가격, 품질, 지원 범위는 언제든 바뀔 수 있습니다.</p></div>
+            <div class="card"><span class="num">CONTROL</span><h3>구조는 우리가 소유</h3><p class="body-text">SDK 타입은 adapter 안에 가두고 Host는 command/state만 씁니다.</p></div>
+        </div>
+        <div class="mermaid-card reveal" style="margin-top:var(--content-gap);">
+<pre class="mermaid">flowchart LR
+    Buy[SDK는 구매] --> Risk[vendor lock-in 리스크]
+    Risk --> Adapter[EngineAdapter 내부 격리]
+    Adapter --> Host[Host는 PlaybackCommand / PlaybackState]
+    Adapter --> Future[더 좋은 SDK가 생기면 adapter 추가]
+    class Buy,Host core
+    class Risk risk
+    class Adapter,Future adapter
+    classDef core fill:#d3e5ff,stroke:#0070f3,color:#171717,stroke-width:2px
+    classDef risk fill:#ffefcf,stroke:#f5a623,color:#171717,stroke-width:2px
+    classDef adapter fill:#aaffec,stroke:#29bc9b,color:#171717,stroke-width:2px</pre>
+        </div>
+    </div>
+    <aside class="speaker-script" aria-label="발표 스크립트">
+        <h3>Script 04. SDK는 구매하고, 구조는 소유합니다</h3>
+        <p><strong>말할 내용:</strong> SDK 의존도를 줄여야 하는 이유는 구매한 SDK의 변화가 앱 구조 전체를 흔들 수 있기 때문입니다.<br>VOD, DRM, 다운로드, 라이선스 서버는 전문 SDK를 쓰는 편이 효율적입니다.<br>하지만 SDK 타입은 Adapter 안에 가둬야 구매의 장점을 유지할 수 있습니다.</p>
+        <p><strong>전환:</strong> 이 전략을 설명하기 위해 오늘 사용할 용어를 먼저 맞추겠습니다.</p>
+        <p><strong>화면:</strong><br>1. BUY는 전문 SDK를 쓰는 이유입니다.<br>2. RISK는 SDK 정책, 가격, 품질 변화 가능성입니다.<br>3. CONTROL은 우리 구조를 command/state로 소유하자는 뜻입니다.</p>
+    </aside>
+</section>
+
+<!-- 5. 오늘의 핵심 용어 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">shared vocabulary</div>
+        <h2 class="reveal">오늘의 핵심 용어</h2>
+        <div class="grid grid-5 reveal">
+            <div class="card"><span class="num">HOST</span><h3>서비스 앱</h3><p class="body-text">정책과 UI 커스텀을 주입합니다.</p></div>
+            <div class="card"><span class="num">CORE</span><h3>상태 소유자</h3><p class="body-text">명령을 받고 다음 상태를 결정합니다.</p></div>
+            <div class="card"><span class="num">ENGINE</span><h3>재생 번역기</h3><p class="body-text">AVPlayer, Kollus, 미래 SDK를 호출합니다.</p></div>
+            <div class="card"><span class="num">SKIN</span><h3>화면 조립</h3><p class="body-text">slot, block, theme으로 UI를 만듭니다.</p></div>
+            <div class="card"><span class="num">COMMAND / STATE</span><h3>공통 언어</h3><p class="body-text">Host가 보내고 구독하는 사용 표면입니다.</p></div>
+        </div>
+        <p class="takeaway reveal">이후 슬라이드는 이 다섯 단어가 어디에서 만나고 분리되는지를 설명합니다.</p>
+    </div>
+    <aside class="speaker-script" aria-label="발표 스크립트">
+        <h3>Script 05. 오늘의 핵심 용어</h3>
+        <p><strong>말할 내용:</strong> 오늘 잡고 갈 단어는 Host, Core, Engine, Skin, Command/State입니다.<br>이 다섯 단어가 어디에서 만나고 어디에서 분리되는지만 따라가면 됩니다.<br>모듈화가 낯설어도 전체 흐름을 놓치지 않을 수 있습니다.</p>
+        <p><strong>전환:</strong> 이 용어로 여러 서비스가 재사용할 목표 구조를 보겠습니다.</p>
+        <p><strong>화면:</strong><br>1. Host는 서비스 앱입니다.<br>2. Core는 상태 소유자입니다.<br>3. Engine은 실제 SDK를 호출하는 번역기입니다.<br>4. Skin은 화면 조립이고, Command/State는 공통 언어입니다.</p>
+    </aside>
+</section>
+
+<!-- 6. 목표는 공통 재사용 모듈 -->
 <section class="slide target-architecture-slide">
     <div class="slide-content">
         <div class="eyebrow reveal">target architecture</div>
@@ -1391,36 +1475,14 @@ window.__initialSlideHash = window.location.hash;
         <p class="takeaway reveal">공통화할 것은 재생 구조이고, 달라질 것은 Host가 주입합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 04. 여러 서비스가 재사용하는 목표 구조</h3>
+        <h3>Script 06. 여러 서비스가 재사용하는 목표 구조</h3>
         <p><strong>말할 내용:</strong> 재사용 가능한 구조는 공통 재생 경계와 서비스별 주입 지점을 나누는 구조입니다.<br>재생 명령, 상태, 정책 협상, 엔진 계약은 공통화하고, 서비스별 UI나 정책은 주입합니다.<br>모든 서비스가 같은 화면을 쓰자는 뜻은 아닙니다.</p>
-        <p><strong>전환:</strong> 구조 이야기에 들어가기 전에 용어를 맞추고 가겠습니다.</p>
+        <p><strong>전환:</strong> 이 목표 구조가 단순 wrapper와 어떻게 다른지 코드로 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 묶음은 이 모듈을 소비하는 서비스 Host입니다.<br>2. 가운데 묶음은 여러 서비스가 재사용할 공통 재생 모듈입니다.<br>3. 오른쪽 묶음은 서비스별로 달라질 Host 주입점입니다.<br>4. 화살표는 Host가 공통 모듈을 재사용하고, 필요한 차이만 주입한다는 흐름입니다.</p>
     </aside>
 </section>
 
-<!-- 5. 오늘의 핵심 용어 -->
-<section class="slide">
-    <div class="slide-content">
-        <div class="eyebrow reveal">shared vocabulary</div>
-        <h2 class="reveal">오늘의 핵심 용어</h2>
-        <div class="grid grid-5 reveal">
-            <div class="card"><span class="num">HOST</span><h3>서비스 앱</h3><p class="body-text">정책과 UI 커스텀을 주입합니다.</p></div>
-            <div class="card"><span class="num">CORE</span><h3>상태 소유자</h3><p class="body-text">명령을 받고 다음 상태를 결정합니다.</p></div>
-            <div class="card"><span class="num">ENGINE</span><h3>재생 번역기</h3><p class="body-text">AVPlayer, Kollus, 미래 SDK를 호출합니다.</p></div>
-            <div class="card"><span class="num">SKIN</span><h3>화면 조립</h3><p class="body-text">slot, block, theme으로 UI를 만듭니다.</p></div>
-            <div class="card"><span class="num">COMMAND / STATE</span><h3>공통 언어</h3><p class="body-text">Host가 보내고 구독하는 사용 표면입니다.</p></div>
-        </div>
-        <p class="takeaway reveal">이후 슬라이드는 이 다섯 단어가 어디에서 만나고 분리되는지를 설명합니다.</p>
-    </div>
-    <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 05. 오늘의 핵심 용어</h3>
-        <p><strong>말할 내용:</strong> 오늘 잡고 갈 단어는 Host, Core, Engine, Skin, Command/State입니다.<br>이 다섯 단어가 어디에서 만나고 어디에서 분리되는지만 따라가면 됩니다.<br>모듈화가 낯설어도 전체 흐름을 놓치지 않을 수 있습니다.</p>
-        <p><strong>전환:</strong> 이제 단순 wrapper와 공통 모듈의 차이를 코드로 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. Host는 서비스 앱입니다.<br>2. Core는 상태 소유자입니다.<br>3. Engine은 실제 SDK를 호출하는 번역기입니다.<br>4. Skin은 화면 조립이고, Command/State는 공통 언어입니다.</p>
-    </aside>
-</section>
-
-<!-- 6. wrapper가 새는 순간 -->
+<!-- 7. wrapper가 새는 순간 -->
 <section class="slide wrapper-leak-slide">
     <div class="slide-content">
         <div class="eyebrow reveal">not just a wrapper</div>
@@ -1451,76 +1513,10 @@ window.__initialSlideHash = window.location.hash;
         <p class="takeaway reveal">이 상태에서 SDK만 감싸면 호출 위치는 줄어도, Host가 SDK의 생각법을 계속 따라가게 됩니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 06. 얇은 Wrapper가 새는 지점</h3>
+        <h3>Script 07. 얇은 Wrapper가 새는 지점</h3>
         <p><strong>말할 내용:</strong> 얇은 Wrapper는 SDK 타입, delegate, callback 순서가 Host까지 올라오는 지점에서 샙니다.<br>이런 구조에서는 wrapper를 만들어도 Host가 여전히 SDK의 조립 규칙을 알아야 합니다.<br>우리가 피하려는 것은 SDK 이벤트 모델이 Host의 사고방식이 되는 상황입니다.</p>
-        <p><strong>전환:</strong> 그래서 다음 슬라이드에서는 Host가 어떤 언어만 쓰게 만들지 보겠습니다.</p>
+        <p><strong>전환:</strong> 이런 누수를 막는 구조를 Core, Engine, Skin 세 축으로 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 노란색 KollusPlayerView를 봅니다. 화면 계층이 SDK 타입을 직접 압니다.<br>2. 분홍색 setStorage, setDelegate를 봅니다. SDK 조립 규칙도 화면에 올라옵니다.<br>3. 마지막 상태 enum을 봅니다. SDK 콜백이 화면 상태를 직접 움직입니다.</p>
-    </aside>
-</section>
-
-<!-- 7. 모듈이 추구하는 Host 코드 -->
-<section class="slide module-surface-slide">
-    <div class="slide-content">
-        <div class="eyebrow reveal">module surface</div>
-        <h2 class="reveal">Host가 쓰는 언어: command와 state</h2>
-        <div class="split-visual reveal">
-            <div class="module-surface-top">
-                <div class="code-editor compact">
-                    <span class="filename">PlayerHost.swift · 추구하는 사용 표면</span>
-<pre><span class="kw">let</span> <span class="domain">module</span> = <span class="kw">await</span> factory.<span class="fn">makeModule</span>()
-
-<span class="kw">try</span> <span class="kw">await</span> <span class="domain">module.core</span>.<span class="fn">start</span>(source: <span class="domain">source</span>, policy: <span class="domain">featurePolicy</span>)
-<span class="kw">try</span> <span class="kw">await</span> <span class="domain">module.core</span>.<span class="fn">execute</span>(command: <span class="callout-token">.play</span>)
-<span class="kw">try</span> <span class="kw">await</span> <span class="domain">module.core</span>.<span class="fn">execute</span>(command: <span class="callout-token">.seek(to: target)</span>)
-
-<span class="kw">for await</span> <span class="state-token">state</span> <span class="kw">in</span> <span class="domain">module.core</span>.stateStream {
-    <span class="fn">render</span>(<span class="state-token">state</span>)
-}</pre>
-                </div>
-                <div class="abstract-flow-card" aria-label="Host 사용 표면 축약 다이어그램">
-                    <div class="abstract-flow-title">abstract path</div>
-                    <div class="abstract-flow">
-                        <div class="abstract-node host"><strong>Host</strong><span>command · policy</span></div>
-                        <div class="abstract-arrow">→</div>
-                        <div class="abstract-node"><strong>Core</strong><span>state owner</span></div>
-                        <div class="abstract-arrow">→</div>
-                        <div class="abstract-node adapter"><strong>Adapter</strong><span>SDK boundary</span></div>
-                    </div>
-                    <div class="abstract-flow">
-                        <div class="abstract-node state"><strong>State</strong><span>render input</span></div>
-                        <div class="abstract-arrow">←</div>
-                        <div class="abstract-node"><strong>Reducer</strong><span>transition</span></div>
-                        <div class="abstract-arrow">←</div>
-                        <div class="abstract-node adapter"><strong>Output</strong><span>engine signal</span></div>
-                    </div>
-                    <div class="abstract-return">SDK 타입과 callback 순서는 Adapter 뒤에 두고, Host는 command와 state만 봅니다.</div>
-                </div>
-            </div>
-            <div class="mermaid-card">
-<pre class="mermaid">flowchart LR
-    Host[Host 화면] --> Command[PlaybackCommand]
-    Host --> Policy[PlayerFeaturePolicy]
-    Command --> Core[PlayerCore]
-    Policy --> Core
-    Core --> Adapter[EngineAdapter]
-    Adapter --> SDK[Kollus / AVPlayer / Future SDK]
-    Adapter --> Output[PlayerEngineOutput]
-    Output --> Reducer[PlaybackStateReducer]
-    Reducer --> State[PlaybackState]
-    State --> Host
-    class Host,Command,Policy,Core,Reducer,State core
-    class Adapter,SDK,Output adapter
-    classDef core fill:#d3e5ff,stroke:#0070f3,color:#171717,stroke-width:2px
-    classDef adapter fill:#d8ccf1,stroke:#7928ca,color:#171717,stroke-width:2px</pre>
-            </div>
-        </div>
-        <p class="takeaway reveal">Host는 SDK delegate가 아니라 command/state를 다루고, SDK 차이는 EngineAdapter가 흡수합니다.</p>
-    </div>
-    <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 07. Host가 쓰는 언어: command와 state</h3>
-        <p><strong>말할 내용:</strong> Host가 쓰게 만들 언어는 PlaybackCommand와 PlaybackState입니다.<br>여기에는 KollusPlayerView, storage, SDK delegate가 없습니다.<br>Host는 무엇을 할지만 command로 말하고, 결과는 state로 받습니다.</p>
-        <p><strong>전환:</strong> 이 구조를 이해하려면 Core, Engine, Skin 세 축을 보면 됩니다.</p>
-        <p><strong>화면:</strong><br>1. makeModule로 모듈을 만듭니다.<br>2. start와 execute로 행동을 보냅니다.<br>3. stateStream으로 화면을 그립니다.<br>4. 오른쪽 다이어그램에서 SDK는 Adapter 뒤에 있습니다.</p>
     </aside>
 </section>
 
@@ -1558,44 +1554,93 @@ window.__initialSlideHash = window.location.hash;
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 08. Core · Engine · Skin 세 축</h3>
         <p><strong>말할 내용:</strong> 이 모듈의 세 축은 Core, Engine, Skin입니다.<br>Core는 재생 명령과 상태를 소유하고, Engine은 AVPlayer, Kollus, 미래 SDK를 공통 계약으로 번역합니다.<br>Skin은 고정 화면이 아니라 조립 가능한 UI를 제공합니다.</p>
-        <p><strong>전환:</strong> 그럼 왜 SDK 의존을 줄여야 하는지 보겠습니다.</p>
+        <p><strong>전환:</strong> 이제 이 세 축 위에서 Host가 실제로 어떤 언어만 쓰는지 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. mental model을 위에서 아래로 읽습니다.<br>2. Host는 정책과 커스텀 UI를 주입하고 command를 보냅니다.<br>3. Core가 상태를 소유하고, Engine과 Skin은 각각 재생 방법과 화면 조립을 담당합니다.</p>
     </aside>
 </section>
 
-<!-- 9. SDK 의존도는 왜 줄여야 할까? -->
-<section class="slide sdk-strategy-slide">
+<!-- 9. 모듈이 추구하는 Host 코드 -->
+<section class="slide module-surface-slide">
     <div class="slide-content">
-        <div class="eyebrow reveal">sdk strategy</div>
-        <h2 class="reveal">SDK는 구매하고, 구조는 소유합니다</h2>
-        <div class="grid grid-3 reveal">
-            <div class="card"><span class="num">BUY</span><h3>VOD/DRM은 구매</h3><p class="body-text">트랜스코딩, CDN, DRM, 라이선스 서버는 전문 SDK를 쓰는 편이 효율적입니다.</p></div>
-            <div class="card"><span class="num">RISK</span><h3>의존 리스크</h3><p class="body-text">SDK 정책, 가격, 품질, 지원 범위는 언제든 바뀔 수 있습니다.</p></div>
-            <div class="card"><span class="num">CONTROL</span><h3>구조는 우리가 소유</h3><p class="body-text">SDK 타입은 adapter 안에 가두고 Host는 command/state만 씁니다.</p></div>
+        <div class="eyebrow reveal">module surface</div>
+        <h2 class="reveal">Host가 쓰는 언어: command와 state</h2>
+        <div class="split-visual reveal">
+            <div class="module-surface-top">
+                <div class="code-editor compact">
+                    <span class="filename">PlayerHost.swift · 추구하는 사용 표면</span>
+<pre><span class="kw">let</span> <span class="domain">module</span> = <span class="kw">await</span> factory.<span class="fn">makeModule</span>()
+
+<span class="kw">try</span> <span class="kw">await</span> <span class="domain">module.core</span>.<span class="fn">start</span>(source: <span class="domain">source</span>, policy: <span class="domain">featurePolicy</span>)
+<span class="kw">try</span> <span class="kw">await</span> <span class="domain">module.core</span>.<span class="fn">execute</span>(command: <span class="callout-token">.play</span>)
+<span class="kw">try</span> <span class="kw">await</span> <span class="domain">module.core</span>.<span class="fn">execute</span>(command: <span class="callout-token">.seek(to: target)</span>)
+
+<span class="kw">for await</span> <span class="state-token">state</span> <span class="kw">in</span> <span class="domain">module.core</span>.stateStream {
+    <span class="fn">render</span>(<span class="state-token">state</span>)
+}</pre>
+                </div>
+                <div class="abstract-flow-card" aria-label="Host 사용 표면 축약 다이어그램">
+                    <div class="abstract-flow-title">abstract path</div>
+                    <div class="abstract-flow">
+                        <div class="abstract-node host"><strong>Host</strong><span>command · policy</span></div>
+                        <div class="abstract-arrow">→</div>
+                        <div class="abstract-node"><strong>Core</strong><span>state owner</span></div>
+                        <div class="abstract-arrow">→</div>
+                        <div class="abstract-node adapter"><strong>Adapter</strong><span>SDK boundary</span></div>
+                    </div>
+                    <div class="abstract-flow">
+                        <div class="abstract-node state"><strong>State</strong><span>render input</span></div>
+                        <div class="abstract-arrow">←</div>
+                        <div class="abstract-node"><strong>Reducer</strong><span>transition</span></div>
+                        <div class="abstract-arrow">←</div>
+                        <div class="abstract-node adapter"><strong>Output</strong><span>engine signal</span></div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><strong>Host는 무엇을 할지</strong> command로 말합니다.</li>
+                        <li><strong>모듈은 어떻게 재생할지</strong> engine으로 처리합니다.</li>
+                        <li><strong>Host는 계산된 state</strong>만 받아 화면을 그립니다.</li>
+                        <li>SDK delegate, DRM callback, AVPlayer 상태 전이를 직접 소유하지 않습니다.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="mermaid-card reveal" style="margin-top:var(--content-gap);">
-<pre class="mermaid">flowchart LR
-    Buy[SDK는 구매] --> Risk[vendor lock-in 리스크]
-    Risk --> Adapter[EngineAdapter 내부 격리]
-    Adapter --> Host[Host는 PlaybackCommand / PlaybackState]
-    Adapter --> Future[더 좋은 SDK가 생기면 adapter 추가]
-    class Buy,Host core
-    class Risk risk
-    class Adapter,Future adapter
-    classDef core fill:#d3e5ff,stroke:#0070f3,color:#171717,stroke-width:2px
-    classDef risk fill:#ffefcf,stroke:#f5a623,color:#171717,stroke-width:2px
-    classDef adapter fill:#aaffec,stroke:#29bc9b,color:#171717,stroke-width:2px</pre>
-        </div>
+        <p class="takeaway reveal">Host는 SDK delegate가 아니라 command/state를 다루고, SDK 차이는 EngineAdapter가 흡수합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 09. SDK는 구매하고, 구조는 소유합니다</h3>
-        <p><strong>말할 내용:</strong> SDK 의존도를 줄여야 하는 이유는 구매한 SDK의 변화가 앱 구조 전체를 흔들 수 있기 때문입니다.<br>VOD, DRM, 다운로드, 라이선스 서버는 전문 SDK를 쓰는 편이 효율적입니다.<br>하지만 SDK 타입은 Adapter 안에 가둬야 구매의 장점을 유지할 수 있습니다.</p>
-        <p><strong>전환:</strong> 서비스별 차이는 주입 구조로 다룹니다.</p>
-        <p><strong>화면:</strong><br>1. BUY는 전문 SDK를 쓰는 이유입니다.<br>2. RISK는 SDK 정책, 가격, 품질 변화 가능성입니다.<br>3. CONTROL은 우리 구조를 command/state로 소유하자는 뜻입니다.</p>
+        <h3>Script 09. Host가 쓰는 언어: command와 state</h3>
+        <p><strong>말할 내용:</strong> Host가 쓰게 만들 언어는 PlaybackCommand와 PlaybackState입니다.<br>Host는 무엇을 할지만 command로 말하고, 모듈은 어떻게 재생할지 engine으로 처리합니다.<br>Host는 계산된 state만 받아 화면을 그리고, SDK delegate, DRM callback, AVPlayer 상태 전이를 직접 소유하지 않습니다.</p>
+        <p><strong>전환:</strong> 이 command와 state가 런타임에서 어떻게 흐르는지 보겠습니다.</p>
+        <p><strong>화면:</strong><br>1. makeModule로 모듈을 만듭니다.<br>2. start와 execute로 행동을 보냅니다.<br>3. stateStream으로 화면을 그립니다.<br>4. 오른쪽 abstract card에서 SDK는 Adapter 뒤에 있고 Host는 command와 state만 봅니다.</p>
     </aside>
 </section>
 
-<!-- 10. POP와 Host 주입 -->
+<!-- 10. 런타임 흐름 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">runtime architecture</div>
+        <h2 class="reveal">명령은 내려가고 상태는 돌아옵니다</h2>
+        <div class="flow reveal" style="max-width:860px;">
+            <div class="flow-node"><span class="nm">Skin</span><span class="ds">PlayerSkinAction 발행</span></div>
+            <div class="flow-arrow">↓ Host mapping</div>
+            <div class="flow-node"><span class="nm">Host / Interactor</span><span class="ds">PlaybackCommand 변환</span></div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node accent"><span class="nm">PlayerCore actor</span><span class="ds">정책과 capability 협상</span></div>
+            <div class="flow-arrow">↓ async throws</div>
+            <div class="flow-node"><span class="nm">EngineAdapter</span><span class="ds">AVPlayer / Kollus / Future SDK 호출</span></div>
+            <div class="flow-arrow">↓ raw callback → PlayerEngineOutput</div>
+            <div class="flow-node accent"><span class="nm">PlaybackStateReducer</span><span class="ds">상태 전이 결정</span></div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node"><span class="nm">PlaybackState</span><span class="ds">Host / Skin 렌더</span></div>
+        </div>
+    </div>
+    <aside class="speaker-script" aria-label="발표 스크립트">
+        <h3>Script 10. 명령은 내려가고 상태는 돌아옵니다</h3>
+        <p><strong>말할 내용:</strong> 명령과 상태는 Skin에서 Core를 거쳐 Engine으로 내려가고, 출력은 Reducer를 거쳐 state로 돌아옵니다.<br>Skin은 재생 명령을 직접 소유하지 않고, Host가 화면 액션을 command로 번역합니다.<br>그래서 디버깅할 때 action, command, engine output, reducer state를 순서대로 보면 됩니다.</p>
+        <p><strong>전환:</strong> 이 흐름 위에서 서비스별 차이를 어디에 주입하는지 보겠습니다.</p>
+        <p><strong>화면:</strong><br>1. 위에서 아래로 흐름을 읽습니다.<br>2. Skin은 PlayerSkinAction을 내보내고 Host가 PlaybackCommand로 변환합니다.<br>3. Core가 정책과 capability를 보고 EngineAdapter에 위임합니다.<br>4. Reducer가 최종 PlaybackState를 결정합니다.</p>
+    </aside>
+</section>
+
+<!-- 11. POP와 Host 주입 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">pop & injection</div>
@@ -1645,100 +1690,60 @@ window.__initialSlideHash = window.location.hash;
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 10. 서비스별 차이는 주입 지점으로 분리</h3>
+        <h3>Script 11. 서비스별 차이는 주입 지점으로 분리</h3>
         <p><strong>말할 내용:</strong> 서비스별 차이는 공통 코드의 if문이 아니라 정해진 protocol과 주입 지점에 넣어야 합니다.<br>이 모듈은 policy, theme, block, engine 같은 경계로 차이를 받습니다.<br>커스텀은 허용하지만 SDK나 내부 상태를 직접 만지는 방식은 막습니다.</p>
-        <p><strong>전환:</strong> Host 개발자가 실제로 알아야 하는 표면을 더 단순하게 보겠습니다.</p>
+        <p><strong>전환:</strong> 주입 지점이 정리되면 다음은 SDK가 들어오는 product 경계입니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 다이어그램은 Host가 policy, theme, block, engine을 넣는 구조입니다.<br>2. 오른쪽 코드는 policy와 blueprint를 조립하는 예시입니다.<br>3. configuration은 초기 정책을 모듈에 전달하는 지점입니다.</p>
     </aside>
 </section>
 
-<!-- 11. Host가 알면 되는 것 -->
-<section class="slide">
-    <div class="slide-content">
-        <div class="eyebrow reveal">host contract</div>
-        <h2 class="reveal">Host 계약은 command와 state</h2>
-        <div class="split-visual reveal">
-            <div class="code-editor">
-                <span class="filename">HostViewController.swift</span>
-<pre><span class="kw">try await</span> module.core.execute(command: .play)
-<span class="kw">try await</span> module.core.execute(command: .seek(to: time))
-
-<span class="kw">for await</span> state <span class="kw">in</span> module.core.stateStream {
-    render(state)
-}</pre>
-            </div>
-            <ul class="feature-list">
-                <li><strong>Host는 무엇을 할지</strong> command로 말합니다.</li>
-                <li><strong>모듈은 어떻게 재생할지</strong> engine으로 처리합니다.</li>
-                <li><strong>Host는 계산된 state</strong>만 받아 화면을 그립니다.</li>
-                <li>SDK delegate, DRM callback, AVPlayer 상태 전이를 직접 소유하지 않습니다.</li>
-            </ul>
-        </div>
-        <p class="takeaway reveal">여러 서비스가 재사용할 수 있는 가장 중요한 표면은 command와 state입니다.</p>
-    </div>
-    <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 11. Host 계약은 command와 state</h3>
-        <p><strong>말할 내용:</strong> Host가 알아야 할 표면은 command를 보내고 state를 구독하는 두 가지입니다.<br>Host는 “무엇을 하고 싶은지”만 command로 말하고, 화면은 계산된 state를 받아 그립니다.<br>SDK delegate, DRM callback, AVPlayer KVO는 Host가 직접 소유하지 않습니다.</p>
-        <p><strong>전환:</strong> 이 command와 state가 런타임에서 어떻게 흐르는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 코드는 play, seek command를 보냅니다.<br>2. stateStream을 for await로 구독해 render합니다.<br>3. 오른쪽 리스트는 Host가 직접 소유하지 않는 것들을 정리합니다.</p>
-    </aside>
-</section>
-
-<!-- 12. 런타임 흐름 -->
-<section class="slide">
-    <div class="slide-content">
-        <div class="eyebrow reveal">runtime architecture</div>
-        <h2 class="reveal">명령은 내려가고 상태는 돌아옵니다</h2>
-        <div class="flow reveal" style="max-width:860px;">
-            <div class="flow-node"><span class="nm">Skin</span><span class="ds">PlayerSkinAction 발행</span></div>
-            <div class="flow-arrow">↓ Host mapping</div>
-            <div class="flow-node"><span class="nm">Host / Interactor</span><span class="ds">PlaybackCommand 변환</span></div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node accent"><span class="nm">PlayerCore actor</span><span class="ds">정책과 capability 협상</span></div>
-            <div class="flow-arrow">↓ async throws</div>
-            <div class="flow-node"><span class="nm">EngineAdapter</span><span class="ds">AVPlayer / Kollus / Future SDK 호출</span></div>
-            <div class="flow-arrow">↓ raw callback → PlayerEngineOutput</div>
-            <div class="flow-node accent"><span class="nm">PlaybackStateReducer</span><span class="ds">상태 전이 결정</span></div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node"><span class="nm">PlaybackState</span><span class="ds">Host / Skin 렌더</span></div>
-        </div>
-    </div>
-    <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 12. 명령은 내려가고 상태는 돌아옵니다</h3>
-        <p><strong>말할 내용:</strong> 명령과 상태는 Skin에서 Core를 거쳐 Engine으로 내려가고, 출력은 Reducer를 거쳐 state로 돌아옵니다.<br>Skin은 재생 명령을 직접 소유하지 않고, Host가 화면 액션을 command로 번역합니다.<br>그래서 디버깅할 때 action, command, engine output, reducer state를 순서대로 보면 됩니다.</p>
-        <p><strong>전환:</strong> 이 흐름을 유지하려면 SDK가 들어오는 product 경계도 명확해야 합니다.</p>
-        <p><strong>화면:</strong><br>1. 위에서 아래로 흐름을 읽습니다.<br>2. Skin은 PlayerSkinAction을 내보내고 Host가 PlaybackCommand로 변환합니다.<br>3. Core가 정책과 capability를 보고 EngineAdapter에 위임합니다.<br>4. Reducer가 최종 PlaybackState를 결정합니다.</p>
-    </aside>
-</section>
-
-<!-- 13. product 경계 -->
+<!-- 12. product 경계 -->
 <section class="slide boundary-slide">
     <div class="slide-content">
         <div class="eyebrow reveal">module boundary</div>
-        <h2 class="reveal">SDK는 Engine product 안에만 둡니다</h2>
+        <h2 class="reveal">SDK 의존은 Kollus Engine product에만 둡니다</h2>
         <div class="table-card reveal">
             <table>
-                <thead><tr><th>product</th><th>역할</th><th>SDK 의존</th></tr></thead>
+                <thead><tr><th>product</th><th>역할</th><th>직접 의존</th></tr></thead>
                 <tbody>
                     <tr><td>VideoPlayerCore</td><td>도메인, 상태, 엔진 계약</td><td>없음</td></tr>
-                    <tr><td>VideoPlayerShellSupport</td><td>wiring, render surface, lifecycle/audio</td><td>없음</td></tr>
-                    <tr><td>VideoPlayerEngineNative</td><td>URL/HLS 재생</td><td>없음</td></tr>
-                    <tr><td>VideoPlayerEngineKollus</td><td>Kollus DRM/다운로드</td><td>Kollus/PallyCon</td></tr>
-                    <tr><td>VideoPlayerSkin</td><td>재사용 UI</td><td>없음</td></tr>
+                    <tr><td>VideoPlayerShellSupport</td><td>wiring, render surface, lifecycle/audio</td><td>Core</td></tr>
+                    <tr><td>VideoPlayerEngineNative</td><td>URL/HLS 재생</td><td>ShellSupport</td></tr>
+                    <tr><td>VideoPlayerEngineKollus</td><td>Kollus DRM/다운로드</td><td>ShellSupport + Kollus/PallyCon binary</td></tr>
+                    <tr><td>VideoPlayerSkin</td><td>재사용 UI</td><td>Core + ShellSupport</td></tr>
                 </tbody>
             </table>
         </div>
         <div class="mermaid-card reveal" style="margin-top:var(--content-gap);">
 <pre class="mermaid">flowchart TB
-    Host[Host App] --> Skin[VideoPlayerSkin]
-    Host --> Native[VideoPlayerEngineNative]
-    Host --> Kollus[VideoPlayerEngineKollus]
-    Skin --> Shell[VideoPlayerShellSupport]
+    Host[Host App<br/>assembly]
+
+    subgraph Neutral[SDK 비의존 product]
+        Skin[VideoPlayerSkin<br/>UI block/theme]
+        Native[VideoPlayerEngineNative<br/>URL/HLS]
+        Shell[VideoPlayerShellSupport<br/>surface/lifecycle/audio]
+        Core[VideoPlayerCore<br/>state + engine contract]
+    end
+
+    subgraph KollusOnly[Kollus 전용 product]
+        Kollus[VideoPlayerEngineKollus<br/>DRM/download adapter]
+    end
+
+    subgraph Vendor[Vendor binary target]
+        KB[VideoPlayerKollusBinary]
+        PB[VideoPlayerPallyConBinary]
+    end
+
+    Host --> Skin
+    Host --> Native
+    Host --> Kollus
+    Skin --> Core
+    Skin --> Shell
     Native --> Shell
     Kollus --> Shell
-    Shell --> Core[VideoPlayerCore]
-    Kollus --> KB[KollusSDK binary]
-    Kollus --> PB[PallyCon binary]
+    Shell --> Core
+    Kollus --> KB
+    Kollus --> PB
     class Core core
     class Host,Skin,Native,Shell shell
     class Kollus adapter
@@ -1750,14 +1755,14 @@ window.__initialSlideHash = window.location.hash;
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 13. SDK는 Engine product 안에만 둡니다</h3>
-        <p><strong>말할 내용:</strong> SDK는 Core나 Skin까지 들어오면 안 되고, 필요한 engine product 안에만 머물러야 합니다.<br>Core는 도메인, 상태, 엔진 계약만 알고, ShellSupport는 wiring과 render surface를 담당합니다.<br>vendor binary는 Kollus product 안에만 있습니다.</p>
+        <h3>Script 12. SDK 의존은 Kollus Engine product에만 둡니다</h3>
+        <p><strong>말할 내용:</strong> 이 그래프는 런타임 이벤트 흐름이 아니라 빌드 의존 방향입니다.<br>Host는 Skin, Native engine, Kollus engine을 조립하지만, Core와 Skin은 Kollus/PallyCon binary를 직접 알지 않습니다.<br>Vendor binary target은 VideoPlayerEngineKollus에만 연결됩니다. 그래서 SDK 교체나 Kollus 전용 이슈가 생겨도 공통 Core, ShellSupport, Skin으로 번지지 않습니다.</p>
         <p><strong>전환:</strong> 다음은 상태 소유권입니다.</p>
-        <p><strong>화면:</strong><br>1. 표에서 Core, ShellSupport, Skin은 SDK 의존이 없음을 봅니다.<br>2. Kollus product만 Kollus/PallyCon binary를 압니다.<br>3. 아래 Mermaid의 화살표는 의존 방향입니다. Core가 Engine 구현을 의존하지 않습니다.</p>
+        <p><strong>화면:</strong><br>1. 표는 실제 product별 직접 의존을 보여줍니다.<br>2. Mermaid의 왼쪽 묶음은 SDK 비의존 product입니다.<br>3. 보라색 Kollus product만 노란색 vendor binary target으로 연결됩니다.<br>4. Core는 가장 아래 계약 계층이고, engine 구현이나 vendor SDK를 의존하지 않습니다.</p>
     </aside>
 </section>
 
-<!-- 14. 상태 소유권 -->
+<!-- 13. 상태 소유권 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">state ownership</div>
@@ -1786,14 +1791,14 @@ reduce(input, state):
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 14. 상태 결정은 Core reducer가 소유</h3>
+        <h3>Script 13. 상태 결정은 Core reducer가 소유</h3>
         <p><strong>말할 내용:</strong> SDK 콜백은 Engine이 신호로 바꾸고, 최종 상태 결정은 Core reducer가 해야 합니다.<br>SDK callback 순서는 우리가 통제할 수 없고, 늦은 callback이 이미 끝난 상태를 되살리면 화면이 흔들립니다.<br>그래서 Core가 현재 상태와 입력을 함께 보고 다음 상태를 결정합니다.</p>
         <p><strong>전환:</strong> 상태 다음으로는 기능 지원 차이를 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 pseudo code는 callback이 reducer까지 들어가는 흐름입니다.<br>2. terminal 상태에서는 늦은 buffering이나 position 신호를 무시합니다.<br>3. 오른쪽 리스트는 왜 reducer가 필요한지 설명합니다.</p>
     </aside>
 </section>
 
-<!-- 15. capability -->
+<!-- 14. capability -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">capability model</div>
@@ -1803,81 +1808,69 @@ reduce(input, state):
 <pre>availableFeatures = optionalProtocolSupport(engine)
 runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         </div>
+        <p class="body-text reveal" style="margin-top:0.7rem; max-width:860px;">예: 엔진이 PiP protocol을 채택하지 않으면 Skin의 PiP 버튼이 자동으로 비노출됩니다. 배속·자막·북마크도 같은 방식이고, 다운로드는 PlayerDownloadCenter 계약으로 재생과 분리해 노출합니다.</p>
         <div class="grid grid-3 reveal" style="margin-top:var(--content-gap);">
             <div class="card"><span class="num">PROTOCOL</span><h3>기능 채택</h3><p class="body-text">엔진의 optional protocol 채택으로 UI 가용 기능을 산출합니다.</p></div>
-            <div class="card"><span class="num">CAPABILITY</span><h3>런타임 제약</h3><p class="body-text">백그라운드 유지, command-origin 같은 엔진 동작 차이를 협상합니다.</p></div>
+            <div class="card"><span class="num">CAPABILITY</span><h3>런타임 제약</h3><p class="body-text">백그라운드 유지, command-origin(명령 출처 구분) 같은 엔진 동작 차이를 협상합니다.</p></div>
             <div class="card"><span class="num">POLICY</span><h3>Host 정책</h3><p class="body-text">서비스 정책은 명령 검증과 런타임 정책 조정에 사용합니다.</p></div>
         </div>
         <p class="takeaway reveal">기능 차이는 protocol 기반 availability와 runtime capability로 관리합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 15. 기능 차이는 availability와 capability로 관리</h3>
-        <p><strong>말할 내용:</strong> 엔진마다 다른 기능 지원은 optional protocol, capability, Host policy를 나눠서 다룹니다.<br>배속, 자막, 북마크, PiP 같은 버튼 노출은 엔진이 어떤 optional protocol을 채택했는지로 결정합니다.<br>다운로드는 PlayerDownloadCenter 계약으로 별도 노출합니다.</p>
-        <p><strong>전환:</strong> 이제 실제 조립 코드로 넘어가겠습니다. 먼저 Native engine입니다.</p>
-        <p><strong>화면:</strong><br>1. 위 공식은 현재 코드 기준의 두 축입니다.<br>2. UI 가용 기능은 엔진 optional protocol 채택으로 산출합니다.<br>3. engineCapabilities는 백그라운드 유지나 command-origin 같은 런타임 정책 조정에 씁니다.</p>
+        <h3>Script 14. 기능 차이는 availability와 capability로 관리</h3>
+        <p><strong>말할 내용:</strong> 엔진마다 다른 기능 지원은 optional protocol, capability, Host policy를 나눠서 다룹니다.<br>예를 들어 엔진이 PiP protocol을 채택하지 않으면 Skin의 PiP 버튼은 자동으로 비노출됩니다.<br>다운로드는 PlayerDownloadCenter 계약으로 재생과 분리해 노출합니다.</p>
+        <p><strong>전환:</strong> 이제 실제 조립 코드를 Native와 Kollus 두 경로로 비교해 보겠습니다.</p>
+        <p><strong>화면:</strong><br>1. 위 공식은 현재 코드 기준의 두 축입니다.<br>2. PiP 예시는 optional protocol 채택 여부가 버튼 노출로 이어지는 방식입니다.<br>3. engineCapabilities는 백그라운드 유지나 command-origin(명령 출처 구분) 같은 런타임 정책 조정에 씁니다.<br>4. PlayerDownloadCenter는 다운로드를 재생 흐름과 분리하는 계약입니다.</p>
     </aside>
 </section>
 
-<!-- 16. Native engine -->
+<!-- 15. Engine assembly -->
 <section class="slide">
     <div class="slide-content">
-        <div class="eyebrow reveal">develop · native engine</div>
-        <h2 class="reveal">일반 URL/HLS는 Native engine으로 조립</h2>
-        <div class="code-editor reveal" style="max-width:900px;">
-            <span class="filename">NativePlayerAssembly.swift</span>
+        <div class="eyebrow reveal">develop · engine assembly</div>
+        <h2 class="reveal">엔진이 바뀌어도 Host 표면은 동일합니다</h2>
+        <div class="split-visual reveal">
+            <div class="code-editor compact">
+                <span class="filename">NativePlayerAssembly.swift</span>
 <pre><span class="kw">let</span> module = <span class="kw">await</span> <span class="ty">PlayerModuleWiring</span>.makeModule(
-    engine: <span class="ty">AVPlayerAdapter</span>(),
+    engine: <span class="ty callout-token">AVPlayerAdapter</span>(),
     engineCapabilities: <span class="ty">AVPlayerAdapter</span>.capabilities
 )
 
-<span class="kw">try await</span> module.core.start(source: .url(videoURL), policy: .default)
+<span class="kw">try await</span> module.core.start(
+    source: <span class="callout-token">.url(videoURL)</span>,
+    policy: .default
+)
 <span class="kw">try await</span> module.core.execute(command: .play)</pre>
-        </div>
-        <p class="body-text reveal" style="margin-top:var(--content-gap);">SDK가 필요 없는 미리보기, 광고, DRM 없는 영상은 Native engine만으로 가볍게 붙일 수 있습니다.</p>
-    </div>
-    <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 16. 일반 URL/HLS는 Native engine으로 조립</h3>
-        <p><strong>말할 내용:</strong> 일반 URL이나 HLS는 AVPlayerAdapter를 넣어 Native engine 경로로 조립합니다.<br>모듈을 만든 뒤에는 start와 execute 흐름이 동일합니다.<br>미리보기, 광고, DRM 없는 콘텐츠에 적합한 경로입니다.</p>
-        <p><strong>전환:</strong> Kollus를 써야 하는 경우도 Host 사용 표면은 크게 달라지지 않습니다.</p>
-        <p><strong>화면:</strong><br>1. PlayerModuleWiring.makeModule에 AVPlayerAdapter를 넣습니다.<br>2. source는 .url(videoURL)입니다.<br>3. 재생은 동일하게 .play command로 보냅니다.</p>
-    </aside>
-</section>
-
-<!-- 17. Kollus engine -->
-<section class="slide">
-    <div class="slide-content">
-        <div class="eyebrow reveal">develop · kollus engine</div>
-        <h2 class="reveal">Kollus는 전용 Engine 안에서 조립</h2>
-        <div class="code-editor compact reveal" style="max-width:900px;">
-            <span class="filename">KollusPlayerAssembly.swift</span>
+            </div>
+            <div class="code-editor compact">
+                <span class="filename">KollusPlayerAssembly.swift</span>
 <pre><span class="kw">let</span> environment = <span class="ty">KollusEnvironment</span>(
     applicationKey: key,
-    applicationBundleID: bundleID,
-    applicationExpireDate: expireDate,
     storagePath: storagePath,
     drm: drmConfiguration
 )
 <span class="kw">try</span> environment.validate()
 
-<span class="kw">let</span> factory = <span class="ty">KollusPlayerModuleFactory</span>(environment: environment)
+<span class="kw">let</span> factory = <span class="ty callout-token">KollusPlayerModuleFactory</span>(environment: environment)
 <span class="kw">let</span> module = <span class="kw">await</span> factory.makeModule()
-
 <span class="kw">try await</span> module.core.start(
-    source: .mediaKey(mediaContentKey),
+    source: <span class="callout-token">.mediaKey(mediaContentKey)</span>,
     policy: .default
 )</pre>
+            </div>
         </div>
-        <p class="takeaway reveal">Kollus는 engine 안에 있고, Host는 같은 command/state 표면을 씁니다.</p>
+        <p class="takeaway reveal">조립(environment, adapter, source 해석)만 다르고, start/execute/stateStream 표면은 동일합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 17. Kollus는 전용 Engine 안에서 조립</h3>
-        <p><strong>말할 내용:</strong> Kollus는 environment와 mediaKey 해석 지점에서만 다르게 조립합니다.<br>초기화 값은 필요하지만, Host가 보는 재생 표면은 Native와 같습니다.<br>Core는 Kollus라는 이름을 모르고, 해석은 Kollus adapter가 담당합니다.</p>
+        <h3>Script 15. 엔진이 바뀌어도 Host 표면은 동일합니다</h3>
+        <p><strong>말할 내용:</strong> 미리보기, 광고, DRM 없는 콘텐츠는 Native engine으로 가볍게 조립합니다.<br>DRM이나 다운로드가 필요한 콘텐츠는 Kollus engine으로 조립합니다.<br>하지만 Host가 보는 표면은 start, execute, stateStream으로 동일합니다.</p>
         <p><strong>전환:</strong> 엔진만 바꾸는 것으로는 부족합니다. 서비스별 UI 조립도 필요합니다.</p>
-        <p><strong>화면:</strong><br>1. KollusEnvironment에 앱 키, 번들 ID, storage, DRM 설정을 넣습니다.<br>2. validate로 설정 오류를 일찍 잡습니다.<br>3. factory.makeModule 후 source는 .mediaKey(mediaContentKey)로 시작합니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽은 AVPlayerAdapter와 .url source를 넣는 Native 조립입니다.<br>2. 오른쪽은 KollusEnvironment와 Kollus factory, .mediaKey source를 넣는 Kollus 조립입니다.<br>3. 하이라이트된 줄은 엔진별로 달라지는 지점이고, Host command/state 표면은 같습니다.</p>
     </aside>
 </section>
 
-<!-- 18. Skin 커스텀 -->
+<!-- 16. Skin 커스텀 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">develop · skin customization</div>
@@ -1935,14 +1928,14 @@ runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 18. 서비스별 UI는 Skin blueprint로 조립</h3>
+        <h3>Script 16. 서비스별 UI는 Skin blueprint로 조립</h3>
         <p><strong>말할 내용:</strong> 서비스별 UI는 Skin blueprint, block, theme을 바꿔서 대응합니다.<br>Skin은 고정 UI를 강제하지 않습니다.<br>같은 Core와 state를 쓰더라도 버튼 배치, 오버레이, 테마를 서비스별로 다르게 가져갈 수 있습니다.</p>
         <p><strong>전환:</strong> 이 구조가 실제로 어떻게 보이는지는 Example app에서 확인합니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 그림에서 slot은 자리입니다.<br>2. 오른쪽 코드에서 block은 그 자리에 들어가는 부품입니다.<br>3. visibleSlots는 layout mode별로 보일 자리를 정합니다.<br>4. theme은 서비스별 색과 스타일입니다.</p>
     </aside>
 </section>
 
-<!-- 19. Demo -->
+<!-- 17. Demo -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">example app · live demo</div>
@@ -1961,14 +1954,14 @@ runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         <p class="takeaway reveal">Example app은 이 모듈을 서비스에서 어떻게 조립할지 보여주는 레퍼런스입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 19. 데모에서 확인할 구조</h3>
+        <h3>Script 17. 데모에서 확인할 구조</h3>
         <p><strong>말할 내용:</strong> 데모에서 확인할 것은 기능 하나가 아니라 앞에서 말한 경계가 실제로 유지되는지입니다.<br>HLS, Kollus, DownloadCenter, Skin 제스처가 같은 command/state 표면으로 연결되는지 봅니다.<br>특히 Kollus 실재생과 다운로드/오프라인은 유효한 콘텐츠와 실기기 QA에서 닫습니다.</p>
         <p><strong>전환:</strong> 경계가 유지되면 앞으로의 확장 방식도 달라집니다.</p>
         <p><strong>화면:</strong><br>1. HLS 재생은 Native engine과 state 흐름을 봅니다.<br>2. Kollus 실재생은 실기기에서 SDK 격리와 engine 교체를 봅니다.<br>3. DownloadCenter는 계약과 상태 모델만 확인합니다.<br>4. Skin 제스처는 UI 조립 가능성을 봅니다.</p>
     </aside>
 </section>
 
-<!-- 20. 미래 확장 -->
+<!-- 18. 미래 확장 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">future extension</div>
@@ -1988,14 +1981,14 @@ runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         <p class="takeaway reveal">미래 변화는 adapter, availability, DownloadCenter, skin block으로 흡수합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 20. 미래 확장은 정해진 경계로 흡수</h3>
+        <h3>Script 18. 미래 확장은 정해진 경계로 흡수</h3>
         <p><strong>말할 내용:</strong> 앞으로의 확장은 Host 전체 수정이 아니라 정해진 경계의 확장으로 처리합니다.<br>더 좋은 VOD SDK가 나오면 새 EngineAdapter를 추가하고, UI 요구는 Skin block이나 theme으로 받습니다.<br>다운로드 정책과 해외 서비스 요구는 DownloadCenter, policy, localization 주입으로 대응합니다.</p>
         <p><strong>전환:</strong> 공통 모듈이 되려면 검증 경계도 함께 분리되어야 합니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 optional protocol과 availability로 확장합니다.</p>
     </aside>
 </section>
 
-<!-- 21. 검증 전략 -->
+<!-- 19. 검증 전략 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">verification strategy</div>
@@ -2024,14 +2017,14 @@ runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 21. 공통 모듈의 검증 경계</h3>
+        <h3>Script 19. 공통 모듈의 검증 경계</h3>
         <p><strong>말할 내용:</strong> 검증 경계는 순수 상태 전이, SDK 신호 매핑, 모듈 경계, 실기기 QA로 나눕니다.<br>상태 전이는 reducer pure test로 보고, SDK 이벤트 매핑은 signal mapper test로 봅니다.<br>Kollus 재생과 DRM, 다운로드, 백그라운드 오디오는 실기기 QA로 닫아야 합니다.</p>
         <p><strong>전환:</strong> 그래서 오늘 결정할 것은 세부 구현 전체가 아니라 다음 단계입니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 표는 테스트 경계를 보여줍니다.<br>2. 오른쪽 카드는 아직 남은 한계를 보여줍니다.<br>3. Kollus 실재생 경로는 실기기 QA가 필요합니다.</p>
     </aside>
 </section>
 
-<!-- 22. 결정 -->
+<!-- 20. 결정 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">decision request</div>
@@ -2044,14 +2037,60 @@ runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         <p class="takeaway reveal">오늘은 구조 승인과 파일럿 착수를 결정하는 자리입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 22. 오늘 결정할 세 가지</h3>
+        <h3>Script 20. 오늘 결정할 세 가지</h3>
         <p><strong>말할 내용:</strong> 오늘 결정할 것은 세부 구현 전체가 아니라 방향, 파일럿 범위, 정책 차이의 원칙입니다.<br>이 구조로 진행할지, 어디까지 작게 적용할지, Host override를 어디까지 허용할지 정하면 됩니다.<br>그 결정이 있어야 다음 단계로 넘어갈 수 있습니다.</p>
-        <p><strong>전환:</strong> 마지막으로 파일럿 계획을 정리하고 마무리하겠습니다.</p>
+        <p><strong>전환:</strong> 결정을 돕기 위해 파일럿의 성공 기준과 롤백 계획을 함께 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. D1은 Core/Engine/Skin 구조 승인입니다.<br>2. D2는 host 1개 화면부터 feature flag로 적용하는 파일럿입니다.<br>3. D3는 기존 UX 기준과 Host override 허용입니다.</p>
     </aside>
 </section>
 
-<!-- 23. 마무리 -->
+<!-- 21. 파일럿 성공 기준과 롤백 계획 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">pilot guardrails</div>
+        <h2 class="reveal">파일럿 성공 기준과 롤백 계획</h2>
+        <div class="table-card reveal">
+            <table>
+                <thead><tr><th>단계</th><th>확인 항목</th></tr></thead>
+                <tbody>
+                    <tr><td>Example app 검증</td><td>Native/Kollus 조립, state 흐름, DownloadCenter 상태 모델 확인</td></tr>
+                    <tr><td>host 1개 화면 feature flag 적용</td><td>기존 화면과 동일한 진입·재생·종료 흐름 확인</td></tr>
+                    <tr><td>실기기 QA</td><td>Kollus 재생, DRM, 다운로드, 백그라운드 오디오 회귀 확인</td></tr>
+                    <tr><td>확장 판단</td><td>기간, 결함 허용 범위, 크래시율 임계값은 파일럿 시작 전 합의</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid grid-2 reveal" style="margin-top:var(--content-gap);">
+            <div class="card">
+                <span class="num">SUCCESS</span>
+                <h3>성공 기준</h3>
+                <ul class="feature-list" style="margin-top:0.6rem;">
+                    <li>기존 화면과 동일한 재생 시나리오를 통과합니다.</li>
+                    <li>크래시·재생 실패 회귀가 없어야 합니다.</li>
+                    <li>신규 결함은 모듈 경계 안에서 수정 가능해야 합니다.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <span class="num">ROLLBACK</span>
+                <h3>롤백 계획</h3>
+                <ul class="feature-list" style="margin-top:0.6rem;">
+                    <li>feature flag off로 즉시 기존 플레이어로 복귀합니다.</li>
+                    <li>모듈 코드는 host에서 분리되어 있어 제거 영향이 제한됩니다.</li>
+                    <li>구체 수치와 중단 조건은 파일럿 시작 전 합의합니다.</li>
+                </ul>
+            </div>
+        </div>
+        <p class="takeaway reveal">파일럿은 작게 열고, 같은 기준으로 검증하며, 즉시 되돌릴 수 있어야 합니다.</p>
+    </div>
+    <aside class="speaker-script" aria-label="발표 스크립트">
+        <h3>Script 21. 파일럿 성공 기준과 롤백 계획</h3>
+        <p><strong>말할 내용:</strong> 이 슬라이드는 결정을 돕기 위한 안전장치입니다.<br>파일럿은 Example app에서 먼저 확인하고, host 1개 화면을 feature flag로 열어 실기기 QA까지 확인합니다.<br>성공 기준과 롤백 기준을 먼저 합의하면 전면 교체가 아니라 통제 가능한 적용으로 진행할 수 있습니다.</p>
+        <p><strong>전환:</strong> 마지막으로 이 구조로 얻고 싶은 결론을 정리하겠습니다.</p>
+        <p><strong>화면:</strong><br>1. 표는 Example app, host 1개 화면, 실기기 QA, 확장 판단 순서로 읽습니다.<br>2. 성공 기준 카드는 기존 시나리오 통과와 회귀 없음, 모듈 경계 안 수정 가능성을 봅니다.<br>3. 롤백 계획 카드는 feature flag off와 host 분리 구조를 봅니다.</p>
+    </aside>
+</section>
+
+<!-- 22. 마무리 -->
 <section class="slide">
     <div class="mesh" aria-hidden="true"></div>
     <div class="slide-content" style="align-items:center; text-align:center;">
@@ -2067,7 +2106,7 @@ runtimePolicy = hostPolicy adjusted by engineCapabilities</pre>
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 23. 여러 서비스가 다시 만들지 않는 구조</h3>
+        <h3>Script 22. 여러 서비스가 다시 만들지 않는 구조</h3>
         <p><strong>말할 내용:</strong> 여러 서비스가 다시 만들지 않게 하려면 공통 재생 구조를 팀 자산으로 만들어야 합니다.<br>목표는 멋있는 플레이어 하나를 더 만드는 것이 아니라, 같은 플레이어 문제를 반복해서 풀지 않는 것입니다.<br>파일럿은 되돌릴 수 있게 작게 시작합니다.</p>
         <p><strong>전환:</strong> 이 구조로 파일럿을 시작할 수 있을지 결정하고 싶습니다.</p>
         <p><strong>화면:</strong><br>1. 큰 문장 “여러 서비스가 다시 만들지 않도록”을 먼저 읽습니다.<br>2. 아래 단계는 Example app, host 1개 화면, 실기기 QA, 확장 여부 결정입니다.<br>3. 마지막 버튼은 오늘 요청하는 구조 승인과 파일럿 착수입니다.</p>
