@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>videoplayer-ios-ms — 기술 사양 리뷰 (전체 개발자)</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   Vercel design.md 토큰
+   =========================================== */
+:root {
+    --ink: #171717;
+    --on-primary: #ffffff;
+    --body: #4d4d4d;
+    --mute: #888888;
+    --hairline: #ebebeb;
+    --hairline-strong: #a1a1a1;
+    --canvas: #ffffff;
+    --canvas-soft: #fafafa;
+    --canvas-soft-2: #f5f5f5;
+    --link: #0070f3;
+    --warning: #f5a623;
+    --error: #ee0000;
+    --cyan: #50e3c2;
+    --violet: #7928ca;
+    --pink: #ff0080;
+    --g-dev-a: #007cf0; --g-dev-b: #00dfd8;
+    --g-pre-a: #7928ca; --g-pre-b: #ff0080;
+    --g-ship-a: #ff4d4d; --g-ship-b: #f9cb28;
+
+    --sans: 'Geist', Inter, system-ui, -apple-system, sans-serif;
+    --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --title-size: clamp(1.8rem, 5vw, 3.4rem);
+    --h2-size: clamp(1.3rem, 3.2vw, 2.1rem);
+    --h3-size: clamp(1rem, 2.2vw, 1.35rem);
+    --body-size: clamp(0.8rem, 1.4vw, 1.05rem);
+    --small-size: clamp(0.68rem, 1vw, 0.85rem);
+    --code-size: clamp(0.65rem, 1.25vw, 0.85rem);
+
+    --slide-padding: clamp(1.2rem, 5vw, 5rem);
+    --content-gap: clamp(0.6rem, 2vw, 1.6rem);
+    --element-gap: clamp(0.3rem, 1vw, 0.8rem);
+
+    /* 스택 섀도 — 단일 무거운 drop 금지 */
+    --shadow-2: 0px 1px 1px #00000005, 0px 2px 2px #0000000a, 0 0 0 1px #00000014 inset;
+    --shadow-3: 0px 2px 2px #0000000a, 0px 8px 8px -8px #0000000a, 0 0 0 1px #00000014 inset;
+    --shadow-4: 0px 2px 2px #0000000a, 0px 8px 16px -4px #0000000a, 0 0 0 1px #00000014 inset;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; overflow-x: hidden; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--canvas-soft);
+    -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--ink); color: #f2f2f2; }
+
+.slide {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: var(--canvas-soft);
+}
+
+.slide-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-height: 100%;
+    overflow: hidden;
+    padding: var(--slide-padding);
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.slide.dark { background: var(--ink); color: var(--on-primary); }
+.slide.dark .eyebrow { color: var(--hairline-strong); }
+.slide.dark .lead, .slide.dark .body-text { color: #a1a1a1; }
+
+h1 { font-size: var(--title-size); font-weight: 600; line-height: 1.05; letter-spacing: -0.05em; }
+h2 { font-size: var(--h2-size); font-weight: 600; line-height: 1.2; letter-spacing: -0.04em; margin-bottom: var(--content-gap); }
+h3 { font-size: var(--h3-size); font-weight: 600; line-height: 1.3; letter-spacing: -0.03em; }
+.lead { font-size: clamp(0.95rem, 1.8vw, 1.25rem); color: var(--body); line-height: 1.55; }
+.body-text { font-size: var(--body-size); color: var(--body); line-height: 1.5; }
+
+.eyebrow {
+    font-family: var(--mono);
+    font-size: var(--small-size);
+    color: var(--mute);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--element-gap);
+}
+
+.badge {
+    display: inline-flex; align-items: center; gap: 0.4em;
+    font-size: var(--small-size); color: var(--body);
+    background: var(--canvas-soft);
+    border: 1px solid var(--hairline);
+    border-radius: 9999px;
+    padding: 0.25em 0.9em;
+}
+.slide.dark .badge { background: #222; border-color: #333; color: #a1a1a1; }
+
+.pill-cta {
+    display: inline-flex; align-items: center;
+    font-size: clamp(0.8rem, 1.3vw, 1rem); font-weight: 500;
+    background: var(--ink); color: var(--on-primary);
+    border-radius: 100px;
+    padding: 0.55em 1.4em;
+}
+.pill-cta.ghost { background: var(--canvas); color: var(--ink); box-shadow: 0 0 0 1px var(--hairline) inset; }
+
+.card {
+    background: var(--canvas);
+    border-radius: 8px;
+    padding: clamp(0.8rem, 2vw, 1.5rem);
+    box-shadow: var(--shadow-3);
+}
+.card h3 { margin-bottom: 0.35em; }
+.card .num {
+    font-family: var(--mono); font-size: var(--small-size);
+    color: var(--mute); display: block; margin-bottom: 0.6em;
+}
+.slide.dark .card { background: #1f1f1f; box-shadow: 0 0 0 1px #ffffff14 inset; }
+.slide.dark .card h3 { color: var(--on-primary); }
+.slide.dark .card .body-text { color: #a1a1a1; }
+
+.grid { display: grid; gap: clamp(0.5rem, 1.5vw, 1rem); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+table { width: 100%; border-collapse: collapse; font-size: var(--body-size); }
+th {
+    font-family: var(--mono); font-size: var(--small-size); font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute);
+    text-align: left; padding: 0.5em 0.8em;
+    background: var(--canvas-soft);
+    border-bottom: 1px solid var(--hairline);
+}
+td {
+    padding: clamp(0.4em, 1vh, 0.7em) 0.8em;
+    border-bottom: 1px solid var(--hairline);
+    color: var(--body); line-height: 1.4;
+    vertical-align: top;
+}
+td:first-child { color: var(--ink); font-weight: 500; }
+.table-card { background: var(--canvas); border-radius: 8px; box-shadow: var(--shadow-2); overflow: hidden; }
+
+.code-editor {
+    background: var(--ink);
+    color: #e5e5e5;
+    border-radius: 8px;
+    padding: clamp(0.8rem, 2vw, 1.5rem);
+    font-family: var(--mono);
+    font-size: var(--code-size);
+    line-height: 1.65;
+    overflow: hidden;
+    box-shadow: var(--shadow-4);
+}
+.code-editor .filename {
+    font-size: var(--small-size); color: var(--mute);
+    display: block; margin-bottom: 0.8em;
+    padding-bottom: 0.6em; border-bottom: 1px solid #2a2a2a;
+}
+.code-editor pre { white-space: pre; overflow: hidden; }
+.kw { color: var(--pink); }
+.ty { color: var(--cyan); }
+.fn { color: #79b8ff; }
+.cm { color: #6a737d; }
+
+.flow { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
+.flow-node {
+    background: var(--canvas);
+    border-radius: 8px;
+    box-shadow: var(--shadow-2);
+    padding: clamp(0.5rem, 1.2vh, 0.9rem) clamp(0.9rem, 2vw, 1.4rem);
+    display: flex; align-items: baseline; gap: 1em;
+}
+.flow-node .nm { font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
+.flow-node .ds { font-size: var(--small-size); color: var(--mute); }
+.flow-node.accent { background: var(--ink); color: var(--on-primary); }
+.flow-node.accent .ds { color: var(--hairline-strong); }
+.flow-arrow {
+    text-align: center; color: var(--hairline-strong);
+    font-family: var(--mono); font-size: var(--small-size);
+    padding: clamp(0.1rem, 0.6vh, 0.4rem) 0;
+    display: flex; align-items: center; justify-content: center; gap: 0.8em;
+}
+
+.stat .v {
+    font-size: clamp(1.8rem, 4.5vw, 3.2rem); font-weight: 600;
+    letter-spacing: -0.04em; line-height: 1.1; display: block;
+}
+.stat .k { font-size: var(--small-size); color: var(--mute); font-family: var(--mono); }
+
+.feature-list { list-style: none; display: flex; flex-direction: column; gap: clamp(0.4rem, 1vh, 0.9rem); }
+.feature-list li {
+    font-size: var(--body-size); line-height: 1.45; color: var(--body);
+    padding-left: 1.4em; position: relative;
+}
+.feature-list li::before {
+    content: '▲'; position: absolute; left: 0; top: 0.18em;
+    font-size: 0.6em; color: var(--ink);
+}
+.feature-list li strong { color: var(--ink); font-weight: 500; }
+.slide.dark .feature-list li { color: #a1a1a1; }
+.slide.dark .feature-list li::before { color: var(--cyan); }
+.slide.dark .feature-list li strong { color: var(--on-primary); }
+
+.mesh {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+}
+.mesh::before, .mesh::after {
+    content: ''; position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.45;
+}
+.mesh::before {
+    width: 55vw; height: 55vw; top: -28vw; left: -10vw;
+    background: radial-gradient(circle at 30% 30%, var(--g-dev-a), var(--g-dev-b) 45%, transparent 70%);
+    animation: drift 18s ease-in-out infinite alternate;
+}
+.mesh::after {
+    width: 50vw; height: 50vw; top: -22vw; right: -12vw;
+    background: radial-gradient(circle at 60% 40%, var(--g-pre-a), var(--g-pre-b) 40%, var(--g-ship-b) 75%, transparent 85%);
+    animation: drift 22s ease-in-out infinite alternate-reverse;
+}
+@keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(4vw, 3vh) scale(1.08); }
+}
+
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.slide.visible .reveal { opacity: 1; transform: none; }
+.slide.visible .reveal:nth-child(2) { transition-delay: 0.08s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: 0.16s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: 0.24s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: 0.32s; }
+.slide.visible .reveal:nth-child(6) { transition-delay: 0.4s; }
+
+.progress {
+    position: fixed; top: 0; left: 0; height: 2px; z-index: 100;
+    background: linear-gradient(90deg, var(--g-dev-a), var(--g-pre-b));
+    width: 0%; transition: width 0.3s ease;
+}
+.nav-dots {
+    position: fixed; right: clamp(0.6rem, 1.5vw, 1.4rem); top: 50%;
+    transform: translateY(-50%); z-index: 100;
+    display: flex; flex-direction: column; gap: 7px;
+}
+.nav-dots button {
+    width: 7px; height: 7px; border-radius: 50%;
+    border: none; background: #d4d4d4; cursor: pointer; padding: 0;
+    transition: all 0.25s ease;
+}
+.nav-dots button.active { background: var(--ink); transform: scale(1.45); }
+.slide-counter {
+    position: fixed; left: clamp(0.8rem, 2vw, 1.6rem); bottom: clamp(0.6rem, 1.5vh, 1.2rem);
+    font-family: var(--mono); font-size: var(--small-size); color: var(--mute); z-index: 100;
+}
+.keyboard-hint {
+    position: fixed; right: clamp(0.8rem, 2vw, 1.6rem); bottom: clamp(0.6rem, 1.5vh, 1.2rem);
+    font-family: var(--mono); font-size: var(--small-size); color: #c4c4c4; z-index: 100;
+}
+
+@media (max-height: 700px) {
+    :root {
+        --slide-padding: clamp(0.75rem, 3vw, 2.5rem);
+        --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+        --title-size: clamp(1.4rem, 4.5vw, 2.6rem);
+        --h2-size: clamp(1.05rem, 3vw, 1.7rem);
+    }
+}
+@media (max-height: 600px) {
+    :root {
+        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+        --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+    }
+    .nav-dots, .keyboard-hint { display: none; }
+}
+@media (max-width: 760px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .flow-node { flex-direction: column; gap: 0.1em; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+    html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<nav class="nav-dots" id="navDots" aria-label="슬라이드 이동"></nav>
+<div class="slide-counter" id="counter">01 / 17</div>
+<div class="keyboard-hint">←→ · ↑↓ · space</div>
+
+<main id="deck">
+
+<!-- 1. 타이틀 -->
+<section class="slide">
+    <div class="mesh" aria-hidden="true"></div>
+    <div class="slide-content" style="align-items:center; text-align:center;">
+        <div class="eyebrow reveal">videoplayer module — engineering review · 2026-06-12</div>
+        <h1 class="reveal" style="max-width:18em;">영상 재생을 모듈로<br>만들었습니다.</h1>
+        <p class="lead reveal" style="margin-top:var(--content-gap); max-width:36em;">
+            공통 상태 머신과 교체 가능한 재생 엔진.<br>
+            플랫폼에 관계없이 통하는 설계 패턴을 공유하고, 사양 승인을 요청합니다.
+        </p>
+        <div class="reveal" style="margin-top:var(--content-gap); display:flex; gap:0.6em; flex-wrap:wrap; justify-content:center;">
+            <span class="badge">발표 30분 + Q&amp;A</span>
+            <span class="badge">라이브 데모 포함</span>
+            <span class="badge">전체 개발자판</span>
+        </div>
+    </div>
+</section>
+
+<!-- 2. 오늘의 목표 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">agenda</div>
+        <h2 class="reveal">오늘 이 회의에서 결정할 것.</h2>
+        <div class="grid grid-3 reveal">
+            <div class="card">
+                <span class="num">01</span>
+                <h3>설계 승인</h3>
+                <p class="body-text">모듈 경계 · 상태 소유권 모델 — "이 구조로 간다"는 합의. 같은 패턴을 타 플랫폼에도 검토.</p>
+            </div>
+            <div class="card">
+                <span class="num">02</span>
+                <h3>정책 결정</h3>
+                <p class="body-text">UI 동작 기본값(HUD·자막 등) — 플랫폼 공통으로 맞출 정책 5건.</p>
+            </div>
+            <div class="card">
+                <span class="num">03</span>
+                <h3>마이그레이션 착수</h3>
+                <p class="body-text">iOS host 앱 파일럿 화면 1개 선정과 일정 합의.</p>
+            </div>
+        </div>
+        <p class="body-text reveal" style="margin-top:var(--content-gap); color:var(--mute);">
+            순서 — 왜 만들었나 → 어떻게 설계했나 → 무엇이 해결됐나 → 데모 → 한계와 결정 요청.
+        </p>
+    </div>
+</section>
+
+<!-- 3. 문제 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">problem · 레거시 플레이어</div>
+        <h2 class="reveal">화면 하나가 모든 것을 알고 있었습니다.</h2>
+        <div class="grid grid-2 reveal">
+            <div class="card">
+                <h3>god object</h3>
+                <p class="body-text">SDK 콜백 26개를 화면 클래스가 직접 처리. UI · 재생 로직 · 서비스 용어가 한 파일에서 성장.</p>
+            </div>
+            <div class="card">
+                <h3>상태 분산 → 역전 버그</h3>
+                <p class="body-text">영상이 끝난 뒤 버퍼링 해제 콜백이 도착하면 재생 상태가 부활. 콜백 순서를 막는 단일 지점 부재.</p>
+            </div>
+            <div class="card">
+                <h3>테스트 불가</h3>
+                <p class="body-text">SDK 없이 상태 전이를 검증할 방법이 없음 — 모든 검증이 실기기 수동 QA.</p>
+            </div>
+            <div class="card">
+                <h3>벤더 강결합</h3>
+                <p class="body-text">DRM SDK 타입이 화면 코드까지 침투. 엔진 교체 = 화면 전면 수정. 어느 플랫폼이든 같은 함정.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 4. 핵심 아이디어 (다크) -->
+<section class="slide dark">
+    <div class="slide-content" style="align-items:center; text-align:center;">
+        <div class="eyebrow reveal">design principle — platform neutral</div>
+        <h1 class="reveal" style="max-width:17em;">화면은 의도만,<br>엔진은 방법만,<br>상태는 순수 함수가.</h1>
+        <p class="lead reveal" style="margin-top:var(--content-gap); max-width:38em;">
+            화면은 "재생해줘 · 30초로 이동해줘"라는 의도만 발행합니다.<br>
+            SDK 호출 방법은 엔진 어댑터가, 다음 상태 계산은 순수 함수가 맡습니다.<br>
+            iOS 구현이지만, 패턴 자체는 플랫폼과 무관합니다.
+        </p>
+    </div>
+</section>
+
+<!-- 5. 명령 흐름 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">architecture · command flow</div>
+        <h2 class="reveal">명령은 한 방향으로만 흐릅니다.</h2>
+        <div class="flow reveal" style="max-width:780px;">
+            <div class="flow-node"><span class="nm">화면</span><span class="ds">"재생" · "이동" — 의도(Command)만 발행</span></div>
+            <div class="flow-arrow">↓ command</div>
+            <div class="flow-node accent"><span class="nm">Core — 직렬화된 제어부</span><span class="ds">정책 · 기능 협상 후 엔진에 위임 (동시성 격리)</span></div>
+            <div class="flow-arrow">↓ 명시적 실패 가능 호출</div>
+            <div class="flow-node"><span class="nm">엔진 어댑터</span><span class="ds">일반 스트리밍 엔진 / DRM 벤더 엔진 — SDK 호출</span></div>
+            <div class="flow-arrow">↓ 단방향 신호 (엔진은 상태를 쓰지 못함)</div>
+            <div class="flow-node accent"><span class="nm">Reducer — 순수 함수</span><span class="ds">신호 + 현재 상태 → 다음 상태 계산</span></div>
+            <div class="flow-arrow">↓ 상태 스트림</div>
+            <div class="flow-node"><span class="nm">화면</span><span class="ds">상태 구독 → 렌더</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- 6. 모듈 경계 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">architecture · boundaries</div>
+        <h2 class="reveal">도메인은 SDK를 모릅니다.</h2>
+        <div class="grid grid-2 reveal">
+            <div class="card">
+                <span class="num">core</span>
+                <h3>도메인 + 상태 머신</h3>
+                <p class="body-text">재생 명령·상태·에러의 정의와 전이 규칙. 외부 의존 0 — UI 프레임워크도 SDK도 모름.</p>
+            </div>
+            <div class="card">
+                <span class="num">shell</span>
+                <h3>조립 + 생명주기</h3>
+                <p class="body-text">모듈 와이어링, 렌더 표면 부착, 백그라운드·오디오 인터럽션 처리.</p>
+            </div>
+            <div class="card">
+                <span class="num">engines</span>
+                <h3>엔진 어댑터 2종</h3>
+                <p class="body-text">일반 URL/HLS 엔진과 DRM 벤더(Kollus) 엔진. 벤더 import는 이 모듈 안에서만 허용.</p>
+            </div>
+            <div class="card">
+                <span class="num">skin</span>
+                <h3>재사용 UI</h3>
+                <p class="body-text">블록 단위로 조립하는 플레이어 UI. 엔진을 모르고, 액션·상태 계약으로만 통신.</p>
+            </div>
+        </div>
+        <p class="body-text reveal" style="margin-top:var(--content-gap);">
+            <strong style="font-weight:500; color:var(--ink);">강제 수단:</strong> 경계 위반(벤더 import·서비스 용어 침투)은 자동 테스트가 빌드에서 차단합니다.
+        </p>
+    </div>
+</section>
+
+<!-- 7. 상태 머신 개념 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">core idea · state machine</div>
+        <h2 class="reveal">상태를 움직이는 신호는 단 7종.</h2>
+        <div class="grid grid-2" style="align-items:center;">
+            <div class="card reveal">
+                <span class="num">signals → reducer(state, signal) → next state</span>
+                <p class="body-text" style="font-family:var(--mono); font-size:var(--code-size); line-height:2;">
+                    prepared · playStarted · pauseStarted<br>
+                    bufferingChanged · positionChanged<br>
+                    seeking · stopped / failed
+                </p>
+            </div>
+            <ul class="feature-list reveal">
+                <li><strong>순수 함수</strong> — SDK·기기 없이 일반 단위 테스트로 전이 규칙 전체 검증.</li>
+                <li><strong>잘못된 전이 차단</strong> — 종료 후 도착한 버퍼링 해제 신호가 재생 상태를 부활시키지 못함.</li>
+                <li><strong>벤더가 달라도 동일</strong> — 어떤 엔진이든 신호 7종으로 정규화되면 같은 규칙 적용.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- 8. 문제→해결 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">proof</div>
+        <h2 class="reveal">레거시 문제 → 설계 요소 매핑.</h2>
+        <div class="table-card reveal">
+            <table>
+                <thead><tr><th>레거시 문제</th><th>해결</th></tr></thead>
+                <tbody>
+                    <tr><td>콜백 26개 직접 관리</td><td>어댑터가 단일 FIFO 신호 스트림으로 정규화 — 순서 보장</td></tr>
+                    <tr><td>상태 역전 버그</td><td>reducer가 전이 규칙으로 차단 — 종료 상태는 되돌릴 수 없음</td></tr>
+                    <tr><td>실기기에서만 테스트</td><td>순수 로직은 CI에서 즉시 검증 — 232개 테스트 통과</td></tr>
+                    <tr><td>벤더 강결합</td><td>도메인·UI는 SDK 무지 — 위반은 자동 테스트가 차단</td></tr>
+                    <tr><td>만료 콘텐츠 사후 감지</td><td>재생 전 DRM 사전 검증 — 시도 전에 실패 알림</td></tr>
+                    <tr><td>연타 이동(시킹) 끊김</td><td>진행 중 이동 1개만 유지, 최신 목표만 추적</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- 9. 숫자 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">status · 2026-06-11</div>
+        <h2 class="reveal">숫자로 보는 현재 상태.</h2>
+        <div class="grid grid-4 reveal">
+            <div class="card stat"><span class="v">109</span><span class="k">source files</span></div>
+            <div class="card stat"><span class="v">232</span><span class="k">tests passing</span></div>
+            <div class="card stat"><span class="v">5</span><span class="k">modules</span></div>
+            <div class="card stat"><span class="v">2</span><span class="k">engines swappable</span></div>
+        </div>
+        <div class="grid grid-2 reveal" style="margin-top:var(--content-gap);">
+            <div class="card">
+                <h3>설계 개선 7건 완료</h3>
+                <p class="body-text" style="margin-top:0.4em;">벤더 중립화 · 다운로드 계약 분리 · 기능 사전 협상 · 에러 분류 · DRM 사전 검증 · 거대 어댑터 분해 (1200줄 → 400줄)</p>
+            </div>
+            <div class="card">
+                <h3>Example 앱 = 살아있는 레퍼런스</h3>
+                <p class="body-text" style="margin-top:0.4em;">메인 · 플레이어 · 세팅 3화면 — 통합 패턴과 QA 체크리스트가 코드로 존재</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 10. 사용 개념 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">usage · concept</div>
+        <h2 class="reveal">사용하는 쪽은 네 단계가 전부.</h2>
+        <div class="grid grid-2" style="align-items:center;">
+            <div class="code-editor reveal">
+                <span class="filename">개념 — 플랫폼 무관</span>
+                <pre><span class="cm">// 1) 조립 — 엔진만 선택</span>
+module = <span class="fn">makeModule</span>(engine: drmEngine | nativeEngine)
+
+<span class="cm">// 2) 상태 구독</span>
+<span class="kw">observe</span> module.stateStream → <span class="fn">render</span>(state)
+
+<span class="cm">// 3) 의도 발행</span>
+module.<span class="fn">start</span>(source), module.<span class="fn">execute</span>(.play)
+
+<span class="cm">// 4) 렌더 표면 부착</span>
+module.<span class="fn">bind</span>(surface: view)</pre>
+            </div>
+            <ul class="feature-list reveal">
+                <li><strong>엔진을 바꿔도 1·3·4는 동일</strong> — 화면 코드는 벤더를 구분하지 않음.</li>
+                <li><strong>모든 명령은 실패 가능</strong> — 에러가 타입으로 노출, 숨겨지지 않음.</li>
+                <li><strong>다운로드·DRM도 중립 계약</strong> — 벤더 타입은 조립 지점에서만 등장.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- 11. 라이브 데모 -->
+<section class="slide dark">
+    <div class="slide-content">
+        <div class="eyebrow reveal">live demo · example app</div>
+        <h2 class="reveal" style="color:var(--on-primary);">직접 보여드리겠습니다.</h2>
+        <div class="grid grid-2 reveal" style="align-items:start;">
+            <ul class="feature-list">
+                <li><strong>HLS 재생</strong> — 일반 엔진, 상태 스트림 라이브 로그.</li>
+                <li><strong>엔진 스왑</strong> — 같은 화면 코드로 DRM 콘텐츠 재생.</li>
+                <li><strong>다운로드 + 오프라인</strong> — 진행률 스트림, 만료 사전 검증.</li>
+                <li><strong>UI 제스처</strong> — 더블탭 이동 · 롱프레스 2배속 · 스크럽 썸네일 프리뷰.</li>
+            </ul>
+            <div class="card">
+                <span class="num">backup plan</span>
+                <h3>데모 실패 대비</h3>
+                <p class="body-text" style="margin-top:0.4em;">
+                    사전 녹화 영상 준비. DRM 재생은 실기기·네트워크 의존 —
+                    문제 발생 시 영상으로 즉시 전환합니다.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 12. 품질 가드 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">quality · guardrails</div>
+        <h2 class="reveal">설계는 테스트가 지킵니다.</h2>
+        <div class="grid grid-2 reveal">
+            <div class="card">
+                <h3>경계 테스트</h3>
+                <p class="body-text">벤더 import·서비스 용어 침투를 빌드 시점에 자동 차단 — 사람 리뷰에 의존하지 않음.</p>
+            </div>
+            <div class="card">
+                <h3>순수 로직 테스트</h3>
+                <p class="body-text">상태 전이 · 신호 정규화 · 에러 분류 — CI에서 밀리초 단위 실행.</p>
+            </div>
+            <div class="card">
+                <h3>재현 가능한 SDK 패키징</h3>
+                <p class="body-text">벤더 산출물 원본 불변 + 스크립트 재생성 + checksum 검증.</p>
+            </div>
+            <div class="card">
+                <h3>실기기 QA 체크리스트</h3>
+                <p class="body-text">자동화로 못 닫는 DRM·다운로드 경로는 문서화된 체크리스트로 검증.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 13. 확장 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">extensibility</div>
+        <h2 class="reveal">엔진 추가도, 플랫폼 이식도 같은 공식.</h2>
+        <div class="grid grid-2" style="align-items:start;">
+            <div class="card reveal">
+                <span class="num">새 엔진 추가</span>
+                <h3>어댑터 1개 = 끝</h3>
+                <p class="body-text" style="margin-top:0.4em;">
+                    필수 계약(재생 5명령 + 신호 스트림) 구현 → 지원 기능만 선택 채택 →
+                    조립 지점 한 곳 교체. 화면·UI·상태 머신 변경 0줄.
+                </p>
+            </div>
+            <div class="card reveal">
+                <span class="num">타 플랫폼 시사점</span>
+                <h3>패턴은 이식 가능</h3>
+                <p class="body-text" style="margin-top:0.4em;">
+                    상태 머신(순수 함수) + 엔진 계약 + 신호 정규화는 언어 무관.
+                    Android(ExoPlayer/벤더 SDK)·웹에도 같은 경계로 적용할 수 있는 구조입니다.
+                </p>
+            </div>
+        </div>
+        <div class="table-card reveal" style="margin-top:var(--content-gap);">
+            <table>
+                <thead><tr><th>로드맵</th><th>상태</th></tr></thead>
+                <tbody>
+                    <tr><td>시킹 프리뷰 · 스크린샷 보호</td><td>구현 완료</td></tr>
+                    <tr><td>스킨 로컬라이제이션 · 자막 LLM 채팅</td><td>설계 완료</td></tr>
+                    <tr><td>재생 테스트 콘솔</td><td>설계 중</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- 14. 한계 -->
+<section class="slide dark">
+    <div class="slide-content">
+        <div class="eyebrow reveal">honest limits</div>
+        <h2 class="reveal" style="color:var(--on-primary);">아직 안 되는 것, 그대로 말씀드립니다.</h2>
+        <div class="grid grid-2 reveal">
+            <div class="card">
+                <h3>PiP(화면 속 화면) 미지원</h3>
+                <p class="body-text">DRM 엔진의 PiP는 현재 항상 비활성 — 지원 범위 자체가 오늘 결정 항목.</p>
+            </div>
+            <div class="card">
+                <h3>실기기 QA 잔여</h3>
+                <p class="body-text">DRM 만료·스토리지 에러 응답은 시뮬레이터로 못 닫음 — 실기기 확정 필요.</p>
+            </div>
+            <div class="card">
+                <h3>UI 블록 테스트 공백</h3>
+                <p class="body-text">19개 UI 블록이 스모크 테스트만 — 단위 테스트 보강 예정.</p>
+            </div>
+            <div class="card">
+                <h3>레거시 동작 정렬 중</h3>
+                <p class="body-text">HUD 표시 시간·자막 크기 기본값이 레거시와 불일치 — 정책 결정 대기.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 15. 결정 요청 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">decisions needed</div>
+        <h2 class="reveal">리뷰에서 결정해 주세요 — 5건.</h2>
+        <div class="table-card reveal">
+            <table>
+                <thead><tr><th>#</th><th>항목</th><th>선택지</th></tr></thead>
+                <tbody>
+                    <tr><td>D1</td><td>제스처 HUD 표시 시간</td><td>신규 1.2초 유지 vs 레거시 2.0초 정렬</td></tr>
+                    <tr><td>D2</td><td>자막 폰트 기본 범위</td><td>신규 14–22pt vs 레거시 10–40pt</td></tr>
+                    <tr><td>D3</td><td>중간 위임 레이어 제거</td><td>즉시 제거 vs 마이그레이션 완료 후</td></tr>
+                    <tr><td>D4</td><td>PiP 지원 범위</td><td>모듈 내장 vs host 통합 vs 보류</td></tr>
+                    <tr><td>D5</td><td>보류된 상태 전이 수정</td><td>일시정지 중 버퍼링 후 종료 케이스 — 수정 시점</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="body-text reveal" style="margin-top:var(--content-gap); color:var(--mute);">
+            D1·D2는 사용자 경험 정책 — 플랫폼 공통 기준으로 정하면 Android에도 같은 값 적용 가능.
+        </p>
+    </div>
+</section>
+
+<!-- 16. 마이그레이션 -->
+<section class="slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">migration proposal</div>
+        <h2 class="reveal">전환은 화면 단위로, 되돌릴 수 있게.</h2>
+        <div class="flow reveal" style="max-width:780px;">
+            <div class="flow-node"><span class="nm">0 — 완료</span><span class="ds">Example 앱으로 통합 패턴 검증, 232 테스트 통과</span></div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node accent"><span class="nm">1 — 파일럿 (다음 스프린트)</span><span class="ds">host 화면 1개 교체 — 레거시와 플래그로 병행, 즉시 롤백 가능</span></div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node"><span class="nm">2 — 점진 확대</span><span class="ds">화면별 순차 전환, 각 단계 실기기 QA</span></div>
+            <div class="flow-arrow">↓</div>
+            <div class="flow-node"><span class="nm">3 — 레거시 제거</span><span class="ds">구 플레이어 코드 삭제</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- 17. 마무리 -->
+<section class="slide">
+    <div class="mesh" aria-hidden="true"></div>
+    <div class="slide-content" style="align-items:center; text-align:center;">
+        <div class="eyebrow reveal">closing</div>
+        <h1 class="reveal" style="max-width:16em;">승인해 주시면,<br>다음 스프린트에 파일럿 들어갑니다.</h1>
+        <p class="lead reveal" style="margin-top:var(--content-gap); max-width:34em;">
+            설계 배경과 내부 구조는 docs/HANDOVER 01–10,<br>
+            사용 가이드는 README에 정리되어 있습니다.
+        </p>
+        <div class="reveal" style="margin-top:var(--content-gap); display:flex; gap:0.7em; flex-wrap:wrap; justify-content:center;">
+            <span class="pill-cta">Q&amp;A</span>
+            <span class="pill-cta ghost">docs/HANDOVER</span>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+    'use strict';
+
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var dotsWrap = document.getElementById('navDots');
+    var progress = document.getElementById('progress');
+    var counter = document.getElementById('counter');
+    var current = 0;
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    slides.forEach(function (s, i) {
+        var b = document.createElement('button');
+        b.setAttribute('aria-label', (i + 1) + '번 슬라이드');
+        b.addEventListener('click', function () { go(i); });
+        dotsWrap.appendChild(b);
+    });
+    var dots = Array.prototype.slice.call(dotsWrap.children);
+
+    function setActive(i) {
+        current = i;
+        dots.forEach(function (d, j) { d.classList.toggle('active', j === i); });
+        progress.style.width = ((i + 1) / slides.length * 100) + '%';
+        counter.textContent = pad(i + 1) + ' / ' + pad(slides.length);
+    }
+
+    function go(i) {
+        i = Math.max(0, Math.min(slides.length - 1, i));
+        slides[i].scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 가시 슬라이드 추적 + 등장 애니메이션 트리거
+    var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+            if (e.isIntersecting && e.intersectionRatio >= 0.5) {
+                e.target.classList.add('visible');
+                setActive(slides.indexOf(e.target));
+            }
+        });
+    }, { threshold: 0.5 });
+    slides.forEach(function (s) { io.observe(s); });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(current + 1); }
+        else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(current - 1); }
+        else if (e.key === 'Home') { e.preventDefault(); go(0); }
+        else if (e.key === 'End') { e.preventDefault(); go(slides.length - 1); }
+    });
+
+    // 터치 스와이프
+    var touchY = null;
+    document.addEventListener('touchstart', function (e) { touchY = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+        if (touchY === null) return;
+        var dy = touchY - e.changedTouches[0].clientY;
+        if (Math.abs(dy) > 50) go(current + (dy > 0 ? 1 : -1));
+        touchY = null;
+    }, { passive: true });
+
+    setActive(0);
+    slides[0].classList.add('visible');
+})();
+</script>
+</body>
+</html>
