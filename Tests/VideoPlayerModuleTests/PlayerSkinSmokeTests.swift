@@ -16,6 +16,16 @@ struct PlayerSkinSmokeTests {
         }
     }
 
+    private final class RenderProbeBlock: UIView, PlayerSkinBlock {
+        var view: UIView { self }
+        var onAction: ((PlayerSkinAction) -> Void)?
+        private(set) var renderedStates: [PlayerSkinState] = []
+
+        func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+            renderedStates.append(state)
+        }
+    }
+
     private final class CaptionProbeOverlay: UIView, PlayerSkinCaptionOverlay {
         var view: UIView { self }
         var bottomInset: CGFloat = 0
@@ -281,6 +291,94 @@ struct PlayerSkinSmokeTests {
         #expect(presenter.isActive)
         presenter.end()
         #expect(presenter.isActive == false)
+    }
+
+    @Test("스크럽 종료 직후 진행바는 보류된 이전 상태로 되돌아가지 않는다")
+    func progressSliderKeepsReleasedPositionAfterScrubEnds() throws {
+        let block = RenderProbeBlock()
+        let blueprint = PlayerSkinBlueprint(
+            blocks: [.bottomBar: [{ block }]],
+            visibleSlots: [
+                .verticalSplit: [.bottomBar],
+                .horizontalSplit: [.bottomBar],
+                .fullScreen: [.bottomBar]
+            ]
+        )
+        let skin = AssembledPlayerSkin(blueprint: blueprint)
+
+        skin.render(PlayerSkinState(
+            playbackState: .init(status: .playing, currentTime: 20, duration: 100, isBuffering: false),
+            playbackRate: 1.0,
+            controlsVisible: true,
+            isFullScreenMode: true,
+            isDisplayScaled: false,
+            layoutMode: .fullScreen
+        ))
+        let initialRenderCount = block.renderedStates.count
+
+        block.onAction?(.seekBegan)
+        skin.render(PlayerSkinState(
+            playbackState: .init(status: .playing, currentTime: 25, duration: 100, isBuffering: false),
+            playbackRate: 1.0,
+            controlsVisible: true,
+            isFullScreenMode: true,
+            isDisplayScaled: false,
+            layoutMode: .fullScreen
+        ))
+        #expect(block.renderedStates.count == initialRenderCount)
+
+        block.onAction?(.seekEnded(80))
+
+        let releasedState = try #require(block.renderedStates.last)
+        #expect(releasedState.currentTime == 80)
+        #expect(abs(releasedState.progress - 0.8) < 0.001)
+    }
+
+    @Test("스크럽 중 재생 상태 변경은 재생 버튼에 즉시 반영한다")
+    func playbackButtonUpdatesWhileScrubbing() throws {
+        let centerControls = CenterPlaybackControlsBlock()
+        let probe = RenderProbeBlock()
+        let blueprint = PlayerSkinBlueprint(
+            blocks: [
+                .centerControls: [{ centerControls }],
+                .bottomBar: [{ probe }]
+            ],
+            visibleSlots: [
+                .verticalSplit: [.centerControls, .bottomBar],
+                .horizontalSplit: [.centerControls, .bottomBar],
+                .fullScreen: [.centerControls, .bottomBar]
+            ]
+        )
+        let skin = AssembledPlayerSkin(blueprint: blueprint)
+
+        skin.render(PlayerSkinState(
+            playbackState: .init(status: .playing, currentTime: 20, duration: 100, isBuffering: false),
+            playbackRate: 1.0,
+            controlsVisible: true,
+            isFullScreenMode: true,
+            isDisplayScaled: false,
+            layoutMode: .fullScreen
+        ))
+        let playButton = try #require(
+            skin.view.descendant(accessibilityIdentifier: "videoPlayer.skin.playPauseButton")
+        )
+        #expect(playButton.accessibilityLabel == "일시정지")
+        let probeRenderCount = probe.renderedStates.count
+
+        centerControls.onAction?(.seekBegan)
+        skin.render(PlayerSkinState(
+            playbackState: .init(status: .paused, currentTime: 20, duration: 100, isBuffering: false),
+            playbackRate: 1.0,
+            controlsVisible: true,
+            isFullScreenMode: true,
+            isDisplayScaled: false,
+            layoutMode: .fullScreen
+        ))
+
+        #expect(probe.renderedStates.count == probeRenderCount)
+        #expect(playButton.accessibilityLabel == "재생")
+
+        centerControls.onAction?(.seekEnded(20))
     }
 
     @Test("HTML 자막의 끝 BR은 빈 줄 높이를 만들지 않는다")

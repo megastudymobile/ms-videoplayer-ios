@@ -16,6 +16,10 @@ import VideoPlayerSkin
 
 @MainActor
 final class PlayerInteractor {
+    private enum Metric {
+        static let seekScrubPauseDelayNanoseconds: UInt64 = 50_000_000
+    }
+
     private let source: PlaybackSource
     private let moduleProvider: PlayerModuleProviding
     private let viewModel: PlayerStateViewModel
@@ -47,6 +51,8 @@ final class PlayerInteractor {
     private var scrollTaskGeneration = 0
     private(set) var isZoomedIn = false
     private var latestPlaybackState: PlaybackState = .idle
+    private var shouldResumePlaybackAfterScrub = false
+    private var seekScrubPauseTask: Task<Void, Never>?
 
     init(
         source: PlaybackSource,
@@ -138,6 +144,9 @@ final class PlayerInteractor {
         scrollTask?.cancel()
         scrollTask = nil
         isZoomedIn = false
+        shouldResumePlaybackAfterScrub = false
+        seekScrubPauseTask?.cancel()
+        seekScrubPauseTask = nil
         let module = playerModule
         playerModule = nil
         Task { @MainActor in
@@ -169,6 +178,41 @@ final class PlayerInteractor {
             let snapshot = self.latestPlaybackState
             let target = min(max(0, snapshot.currentTime + delta), max(0, snapshot.duration))
             await self.execute(.seek(to: target), on: module)
+        }
+    }
+
+    func beginSeekScrub() {
+        guard let module = playerModule else { return }
+        seekScrubPauseTask?.cancel()
+        shouldResumePlaybackAfterScrub = latestPlaybackState.status == .playing
+        guard shouldResumePlaybackAfterScrub else {
+            seekScrubPauseTask = nil
+            return
+        }
+        onRender(viewModel.setPlaybackIntent(isPlaying: false))
+        seekScrubPauseTask = Task { @MainActor [weak self] in
+            guard let self, self.isDisposed == false else { return }
+            try? await Task.sleep(nanoseconds: Metric.seekScrubPauseDelayNanoseconds)
+            guard Task.isCancelled == false, self.isDisposed == false else { return }
+            await self.execute(.pause, on: module)
+        }
+    }
+
+    func endSeekScrub(at time: TimeInterval) {
+        guard let module = playerModule else { return }
+        let pauseTask = seekScrubPauseTask
+        seekScrubPauseTask = nil
+        let shouldResume = shouldResumePlaybackAfterScrub
+        shouldResumePlaybackAfterScrub = false
+
+        Task { @MainActor [weak self] in
+            guard let self, self.isDisposed == false else { return }
+            await pauseTask?.value
+
+            await self.execute(.seek(to: time), on: module)
+            guard shouldResume else { return }
+            self.onRender(self.viewModel.setPlaybackIntent(isPlaying: true))
+            await self.execute(.play, on: module)
         }
     }
 

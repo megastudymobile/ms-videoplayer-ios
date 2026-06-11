@@ -12,7 +12,7 @@ import UIKit
 ///
 /// Fullscreen 에서는 단순 spacing 이 아니라 좌/우 side menu 영역을 제외한
 /// 남은 영역의 중앙에 10초 버튼을 배치한다.
-public final class CenterPlaybackControlsBlock: UIView, PlayerSkinBlock {
+public final class CenterPlaybackControlsBlock: UIView, PlayerSkinPlaybackControlBlock {
     private enum Metric {
         static let sideMenuAreaWidth: CGFloat = 56
         static let compactSpacing: CGFloat = 24
@@ -56,6 +56,10 @@ public final class CenterPlaybackControlsBlock: UIView, PlayerSkinBlock {
         backwardBlock.render(state, theme: theme)
         playBlock.render(state, theme: theme)
         forwardBlock.render(state, theme: theme)
+    }
+
+    func renderPlaybackState(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+        playBlock.renderPlaybackState(state, theme: theme)
     }
 
     private func configure() {

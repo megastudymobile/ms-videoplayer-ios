@@ -398,22 +398,18 @@ final class PlayerViewController: UIViewController {
         resetControlsAutoHideTimer()
         switch action {
         case .togglePlayPause:
+            emitRender(viewModel.setPlaybackIntent(isPlaying: viewModel.state.isPlaying == false))
             interactor.togglePlayPause()
         case .skipBackward:
             interactor.seekBy(-TimeInterval(PreferenceManager.seekRangeSeconds))
         case .skipForward:
             interactor.seekBy(TimeInterval(PreferenceManager.seekRangeSeconds))
         case .seekBegan:
-            // 스크럽 중에도 재생을 유지한다 — Kollus pause는 메인 스레드에서 영상
-            // 파이프라인 재셋업(setupVideoPlaybackForURL, 수백 ms)을 동반해 첫 드래그의
-            // thumb/프리뷰가 통째로 멈춘다 (실기기 Time Profiler 확인). 손을 떼면
-            // seekEnded가 seek 후 play로 수렴한다.
-            break
+            interactor.beginSeekScrub()
         case .seekPreviewChanged:
             break
         case .seekEnded(let time):
-            interactor.send(.seek(to: time))
-            interactor.send(.play)
+            interactor.endSeekScrub(at: time)
         case .rateSelected(let rate):
             applyPlaybackRate(rate)
         case .rateStepUp:

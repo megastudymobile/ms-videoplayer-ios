@@ -69,9 +69,13 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
         // 상태가 매 이벤트 달라 dedup으로 못 거르고, 터치 추적과 경합해 프레임이 끊긴다
         // (실기기 프로파일 확인). 보류분은 seekEnded에서 한 번에 따라잡는다.
         if isScrubbing {
+            let previousState = latestState
             latestState = state
             // 잠금 전환만은 즉시 반영 — 드래그 중 모달을 닫아야 한다.
             if state.isLocked { seekPreviewPresenter.end() }
+            if previousState.isPlaying != state.isPlaying || previousState.isLocked != state.isLocked {
+                renderPlaybackControls(state, needsFullRender: previousState.isLocked != state.isLocked)
+            }
             return
         }
         forceRender(state)
@@ -91,6 +95,18 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             loadingOverlay.setLoading(false)
         }
     }
+
+    private func renderPlaybackControls(_ state: PlayerSkinState, needsFullRender: Bool) {
+        blocks.forEach { block in
+            guard let playbackControl = block as? PlayerSkinPlaybackControlBlock else { return }
+            if needsFullRender {
+                block.render(state, theme: theme)
+            } else {
+                playbackControl.renderPlaybackState(state, theme: theme)
+            }
+        }
+    }
+
     public func showGestureHUD(
         icon: String,
         title: String,
@@ -339,14 +355,25 @@ public final class AssembledPlayerSkin: UIView, PlayerSkin {
             }
         case .seekPreviewChanged(let time):
             seekPreviewPresenter.requestImage(at: time)
-        case .seekEnded:
+        case .seekEnded(let time):
             isScrubbing = false
             seekPreviewPresenter.end()
-            // 스크럽 동안 보류한 상태를 한 번에 따라잡는다.
-            forceRender(latestState)
+            forceRender(stateByApplyingScrubbedTime(time))
         default:
             break
         }
+    }
+
+    private func stateByApplyingScrubbedTime(_ time: TimeInterval) -> PlayerSkinState {
+        let duration = max(0, latestState.duration)
+        guard duration > 0 else {
+            return latestState.updating(currentTime: 0, progress: 0)
+        }
+        let clampedTime = min(max(0, time), duration)
+        return latestState.updating(
+            currentTime: clampedTime,
+            progress: Float(clampedTime / duration)
+        )
     }
 
     private func applyLegacyMetrics(_ state: PlayerSkinState) {

@@ -8,7 +8,7 @@
 
 import UIKit
 
-public final class PlayButtonBlock: UIView, PlayerSkinBlock {
+public final class PlayButtonBlock: UIView, PlayerSkinPlaybackControlBlock {
     public var view: UIView { self }
     public var onAction: ((PlayerSkinAction) -> Void)?
     private let button = PlayerSkinIconButtonFactory.make()
@@ -19,6 +19,10 @@ public final class PlayButtonBlock: UIView, PlayerSkinBlock {
     }
     @available(*, unavailable) public required init?(coder: NSCoder) { fatalError() }
     public func render(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
+        renderPlaybackState(state, theme: theme)
+    }
+
+    func renderPlaybackState(_ state: PlayerSkinState, theme: PlayerSkinTheme) {
         PlayerSkinIconButtonFactory.apply(button,
             icon: state.isPlaying ? .pause : .play,
             fallbackTitle: state.isPlaying ? "II" : "Play", theme: theme)

@@ -108,6 +108,30 @@ struct PlayerStateViewModelTests {
         #expect(next.playbackRate == 1.5)
     }
 
+    @Test("재생 토글 intent는 권위 상태 도착 전까지 버튼 상태를 유지")
+    func keepsPlaybackIntentUntilAuthoritativeStateArrives() {
+        let viewModel = PlayerStateViewModel()
+        _ = viewModel.apply(playbackState: PlaybackState(
+            status: .playing, currentTime: 10, duration: 100, isBuffering: false
+        ))
+
+        let pendingPause = viewModel.setPlaybackIntent(isPlaying: false)
+        #expect(pendingPause.isPlaying == false)
+
+        let timeTick = viewModel.apply(event: .timeDidChange(currentTime: 11, duration: 100))
+        #expect(timeTick?.isPlaying == false)
+
+        let paused = viewModel.apply(playbackState: PlaybackState(
+            status: .paused, currentTime: 11, duration: 100, isBuffering: false
+        ))
+        #expect(paused.isPlaying == false)
+
+        let resumed = viewModel.apply(playbackState: PlaybackState(
+            status: .playing, currentTime: 12, duration: 100, isBuffering: false
+        ))
+        #expect(resumed.isPlaying)
+    }
+
     @Test("재생 중이고 컨트롤이 표시된 상태만 자동 숨김 대상")
     func autoHideEligibility() {
         let viewModel = PlayerStateViewModel()

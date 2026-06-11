@@ -15,3 +15,8 @@ public protocol PlayerSkinBlock: AnyObject {
     var onAction: ((PlayerSkinAction) -> Void)? { get set }
     func render(_ state: PlayerSkinState, theme: PlayerSkinTheme)
 }
+
+@MainActor
+protocol PlayerSkinPlaybackControlBlock: PlayerSkinBlock {
+    func renderPlaybackState(_ state: PlayerSkinState, theme: PlayerSkinTheme)
+}

@@ -10,6 +10,7 @@ import Testing
 import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
+import VideoPlayerSkin
 @testable import VideoPlayerExample
 
 @MainActor
@@ -18,13 +19,14 @@ struct PlayerInteractorTests {
 
     private func makeInteractor(
         provider: PlayerModuleProviding,
+        onRender: @escaping (PlayerSkinState) -> Void = { _ in },
         onCommandError: @escaping (PlayerError) -> Void = { _ in }
     ) -> PlayerInteractor {
         PlayerInteractor(
             source: .url(URL(string: "https://example.com/v.mp4")!),
             moduleProvider: provider,
             viewModel: PlayerStateViewModel(),
-            onRender: { _ in },
+            onRender: onRender,
             onEvent: { _ in },
             onCommandError: onCommandError
         )
@@ -46,7 +48,10 @@ struct PlayerInteractorTests {
     func unsupportedCommand_surfacesError() async throws {
         let provider = FakeModuleProvider()
         var captured: [PlayerError] = []
-        let interactor = makeInteractor(provider: provider) { captured.append($0) }
+        let interactor = makeInteractor(
+            provider: provider,
+            onCommandError: { captured.append($0) }
+        )
 
         try await interactor.setUp(renderSurface: FakeRenderSurface())
         // BareTestEngine은 PlayerPlaybackRateEngine 미채택 → Core가 engineError throw.
@@ -91,6 +96,59 @@ struct PlayerInteractorTests {
         try await waitUntilAsync { await engine.events.isEmpty == false }
         let events = await engine.events
         #expect(events == ["scroll:2.0:0.0"])
+        interactor.tearDown()
+    }
+
+    @Test("재생 중 스크럽은 pause 후 seek하고 다시 play한다")
+    func seekScrubWhilePlaying_pausesSeeksAndResumes() async throws {
+        let engine = RecordingEngine()
+        var renderedStates: [PlayerSkinState] = []
+        let provider = FakeModuleProvider(engine: engine)
+        let interactor = makeInteractor(
+            provider: provider,
+            onRender: { renderedStates.append($0) }
+        )
+
+        try await interactor.setUp(renderSurface: FakeRenderSurface())
+        try await interactor.start()
+        try await waitUntil { renderedStates.last?.isPlaying == true }
+        await engine.resetCommands()
+
+        interactor.beginSeekScrub()
+        try await waitUntil { renderedStates.last?.isPlaying == false }
+        interactor.endSeekScrub(at: 42)
+        try await waitUntilAsync {
+            await engine.commands == ["pause", "seek:42.0", "play"]
+        }
+
+        #expect(renderedStates.last?.isPlaying == true)
+        interactor.tearDown()
+    }
+
+    @Test("일시정지 상태 스크럽은 seek 후 자동 재생하지 않는다")
+    func seekScrubWhilePaused_doesNotAutoPlay() async throws {
+        let engine = RecordingEngine()
+        var renderedStates: [PlayerSkinState] = []
+        let provider = FakeModuleProvider(engine: engine)
+        let interactor = makeInteractor(
+            provider: provider,
+            onRender: { renderedStates.append($0) }
+        )
+
+        try await interactor.setUp(renderSurface: FakeRenderSurface())
+        try await interactor.start()
+        try await waitUntil { renderedStates.last?.isPlaying == true }
+        interactor.send(.pause)
+        try await waitUntil { renderedStates.last?.isPlaying == false }
+        await engine.resetCommands()
+
+        interactor.beginSeekScrub()
+        interactor.endSeekScrub(at: 24)
+        try await waitUntilAsync {
+            await engine.commands == ["seek:24.0"]
+        }
+
+        #expect(renderedStates.last?.isPlaying == false)
         interactor.tearDown()
     }
 
@@ -152,8 +210,7 @@ private final class FakeModuleProvider: PlayerModuleProviding {
 
 private actor BareTestEngine: PlayerEngineAdapter {
     nonisolated static let capabilities: EngineCapabilities = []
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent> = AsyncStream { $0.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var prepareCount = 0
 
     func prepare(source: PlaybackSource) async throws { prepareCount += 1 }
@@ -165,10 +222,58 @@ private actor BareTestEngine: PlayerEngineAdapter {
     func unbindRenderSurface() {}
 }
 
+private actor RecordingEngine: PlayerEngineAdapter {
+    nonisolated static let capabilities: EngineCapabilities = []
+    let outputStream: AsyncStream<PlayerEngineOutput>
+    private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
+    private(set) var commands: [String] = []
+
+    init() {
+        var continuation: AsyncStream<PlayerEngineOutput>.Continuation!
+        outputStream = AsyncStream(bufferingPolicy: .unbounded) { continuation = $0 }
+        outputContinuation = continuation
+    }
+
+    func resetCommands() {
+        commands.removeAll()
+    }
+
+    func prepare(source: PlaybackSource) async throws {
+        commands.append("prepare")
+        outputContinuation.yield(.stateInput(.prepared(.init(
+            position: 0,
+            duration: 120,
+            isLive: false,
+            liveDuration: nil
+        ))))
+    }
+
+    func play() async throws {
+        commands.append("play")
+        outputContinuation.yield(.stateInput(.playStarted))
+    }
+
+    func pause() async throws {
+        commands.append("pause")
+        outputContinuation.yield(.stateInput(.pauseStarted))
+    }
+
+    func seek(to time: TimeInterval) async throws {
+        commands.append("seek:\(time)")
+        outputContinuation.yield(.stateInput(.positionChanged(time: time, duration: 120)))
+    }
+
+    func stop(reason: PlayerStopReason) async throws {
+        commands.append("stop")
+    }
+
+    func bind(renderSurface: PlayerRenderSurface) {}
+    func unbindRenderSurface() {}
+}
+
 private actor ScrollTestEngine: PlayerEngineAdapter, PlayerScrollEngine {
     nonisolated static let capabilities: EngineCapabilities = []
-    var currentState: PlaybackState { .idle }
-    let eventStream: AsyncStream<PlayerEvent> = AsyncStream { $0.finish() }
+    let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var events: [String] = []
 
     func prepare(source: PlaybackSource) async throws {}

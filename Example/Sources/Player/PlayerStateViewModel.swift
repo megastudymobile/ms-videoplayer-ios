@@ -17,12 +17,13 @@ import VideoPlayerSkin
 final class PlayerStateViewModel {
     private(set) var state: PlayerSkinState = .initial
     private var lastPlaybackState: PlaybackState = .idle
+    private var pendingPlaybackIntent: Bool?
 
     // MARK: - PlaybackState 스트림
 
     func apply(playbackState: PlaybackState) -> PlayerSkinState {
         lastPlaybackState = playbackState
-        state = PlayerSkinState(
+        let streamState = PlayerSkinState(
             playbackState: playbackState,
             playbackRate: state.playbackRate,
             isRatePanelPresented: state.isRatePanelPresented,
@@ -32,7 +33,8 @@ final class PlayerStateViewModel {
             displayScaleMode: state.displayScaleMode,
             hiddenExtraControlIDs: state.hiddenExtraControlIDs,
             layoutMode: state.layoutMode
-        ).updating(
+        )
+        state = stateByReconcilingPlaybackIntent(streamState, playbackStatus: playbackState.status).updating(
             isLocked: state.isLocked,
             sectionRepeat: state.sectionRepeat
         )
@@ -64,6 +66,12 @@ final class PlayerStateViewModel {
 
     func setPlaybackRate(_ rate: Double) -> PlayerSkinState {
         state = state.updating(playbackRate: rate)
+        return state
+    }
+
+    func setPlaybackIntent(isPlaying: Bool) -> PlayerSkinState {
+        pendingPlaybackIntent = isPlaying
+        state = state.updating(isPlaying: isPlaying)
         return state
     }
 
@@ -117,5 +125,26 @@ final class PlayerStateViewModel {
             && state.controlsVisible
             && state.isLocked == false
             && state.isRatePanelPresented == false
+    }
+
+    private func stateByReconcilingPlaybackIntent(
+        _ streamState: PlayerSkinState,
+        playbackStatus: PlaybackState.Status
+    ) -> PlayerSkinState {
+        guard let pendingPlaybackIntent else {
+            return streamState
+        }
+
+        switch playbackStatus {
+        case .playing where pendingPlaybackIntent,
+             .paused where pendingPlaybackIntent == false,
+             .idle,
+             .finished,
+             .failed:
+            self.pendingPlaybackIntent = nil
+            return streamState
+        default:
+            return streamState.updating(isPlaying: pendingPlaybackIntent)
+        }
     }
 }
