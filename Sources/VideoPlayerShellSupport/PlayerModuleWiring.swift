@@ -32,13 +32,12 @@ public struct PlayerModule {
 
 public enum PlayerModuleWiring {
     public static func makeModule(
-        engine: PlayerEngineAdapter,
-        engineRuntimeTraits: EngineRuntimeTraits,
+        descriptor: PlayerEngineDescriptor,
         configuration: PlayerModuleConfiguration = .default
     ) async -> PlayerModule {
         let core = PlayerCore(
-            engine: engine,
-            engineRuntimeTraits: engineRuntimeTraits,
+            engine: descriptor.engine,
+            engineRuntimeTraits: descriptor.runtimeTraits,
             initialPolicy: configuration.initialPolicy
         )
 
@@ -48,8 +47,19 @@ public enum PlayerModuleWiring {
 
         return PlayerModule(
             core: core,
-            engine: engine,
-            engineRuntimeTraits: engineRuntimeTraits
+            engine: descriptor.engine,
+            engineRuntimeTraits: descriptor.runtimeTraits
+        )
+    }
+
+    /// 엔진 타입이 선언한 traits를 그대로 쓰는 기본 조립.
+    public static func makeModule(
+        engine: PlayerEngineAdapter,
+        configuration: PlayerModuleConfiguration = .default
+    ) async -> PlayerModule {
+        await makeModule(
+            descriptor: PlayerEngineDescriptor(engine: engine),
+            configuration: configuration
         )
     }
 }

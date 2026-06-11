@@ -199,10 +199,7 @@ private final class FakeModuleProvider: PlayerModuleProviding {
         if makeDelayNanoseconds > 0 {
             try await Task.sleep(nanoseconds: makeDelayNanoseconds)
         }
-        let module = await PlayerModuleWiring.makeModule(
-            engine: engine,
-            engineRuntimeTraits: []
-        )
+        let module = await PlayerModuleWiring.makeModule(engine: engine)
         madeModules.append(module)
         return module
     }

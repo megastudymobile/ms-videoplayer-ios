@@ -60,8 +60,7 @@ final class PlayerModuleProvider: PlayerModuleProviding {
         #if targetEnvironment(simulator)
         // Kollus 실재생은 실기기 한정 — 렌더 표면에 미지원 안내만 표시하는 no-op 엔진.
         return await PlayerModuleWiring.makeModule(
-            engine: UnsupportedEnvironmentEngine(message: "Kollus 재생은 실기기에서만 지원됩니다."),
-            engineRuntimeTraits: []
+            engine: UnsupportedEnvironmentEngine(message: "Kollus 재생은 실기기에서만 지원됩니다.")
         )
         #else
         let factory = try resolveFactory()

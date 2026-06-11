@@ -59,8 +59,7 @@ public struct KollusPlayerModuleFactory {
     ) async -> PlayerModule {
         let engine = engineFactory()
         return await PlayerModuleWiring.makeModule(
-            engine: engine,
-            engineRuntimeTraits: engineRuntimeTraits,
+            descriptor: PlayerEngineDescriptor(engine: engine, runtimeTraits: engineRuntimeTraits),
             configuration: configuration
         )
     }
