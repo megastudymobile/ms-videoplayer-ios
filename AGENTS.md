@@ -1,6 +1,7 @@
-# CLAUDE.md
+# Repository Guidelines
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Maintainer: JunyoungJung  
+Last updated: 2026-06-11
 
 ## 개요
 
