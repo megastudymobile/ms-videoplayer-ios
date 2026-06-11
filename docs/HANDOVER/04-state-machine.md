@@ -233,7 +233,7 @@ sequenceDiagram
 
 ### 장치 3: command-origin — 엔진마다 다른 "성공 통지" 방식 흡수
 
-3편에서 본 `emitsAuthoritativeStateEvents` runtime trait가 여기서 쓰입니다.
+3편에서 본 `stateAuthority` runtime trait가 여기서 쓰입니다.
 
 ```swift
 case .play:

@@ -75,11 +75,9 @@ public protocol PlayerEngineAdapter: PlayerPlaybackEngine {
 ```swift
 public actor AVPlayerAdapter: PlayerEngineAdapter,
                               EnginePlaybackRateAbility, EngineDisplayScalingAbility {
-    public nonisolated static let runtimeTraits: EngineRuntimeTraits = [
-        .continuesWithoutSurface,   // AVPlayer는 layer 없이도 재생 지속 가능
-        .seamlessSurfaceSwap
-        // .emitsAuthoritativeStateEvents 없음! → play/pause는 Core가 command-origin으로 닫음
-    ]
+    // .avPlayer preset: surface 분리 후에도 재생 유지,
+    // stateAuthority는 .commandSuccessClosesState → play/pause는 Core가 command-origin으로 닫음
+    public nonisolated static let runtimeTraits: EngineRuntimeTraits = .avPlayer
 
     public let outputStream: AsyncStream<PlayerEngineOutput>   // Core가 소비하는 유일한 출력
 

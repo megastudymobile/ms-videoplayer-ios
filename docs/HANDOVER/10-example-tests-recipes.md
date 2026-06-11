@@ -85,7 +85,7 @@ xcodebuild test -workspace VideoPlayerExample.xcworkspace -scheme VideoPlayerExa
 // Tests/VideoPlayerModuleTests/Support/AVPlayerContractFactory.swift
 enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
     static func makeTestAdapter() -> PlayerEngineAdapter { AVPlayerAdapter(player: AVPlayer()) }
-    static var expectedCapabilities: EngineRuntimeTraits { [.continuesWithoutSurface, .seamlessSurfaceSwap] }
+    static var expectedCapabilities: EngineRuntimeTraits { .avPlayer }
 }
 
 @Suite("AVPlayerAdapter 엔진 계약", .enabled(if: AVPlayerContractFactory.isSupportedInCurrentEnvironment))

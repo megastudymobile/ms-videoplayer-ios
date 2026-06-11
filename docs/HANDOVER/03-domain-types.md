@@ -167,16 +167,19 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
     )
 }
 
-// 엔진이 실제 "지원"하는 것 — 엔진이 선언
-public struct EngineRuntimeTraits: OptionSet, Sendable {
-    public static let continuesWithoutSurface  = EngineRuntimeTraits(rawValue: 1 << 0) // 화면 없이 재생 지속(백그라운드)
-    public static let seamlessSurfaceSwap      = EngineRuntimeTraits(rawValue: 1 << 1) // 재생 중 화면 교체
-    public static let nativePiP                = EngineRuntimeTraits(rawValue: 1 << 2)
-    public static let emitsAuthoritativeStateEvents = EngineRuntimeTraits(rawValue: 1 << 3) // 아래 설명
+// 엔진이 실제로 "어떻게 동작"하는지 — 엔진이 선언 (preset: .avPlayer / .kollus / .default)
+public struct EngineRuntimeTraits: Equatable, Sendable {
+    public let surface: EngineSurfaceRuntimeTraits        // continuesWithoutSurface — 화면 없이 재생 지속(백그라운드)
+    public let stateAuthority: EngineStateEventAuthority  // 아래 설명
+}
+
+public enum EngineStateEventAuthority {
+    case engineEventsAreAuthoritative   // 엔진 권위 콜백이 상태를 만든다 (Kollus)
+    case commandSuccessClosesState      // Core가 명령 성공 직후 상태를 닫는다 (Native)
 }
 ```
 
-`emitsAuthoritativeStateEvents`는 미묘하지만 중요합니다: **Kollus SDK는 play/pause 성공을 별도 delegate 콜백으로 다시 알려주지만, AVPlayer는 그렇지 않습니다.** 그래서 Kollus(`true`)는 콜백 신호가 상태를 만들고, Native(`false`)는 명령 성공 직후 `PlayerCore`가 직접 상태를 닫습니다. ([4편](04-state-machine.md)의 command-origin 참고)
+`stateAuthority`는 미묘하지만 중요합니다: **Kollus SDK는 play/pause 성공을 별도 delegate 콜백으로 다시 알려주지만, AVPlayer는 그렇지 않습니다.** 그래서 Kollus(`.engineEventsAreAuthoritative`)는 콜백 신호가 상태를 만들고, Native(`.commandSuccessClosesState`)는 명령 성공 직후 `PlayerCore`가 직접 상태를 닫습니다. ([4편](04-state-machine.md)의 command-origin 참고)
 
 여기에 더해 **세 번째 축**이 있습니다:
 
