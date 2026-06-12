@@ -1920,7 +1920,7 @@ reduce(currentState, input):
 }</pre>
             </div>
             <ul class="feature-list">
-                <li><strong>runtimeTraits</strong> — 엔진 동작 특성을 선언하고 Core가 정책 협상에 사용합니다.</li>
+                <li><strong>runtimeTraits</strong> — 엔진 동작 특성. 각 엔진 타입이 자기 모듈에서 직접 선언하고(Core에 엔진별 preset 없음) Core가 정책 협상에 사용합니다.</li>
                 <li><strong>outputStream</strong> — 엔진의 유일한 출력. Core가 소비해 상태를 만듭니다.</li>
                 <li><strong>handle(command)</strong> — load·play·seek부터 자막·배속·북마크까지 전 명령의 단일 진입점. 성공해도 상태는 outputStream 신호로 확정됩니다.</li>
                 <li><strong>미지원 명령</strong> — 조용히 무시하지 않고 PlayerError.unsupportedCommand를 던집니다.</li>
@@ -1931,7 +1931,7 @@ reduce(currentState, input):
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 10. 엔진 계약은 명령 싱크 1개와 출력 1개</h3>
-        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성이고, 재생 명령은 전부 PlaybackCommand enum으로 들어와 handle 하나가 받습니다.<br>handle은 async throws 명령이고, 성공해도 최종 상태 확정은 outputStream 신호를 Core가 해석해서 만듭니다. 미지원 명령은 unsupportedCommand로 시끄럽게 실패합니다.<br>Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막 같은 기능 지원 여부는 supports 신고로 드러납니다. handle과 supports 둘 다 default 없는 exhaustive switch라, 새 명령이 생기면 모든 엔진이 컴파일 에러로 “구현할지 거절할지”를 강제로 결정하게 됩니다. Media3의 Player.Commands와 같은 구조입니다.</p>
+        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성입니다. 각 엔진 타입이 자기 모듈에서 직접 선언하므로 Core는 엔진 이름을 모르고, 새 엔진 추가 시 Core 수정이 없습니다.<br>재생 명령은 전부 PlaybackCommand enum으로 들어와 handle 하나가 받습니다.<br>handle은 async throws 명령이고, 성공해도 최종 상태 확정은 outputStream 신호를 Core가 해석해서 만듭니다. 미지원 명령은 unsupportedCommand로 시끄럽게 실패합니다.<br>Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막 같은 기능 지원 여부는 supports 신고로 드러납니다. handle과 supports 둘 다 default 없는 exhaustive switch라, 새 명령이 생기면 모든 엔진이 컴파일 에러로 “구현할지 거절할지”를 강제로 결정하게 됩니다. Media3의 Player.Commands와 같은 구조입니다.</p>
         <p><strong>전환:</strong> 이 기본 계약 위에서 엔진별 기능 차이를 어떻게 다루는지 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 코드는 runtimeTraits, outputStream, handle, supports 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 유일한 단방향 출력입니다.<br>4. 마지막 takeaway는 exhaustive switch가 갱신 누락을 컴파일 에러로 바꾼다는 뜻입니다.</p>
     </aside>
@@ -1995,7 +1995,7 @@ reduce(currentState, input):
                 </g>
             </svg>
         </div>
-        <p class="body-text reveal" style="margin-top:0.55rem; max-width:860px;">Host 정책은 “허용하고 싶다”이고, runtime traits는 “이 엔진이 실제로 버틸 수 있다”입니다. 둘이 충돌하면 Core는 런타임에서 더 안전한 effective policy를 씁니다.</p>
+        <p class="body-text reveal" style="margin-top:0.55rem; max-width:860px;">Host 정책은 “허용하고 싶다”이고, runtime traits는 “이 엔진이 실제로 버틸 수 있다”입니다. 둘이 충돌하면 Core는 런타임에서 더 안전한 effective policy를 씁니다. 이때 충돌한 항목만 낮추고 나머지 정책 필드는 그대로 보존합니다.</p>
         <p class="takeaway reveal">정리하면 availability는 화면 노출, runtime traits는 “노출된 뒤 안전하게 동작시키는 방식”을 결정합니다. 노출 조건은 블록이 requiredFeatures로 직접 신고합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">

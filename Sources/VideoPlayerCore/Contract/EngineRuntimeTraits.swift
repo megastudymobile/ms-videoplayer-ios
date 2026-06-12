@@ -16,16 +16,6 @@ public struct EngineRuntimeTraits: Equatable, Sendable {
 
     public static let `default` = EngineRuntimeTraits()
 
-    /// AVPlayer는 surface 분리 후에도 재생이 유지된다.
-    public static let avPlayer = EngineRuntimeTraits(
-        surface: EngineSurfaceRuntimeTraits(continuesWithoutSurface: true),
-        stateAuthority: .commandSuccessClosesState
-    )
-
-    public static let kollus = EngineRuntimeTraits(
-        stateAuthority: .engineEventsAreAuthoritative
-    )
-
     public init(
         surface: EngineSurfaceRuntimeTraits = .default,
         stateAuthority: EngineStateEventAuthority = .commandSuccessClosesState

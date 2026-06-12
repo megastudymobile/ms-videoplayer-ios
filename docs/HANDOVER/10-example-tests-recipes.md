@@ -85,7 +85,13 @@ xcodebuild test -workspace VideoPlayerExample.xcworkspace -scheme VideoPlayerExa
 // Tests/VideoPlayerModuleTests/Support/AVPlayerContractFactory.swift
 enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
     static func makeTestAdapter() -> PlayerEngineAdapter { AVPlayerAdapter(player: AVPlayer()) }
-    static var expectedCapabilities: EngineRuntimeTraits { .avPlayer }
+    // 어댑터 static을 참조하면 계약 비교가 동어반복이 되므로 기대값은 독립 literal
+    static var expectedCapabilities: EngineRuntimeTraits {
+        EngineRuntimeTraits(
+            surface: EngineSurfaceRuntimeTraits(continuesWithoutSurface: true),
+            stateAuthority: .commandSuccessClosesState
+        )
+    }
 }
 
 @Suite("AVPlayerAdapter 엔진 계약", .enabled(if: AVPlayerContractFactory.isSupportedInCurrentEnvironment))

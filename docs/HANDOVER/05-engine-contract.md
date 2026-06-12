@@ -95,9 +95,12 @@ public protocol PlayerEngineAdapter: PlayerPlaybackEngine {
 
 ```swift
 public actor AVPlayerAdapter: PlayerEngineAdapter, EngineSeekPreviewAbility {
-    // .avPlayer preset: surface 분리 후에도 재생 유지,
+    // 엔진 타입이 자기 traits를 직접 선언: surface 분리 후에도 재생 유지,
     // stateAuthority는 .commandSuccessClosesState → play/pause는 Core가 command-origin으로 닫음
-    public nonisolated static let runtimeTraits: EngineRuntimeTraits = .avPlayer
+    public nonisolated static let runtimeTraits = EngineRuntimeTraits(
+        surface: EngineSurfaceRuntimeTraits(continuesWithoutSurface: true),
+        stateAuthority: .commandSuccessClosesState
+    )
 
     public let outputStream: AsyncStream<PlayerEngineOutput>   // Core가 소비하는 유일한 출력
 

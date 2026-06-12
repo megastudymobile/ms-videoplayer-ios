@@ -26,8 +26,13 @@ enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
 
     static var maxPreparationSeconds: TimeInterval { 3 }
     static var isSupportedInCurrentEnvironment: Bool { true }
+    // 어댑터 static을 그대로 참조하면 계약 비교(`runtimeTraits == expectedCapabilities`)가
+    // 동어반복이 되므로 기대값을 독립 literal로 둔다.
     static var expectedCapabilities: EngineRuntimeTraits {
-        .avPlayer
+        EngineRuntimeTraits(
+            surface: EngineSurfaceRuntimeTraits(continuesWithoutSurface: true),
+            stateAuthority: .commandSuccessClosesState
+        )
     }
 }
 

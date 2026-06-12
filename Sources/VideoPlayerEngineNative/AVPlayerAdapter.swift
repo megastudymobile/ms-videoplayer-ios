@@ -13,7 +13,11 @@ import VideoPlayerShellSupport
 
 public actor AVPlayerAdapter: PlayerEngineAdapter, EngineSeekPreviewAbility {
     // Native는 play/pause/seek 권위 콜백이 부족해 Core command-origin이 상태를 닫는다.
-    public nonisolated static let runtimeTraits: EngineRuntimeTraits = .avPlayer
+    // AVPlayer는 surface 분리 후에도 재생이 유지된다.
+    public nonisolated static let runtimeTraits = EngineRuntimeTraits(
+        surface: EngineSurfaceRuntimeTraits(continuesWithoutSurface: true),
+        stateAuthority: .commandSuccessClosesState
+    )
 
     /// Core는 이 스트림을 소비해 reducer로 상태를 만든다.
     public let outputStream: AsyncStream<PlayerEngineOutput>

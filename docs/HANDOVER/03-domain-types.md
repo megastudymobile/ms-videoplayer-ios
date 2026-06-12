@@ -167,7 +167,8 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
     )
 }
 
-// 엔진이 실제로 "어떻게 동작"하는지 — 엔진이 선언 (preset: .avPlayer / .kollus / .default)
+// 엔진이 실제로 "어떻게 동작"하는지 — 각 엔진 타입이 자기 모듈에서 직접 선언
+// (Core에는 .default만 있고 엔진별 preset은 없다 — Core가 엔진 이름을 모르게 유지)
 public struct EngineRuntimeTraits: Equatable, Sendable {
     public let surface: EngineSurfaceRuntimeTraits        // continuesWithoutSurface — 화면 없이 재생 지속(백그라운드)
     public let stateAuthority: EngineStateEventAuthority  // 아래 설명

@@ -40,8 +40,10 @@ enum KollusContractFactory: PlayerEngineAdapterContractTestable {
         #endif
     }
 
+    // 어댑터 static을 그대로 참조하면 계약 비교(`runtimeTraits == expectedCapabilities`)가
+    // 동어반복이 되므로 기대값을 독립 literal로 둔다.
     static var expectedCapabilities: EngineRuntimeTraits {
-        .kollus
+        EngineRuntimeTraits(stateAuthority: .engineEventsAreAuthoritative)
     }
 }
 
@@ -79,6 +81,16 @@ struct KollusPlayerEngineContractTests {
     @Test("outputStream을 isolation 문제 없이 획득한다")
     func outputStreamIsAvailable() async throws {
         try await Contract.outputStreamIsAvailable()
+    }
+}
+
+/// trait 선언 검증은 SDK 런타임이 필요 없으므로 simulator에서도 실행한다
+/// (위 계약 suite는 simulator에서 전체 skip되어 이 검증이 빠진다).
+@Suite("KollusPlayerAdapter runtime traits 선언")
+struct KollusRuntimeTraitsDeclarationTests {
+    @Test("Kollus는 엔진 이벤트를 권위 상태 소스로 선언한다")
+    func declaresEngineEventsAreAuthoritative() {
+        #expect(KollusPlayerAdapter.runtimeTraits == KollusContractFactory.expectedCapabilities)
     }
 }
 
