@@ -189,15 +189,15 @@ public enum EngineStateEventAuthority {
 public enum PlayerFeature { case playbackRate, subtitles, bookmarks, pictureInPicture, zoom /* … */ }
 ```
 
-`PlayerCore` 생성 시 `PlayerFeature.available(for: engine)`이 엔진의 `supports(_:)` 신고를 전 case 순회해 `Set<PlayerFeature>`를 만들어 둡니다. 화면은 이 값으로 **버튼 노출 여부를 사전 결정**합니다 (지원 안 하는 기능의 버튼을 아예 숨김).
+`PlayerCore` 생성 시 `PlayerFeature.available(for: engine)`이 엔진의 `supports(_:)` 선언을 전 case 순회해 `Set<PlayerFeature>`를 만들어 둡니다. 화면은 이 값으로 **버튼 노출 여부를 사전 결정**합니다 (지원 안 하는 기능의 버튼을 아예 숨김).
 
-신고 로직(각 엔진의 `supports(_:)`)과 정책 게이트(`PlayerFeaturePolicy.allows(_:)`)는 둘 다 default 없는 exhaustive switch입니다 — 새 feature를 추가하면 case 하나 추가 후 **컴파일 에러가 갱신 지점을 전부 안내**합니다. 깜빡해도 조용히 빠지는 일이 없습니다.
+선언 로직(각 엔진의 `supports(_:)`)과 정책 게이트(`PlayerFeaturePolicy.allows(_:)`)는 둘 다 default 없는 exhaustive switch입니다 — 새 feature를 추가하면 case 하나 추가 후 **컴파일 에러가 갱신 지점을 전부 안내**합니다. 깜빡해도 조용히 빠지는 일이 없습니다.
 
 ```mermaid
 flowchart LR
     Policy["PlayerFeaturePolicy<br/>(앱이 허용)"] --> Nego{PlayerCore 협상}
     Caps["EngineRuntimeTraits<br/>(엔진이 지원)"] --> Nego
-    Avail["Set&lt;PlayerFeature&gt;<br/>(supports 신고 조사)"] --> UI[화면 버튼 노출 결정]
+    Avail["Set&lt;PlayerFeature&gt;<br/>(supports 선언 조사)"] --> UI[화면 버튼 노출 결정]
     Nego -->|다운그레이드 시| Event[".policyDowngraded 이벤트"]
 ```
 

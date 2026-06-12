@@ -18,13 +18,13 @@ public protocol PlayerPlaybackEngine: Actor {
     /// 미지원 명령은 PlayerError.unsupportedCommand를 던진다.
     func handle(_ command: PlaybackCommand) async throws
 
-    /// Host/UI 버튼 노출용 기능 지원 신고. exhaustive switch라 새 feature 추가 시
+    /// Host/UI 버튼 노출용 기능 지원 선언. exhaustive switch라 새 feature 추가 시
     /// 모든 엔진이 컴파일 에러로 결정을 강제받는다.
     nonisolated func supports(_ feature: PlayerFeature) -> Bool
 }
 ```
 
-엔진 = **"명령이 들어오고(`handle`), 스트림이 나간다(`outputStream`)"**. 새 엔진 작성자가 외울 계약은 이 둘 + `supports` 신고가 전부입니다.
+엔진 = **"명령이 들어오고(`handle`), 스트림이 나간다(`outputStream`)"**. 새 엔진 작성자가 외울 계약은 이 둘 + `supports` 선언이 전부입니다.
 
 엔진은 상태를 직접 노출하지 않습니다. `outputStream`이 유일한 출력이고, 상태(`PlaybackState`)는
 Core가 reducer로 만들어 소유합니다. 엔진 내부 `state`는 어디까지나 SDK 신호 해석용 내부 캐시입니다.
@@ -38,9 +38,9 @@ public enum PlayerEngineOutput: Sendable {
 }
 ```
 
-### 부가 기능도 같은 명령 싱크로 — supports 신고와 짝
+### 부가 기능도 같은 명령 싱크로 — supports 선언과 짝
 
-자막, 배속, 북마크 같은 기능은 엔진마다 지원 여부가 다릅니다. 기능별 명령은 전부 `PlaybackCommand` case이고, 엔진의 `handle` exhaustive switch가 case마다 **구현 또는 `unsupportedCommand` throw**를 명시적으로 결정합니다. 지원 여부는 `supports(_:)`로 신고합니다.
+자막, 배속, 북마크 같은 기능은 엔진마다 지원 여부가 다릅니다. 기능별 명령은 전부 `PlaybackCommand` case이고, 엔진의 `handle` exhaustive switch가 case마다 **구현 또는 `unsupportedCommand` throw**를 명시적으로 결정합니다. 지원 여부는 `supports(_:)`로 선언합니다.
 
 ```swift
 // 엔진 구현 모양 — handle과 supports가 같은 파일에 인접해 불일치가 리뷰에서 보인다
@@ -62,7 +62,7 @@ public nonisolated func supports(_ feature: PlayerFeature) -> Bool {
 }
 ```
 
-`PlayerCore`는 정책 검증(`validateAgainstPolicy`) 후 명령을 그대로 `engine.handle(command)`로 통과시키고, `PlayerFeature.available(for: engine)`이 init 시점에 `supports`를 전 case 순회해 화면에 알려줍니다(버튼 노출 게이팅). `supports` 신고와 `handle` 처리의 일치는 `PlayerEngineFeatureCommandSnapshotTests`가 검증합니다.
+`PlayerCore`는 정책 검증(`validateAgainstPolicy`) 후 명령을 그대로 `engine.handle(command)`로 통과시키고, `PlayerFeature.available(for: engine)`이 init 시점에 `supports`를 전 case 순회해 화면에 알려줍니다(버튼 노출 게이팅). `supports` 선언과 `handle` 처리의 일치는 `PlayerEngineFeatureCommandSnapshotTests`가 검증합니다.
 
 조회형 데이터(북마크 목록, 스트림 목록, 콘텐츠 메타데이터)는 pull API가 아니라 `outputStream` 이벤트(`bookmarksDidLoad` / `streamInfoListDidLoad` / `contentMetadataDidLoad`)로 push됩니다.
 
