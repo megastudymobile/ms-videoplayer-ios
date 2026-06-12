@@ -42,6 +42,8 @@ public extension PlayerError {
             return ("PlayerBridge.Content", 1009, message)
         case .deviceNotSupported(let message):
             return ("PlayerBridge.Device", 1010, message)
+        case .unsupportedCommand(let message):
+            return ("PlayerBridge.Engine", 1011, message)
         case .unknown(let message):
             return ("PlayerBridge.Unknown", 1099, message)
         }

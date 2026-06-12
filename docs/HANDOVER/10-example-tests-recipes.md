@@ -131,13 +131,15 @@ struct PlayerSkinSmokeTests {
 
 예: "구간 미리듣기" 같은 새 명령.
 
-1. `Core/Domain/PlaybackCommand.swift`에 case 추가 → 컴파일 에러가 안내자 역할
-2. 엔진 위임이 필요하면 `Core/Contract/EngineAbilities.swift`에 ability 프로토콜 추가 (기존 프로토콜에 우겨넣지 말 것 — 모든 엔진이 강제 구현하게 됨)
-3. `Internal/PlayerCore.swift`의 `execute` switch에 분기 추가 (`engine as? 새프로토콜` 캐스팅 패턴)
+1. `Core/Domain/PlaybackCommand.swift`에 case 추가 → 모든 엔진의 `handle` exhaustive switch와
+   Core의 `validateAgainstPolicy`가 컴파일 에러로 갱신 지점을 안내한다
+2. 각 엔진(`AVPlayerAdapter`, `KollusPlayerAdapter`, `UnsupportedEnvironmentEngine`)의 `handle` switch에
+   구현 또는 `PlayerError.unsupportedCommand` throw를 명시적으로 결정
+3. 정책 검증이 필요하면 `Internal/PlayerCore.swift`의 `validateAgainstPolicy` switch에 분기 추가
 4. 상태가 바뀌는 명령이면 `PlaybackStateInput`에 입력 추가 + reducer 케이스 + **`Tests/Core/`에 reducer 테스트**
-5. 각 엔진(`AVPlayerAdapter`, `KollusPlayerAdapter`)에 프로토콜 구현
-6. 버튼 게이팅이 필요하면 `PlayerFeature`에 case 추가 — `isSupported(by:)`/`allows(_:)`의
+5. 버튼 게이팅이 필요하면 `PlayerFeature`에 case 추가 — 각 엔진 `supports(_:)`/`allows(_:)`의
    exhaustive switch가 컴파일 에러로 나머지 갱신 지점을 안내한다
+6. `PlayerEngineFeatureCommandSnapshotTests`에 supports↔handle 일치 기대값 갱신
 7. Skin에 버튼이 필요하면 레시피 B로
 
 ### 레시피 B: Skin에 새 버튼 추가

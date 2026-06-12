@@ -112,9 +112,10 @@ struct PlayerInterfaceTests {
             try await core.execute(command: .setPlaybackRate(1.5))
             Issue.record("Unsupported rate command should fail explicitly.")
         } catch let error as PlayerError {
-            #expect(
-                error == .engineError("Playback rate 1.5x is not supported by the current playback engine.")
-            )
+            guard case .unsupportedCommand = error else {
+                Issue.record("Unexpected PlayerError: \(error)")
+                return
+            }
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
@@ -175,9 +176,10 @@ struct PlayerInterfaceTests {
             try await core.execute(command: .setSubtitleVisible(true))
             Issue.record("Unsupported subtitle visibility command should fail explicitly.")
         } catch let error as PlayerError {
-            #expect(
-                error == .engineError("Subtitle visibility is not supported by the current playback engine.")
-            )
+            guard case .unsupportedCommand = error else {
+                Issue.record("Unexpected PlayerError: \(error)")
+                return
+            }
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
@@ -236,9 +238,10 @@ struct PlayerInterfaceTests {
             try await core.execute(command: .addBookmark(at: 45))
             Issue.record("Unsupported bookmark command should fail explicitly.")
         } catch let error as PlayerError {
-            #expect(
-                error == .engineError("Bookmark mutation is not supported by the current playback engine.")
-            )
+            guard case .unsupportedCommand = error else {
+                Issue.record("Unexpected PlayerError: \(error)")
+                return
+            }
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
@@ -290,9 +293,10 @@ struct PlayerInterfaceTests {
             try await core.execute(command: .setDisplayLocked(true))
             Issue.record("Unsupported display command should fail explicitly.")
         } catch let error as PlayerError {
-            #expect(
-                error == .engineError("Display lock is not supported by the current playback engine.")
-            )
+            guard case .unsupportedCommand = error else {
+                Issue.record("Unexpected PlayerError: \(error)")
+                return
+            }
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
@@ -422,14 +426,22 @@ private actor CoreOnlyEngine: PlayerPlaybackEngine {
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize,
+             .addBookmark, .addBookmarkWithTitle, .removeBookmark, .selectSubtitleFile,
+             .setDisplayLocked, .setDisplayScaleMode, .setDisplayScaled, .toggleDisplayScaleMode,
+             .toggleDisplayScaling, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
+    }
+
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { false }
 }
 
-private actor RateControllableEngine: PlayerPlaybackEngine, EnginePlaybackRateAbility {
+private actor RateControllableEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
@@ -437,26 +449,28 @@ private actor RateControllableEngine: PlayerPlaybackEngine, EnginePlaybackRateAb
     private var state: PlaybackState = .idle
     private(set) var recordedRate: Double?
 
-    func prepare(source: PlaybackSource) async throws {
-        state = PlaybackState(
-            status: .readyToPlay,
-            currentTime: 0,
-            duration: 60,
-            isBuffering: false
-        )
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .load:
+            state = PlaybackState(status: .readyToPlay, currentTime: 0, duration: 60, isBuffering: false)
+        case .setPlaybackRate(let rate):
+            recordedRate = rate
+        case .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize, .addBookmark,
+             .addBookmarkWithTitle, .removeBookmark, .selectSubtitleFile, .setDisplayLocked,
+             .setDisplayScaleMode, .setDisplayScaled, .toggleDisplayScaleMode, .toggleDisplayScaling,
+             .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
     }
 
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
-
-    func setPlaybackRate(_ rate: Double) async throws {
-        recordedRate = rate
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        feature == .playbackRate
     }
 }
 
-private actor SubtitleControllableEngine: PlayerPlaybackEngine, EngineSubtitleAbility {
+private actor SubtitleControllableEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
@@ -465,26 +479,29 @@ private actor SubtitleControllableEngine: PlayerPlaybackEngine, EngineSubtitleAb
     private(set) var recordedSubtitleTrackID: PlayerSubtitleTrackID?
     private(set) var recordedCaptionFontSize: Int?
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
-
-    func setSubtitleVisible(_ isVisible: Bool) async throws {
-        recordedSubtitleVisibility = isVisible
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .setSubtitleVisible(let isVisible):
+            recordedSubtitleVisibility = isVisible
+        case .selectSubtitleTrack(let trackID):
+            recordedSubtitleTrackID = trackID
+        case .setCaptionFontSize(let fontSize):
+            recordedCaptionFontSize = fontSize
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .addBookmark, .addBookmarkWithTitle, .removeBookmark,
+             .selectSubtitleFile, .setDisplayLocked, .setDisplayScaleMode, .setDisplayScaled,
+             .toggleDisplayScaleMode, .toggleDisplayScaling, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
     }
 
-    func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {
-        recordedSubtitleTrackID = trackID
-    }
-
-    func setCaptionFontSize(_ fontSize: Int) async throws {
-        recordedCaptionFontSize = fontSize
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        feature == .subtitles
     }
 }
 
-private actor DisplayControllableEngine: PlayerPlaybackEngine, EngineDisplayAbility {
+private actor DisplayControllableEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
@@ -494,48 +511,60 @@ private actor DisplayControllableEngine: PlayerPlaybackEngine, EngineDisplayAbil
     private(set) var recordedDisplayScaleMode: PlayerDisplayScaleMode?
     private(set) var toggleDisplayScaleModeCallCount = 0
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
-
-    func setDisplayLocked(_ isLocked: Bool) async throws {
-        recordedDisplayLock = isLocked
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .setDisplayLocked(let isLocked):
+            recordedDisplayLock = isLocked
+        case .setDisplayScaled(let isScaled):
+            recordedDisplayScale = isScaled
+            recordedDisplayScaleMode = isScaled ? .aspectFill : .aspectFit
+        case .setDisplayScaleMode(let mode):
+            recordedDisplayScaleMode = mode
+        case .toggleDisplayScaling, .toggleDisplayScaleMode:
+            toggleDisplayScaleModeCallCount += 1
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize,
+             .addBookmark, .addBookmarkWithTitle, .removeBookmark, .selectSubtitleFile,
+             .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
     }
 
-    func setDisplayScaled(_ isScaled: Bool) async throws {
-        recordedDisplayScale = isScaled
-    }
-
-    func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
-        recordedDisplayScaleMode = mode
-    }
-
-    func toggleDisplayScaling() async throws {
-        toggleDisplayScaleModeCallCount += 1
-    }
-
-    func toggleDisplayScaleMode() async throws {
-        toggleDisplayScaleModeCallCount += 1
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .displayScaling, .displayLock:
+            return true
+        case .playbackRate, .subtitles, .externalSubtitles, .bookmarks, .titledBookmarks,
+             .zoom, .scroll, .adaptiveStreaming, .pictureInPicture, .seekPreview:
+            return false
+        }
     }
 }
 
-private actor BookmarkControllableEngine: PlayerPlaybackEngine, EngineBookmarkAbility {
+private actor BookmarkControllableEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
     private(set) var recordedBookmarkTime: TimeInterval?
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .addBookmark(let time):
+            recordedBookmarkTime = time
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize,
+             .addBookmarkWithTitle, .removeBookmark, .selectSubtitleFile, .setDisplayLocked,
+             .setDisplayScaleMode, .setDisplayScaled, .toggleDisplayScaleMode, .toggleDisplayScaling,
+             .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
+    }
 
-    func addBookmark(at time: TimeInterval) async throws {
-        recordedBookmarkTime = time
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        feature == .bookmarks
     }
 }
 
@@ -568,11 +597,23 @@ private actor SeekRecordingEngine: PlayerPlaybackEngine {
         recordedSeekTimes = []
     }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .seek(let time), .seekWithOrigin(let time, _):
+            try await recordSeek(to: time)
+        case .load, .play, .pause, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize,
+             .addBookmark, .addBookmarkWithTitle, .removeBookmark, .selectSubtitleFile,
+             .setDisplayLocked, .setDisplayScaleMode, .setDisplayScaled, .toggleDisplayScaleMode,
+             .toggleDisplayScaling, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
+    }
 
-    func seek(to time: TimeInterval) async throws {
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { false }
+
+    private func recordSeek(to time: TimeInterval) async throws {
         recordedSeekTimes.append(time)
         state = state.updating(currentTime: time)
         // chase 패턴 완료 신호: 실 엔진처럼 seek 직후 도달 위치를 통지해

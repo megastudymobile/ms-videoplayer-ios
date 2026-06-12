@@ -180,15 +180,14 @@ public final class PlayerAudioSessionManager {
 
 ## 7. PlayerNowPlayingCoordinator — 잠금화면/제어센터
 
-잠금화면·제어센터의 시스템 플레이어(NowPlaying)를 모듈이 자체 처리합니다. remote command(재생/일시정지/±skip)는 `core.execute`로 라우팅되고, 제목/artwork는 엔진의 `EngineContentMetadataAbility`(ability protocol)에서 직접 조회합니다.
+잠금화면·제어센터의 시스템 플레이어(NowPlaying)를 모듈이 자체 처리합니다. remote command(재생/일시정지/±skip)는 `core.execute`로 라우팅되고, 제목/artwork는 엔진이 `outputStream`으로 push하는 `.contentMetadataDidLoad` 이벤트로 받습니다(`PlayerStateBinder`가 event 스트림을 fan-out).
 
 ```swift
 // 백그라운드 재생 정책이 켜진 경우에만 노출하는 식으로 host가 결정
 let nowPlaying = PlayerNowPlayingCoordinator(
     core: module.core,
-    metadataProvider: module.engine as? EngineContentMetadataAbility,
     skipInterval: policy.skipInterval,
-    fallbackTitle: "재생 중"          // 엔진이 메타데이터를 못 주면 이것만 표시
+    fallbackTitle: "재생 중"          // 메타데이터 이벤트가 안 오면 이것만 표시
 )
 nowPlaying.start()
 binder.bind(core: module.core, nowPlaying: nowPlaying, onState: …, onEvent: …)

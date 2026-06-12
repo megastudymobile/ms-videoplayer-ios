@@ -33,14 +33,17 @@ struct PlayerDisplayScalingEngineTests {
             try await core.execute(command: .setDisplayLocked(true))
             Issue.record("Display lock should fail when only display scaling is supported.")
         } catch let error as PlayerError {
-            #expect(error == .engineError("Display lock is not supported by the current playback engine."))
+            guard case .unsupportedCommand = error else {
+                Issue.record("Unexpected PlayerError: \(error)")
+                return
+            }
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
     }
 }
 
-private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, EngineDisplayScalingAbility {
+private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
@@ -49,25 +52,30 @@ private actor DisplayScalingOnlyEngine: PlayerPlaybackEngine, EngineDisplayScali
     private(set) var recordedDisplayScaleMode: PlayerDisplayScaleMode?
     private(set) var toggleDisplayScaleModeCallCount = 0
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
-
-    func setDisplayScaled(_ isScaled: Bool) async throws {
-        recordedDisplayScale = isScaled
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .setDisplayScaled(let isScaled):
+            recordedDisplayScale = isScaled
+        case .setDisplayScaleMode(let mode):
+            recordedDisplayScaleMode = mode
+        case .toggleDisplayScaling, .toggleDisplayScaleMode:
+            toggleDisplayScaleModeCallCount += 1
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize,
+             .addBookmark, .addBookmarkWithTitle, .removeBookmark, .selectSubtitleFile,
+             .setDisplayLocked, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
     }
 
-    func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
-        recordedDisplayScaleMode = mode
-    }
-
-    func toggleDisplayScaling() async throws {
-        toggleDisplayScaleModeCallCount += 1
-    }
-
-    func toggleDisplayScaleMode() async throws {
-        toggleDisplayScaleModeCallCount += 1
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .displayScaling:
+            return true
+        case .playbackRate, .subtitles, .externalSubtitles, .bookmarks, .titledBookmarks,
+             .zoom, .scroll, .adaptiveStreaming, .pictureInPicture, .displayLock, .seekPreview:
+            return false
+        }
     }
 }

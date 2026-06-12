@@ -47,7 +47,7 @@ struct KollusPlayerAdapterPrepareTests {
         let url = URL(string: "https://example.com/sample.mp4")!
 
         await #expect {
-            try await adapter.prepare(source: .url(url))
+            try await adapter.handle(.load(.url(url)))
         } throws: { error in
             guard case let PlayerError.engineError(message) = error else { return false }
             return message.contains("startStorage")
@@ -64,7 +64,7 @@ struct KollusPlayerAdapterPrepareTests {
         let adapter = KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
 
         await #expect {
-            try await adapter.prepare(source: .mediaKey("mck-1"))
+            try await adapter.handle(.load(.mediaKey("mck-1")))
         } throws: { error in
             guard case let PlayerError.engineError(message) = error else { return false }
             return message.contains("startStorage")
@@ -84,7 +84,7 @@ struct KollusPlayerAdapterPrepareTests {
         let url = URL(string: "https://example.com/sample.mp4")!
 
         await #expect {
-            try await adapter.prepare(source: .url(url))
+            try await adapter.handle(.load(.url(url)))
         } throws: { error in
             guard case let PlayerError.engineError(message) = error else { return false }
             return message.contains("KollusStorageAdapter가 아닌")
@@ -100,7 +100,7 @@ struct KollusPlayerAdapterPrepareTests {
         let adapter = KollusPlayerAdapter(bootstrapper: bootstrapper, environment: env)
 
         await #expect {
-            try await adapter.prepare(source: .mediaKey("mck-1"))
+            try await adapter.handle(.load(.mediaKey("mck-1")))
         } throws: { error in
             guard case let PlayerError.engineError(message) = error else { return false }
             return message.contains("KollusStorageAdapter가 아닌")
@@ -123,7 +123,7 @@ struct KollusPlayerAdapterPrepareTests {
         let url = URL(string: "https://example.com/sample.mp4")!
 
         await #expect {
-            try await adapter.prepare(source: .url(url))
+            try await adapter.handle(.load(.url(url)))
         } throws: { error in
             (error as? KollusEnvironmentError) == .missingApplicationKey
         }

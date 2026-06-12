@@ -1902,39 +1902,38 @@ reduce(currentState, input):
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">engine contract</div>
-        <h2 class="reveal">엔진 계약은 명령 5개와 출력 1개</h2>
+        <h2 class="reveal">엔진 계약은 명령 싱크 1개와 출력 1개</h2>
         <div class="split-visual reveal">
             <div class="code-editor">
                 <span class="filename">PlayerPlaybackEngine.swift · 모든 엔진의 공통 계약</span>
 <pre><span class="kw">public protocol</span> <span class="ty">PlayerPlaybackEngine</span>: <span class="ty">Actor</span> {
     <span class="kw">nonisolated static var</span> runtimeTraits: <span class="ty">EngineRuntimeTraits</span> { <span class="kw">get</span> }
 
-    <span class="kw">func</span> <span class="fn">prepare</span>(source: <span class="ty">PlaybackSource</span>) <span class="callout-token">async throws</span>
-    <span class="kw">func</span> <span class="fn">play</span>() <span class="callout-token">async throws</span>
-    <span class="kw">func</span> <span class="fn">pause</span>() <span class="callout-token">async throws</span>
-    <span class="kw">func</span> <span class="fn">seek</span>(to time: <span class="ty">TimeInterval</span>) <span class="callout-token">async throws</span>
-    <span class="kw">func</span> <span class="fn">stop</span>(reason: <span class="ty">PlayerStopReason</span>) <span class="callout-token">async throws</span>
-
     <span class="cm">// 엔진의 유일한 출력 — Core가 소비해 상태를 만든다</span>
     <span class="callout-token">var outputStream: AsyncStream&lt;PlayerEngineOutput&gt; { get }</span>
+
+    <span class="cm">// 단일 명령 싱크 — 모든 PlaybackCommand를 exhaustive switch로 명시 처리</span>
+    <span class="kw">func</span> <span class="fn">handle</span>(_ command: <span class="ty">PlaybackCommand</span>) <span class="callout-token">async throws</span>
+
+    <span class="cm">// 기능 지원 신고 — UI 버튼 노출 게이팅</span>
+    <span class="kw">nonisolated func</span> <span class="fn">supports</span>(_ feature: <span class="ty">PlayerFeature</span>) -&gt; <span class="ty">Bool</span>
 }</pre>
             </div>
             <ul class="feature-list">
                 <li><strong>runtimeTraits</strong> — 엔진 동작 특성을 선언하고 Core가 정책 협상에 사용합니다.</li>
-                <li><strong>prepare(source)</strong> — URL이든 mediaKey든 source를 해석해 재생을 준비합니다.</li>
-                <li><strong>play() / pause()</strong> — 재생 제어. 성공해도 상태는 outputStream 신호로 확정됩니다.</li>
-                <li><strong>seek(to)</strong> — 위치 이동 명령입니다.</li>
-                <li><strong>stop(reason)</strong> — userClosed, replacedSource, appLifecycle, finished를 구분합니다.</li>
                 <li><strong>outputStream</strong> — 엔진의 유일한 출력. Core가 소비해 상태를 만듭니다.</li>
+                <li><strong>handle(command)</strong> — load·play·seek부터 자막·배속·북마크까지 전 명령의 단일 진입점. 성공해도 상태는 outputStream 신호로 확정됩니다.</li>
+                <li><strong>미지원 명령</strong> — 조용히 무시하지 않고 PlayerError.unsupportedCommand를 던집니다.</li>
+                <li><strong>supports(feature)</strong> — 기능 지원을 명시 신고. handle switch와 같은 파일에 인접해 불일치가 리뷰에서 보입니다.</li>
             </ul>
         </div>
-        <p class="takeaway reveal">명령은 async throws로 실패를 드러내고, 배속·자막·PiP는 ability protocol로 확장합니다.</p>
+        <p class="takeaway reveal">엔진 = “명령이 들어오고(handle), 스트림이 나간다(outputStream)”. 두 switch 모두 default가 없어 새 명령·새 기능 추가가 모든 엔진에 컴파일 에러로 강제됩니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 10. 엔진 계약은 명령 5개와 출력 1개</h3>
-        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성이고, prepare는 source를 해석해 재생 준비를 합니다.<br>play, pause, seek, stop은 모두 async throws 명령이고, 성공해도 최종 상태 확정은 outputStream 신호를 Core가 해석해서 만듭니다.<br>Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막·PiP 같은 기능은 다음 슬라이드의 ability protocol로 확장합니다.</p>
+        <h3>Script 10. 엔진 계약은 명령 싱크 1개와 출력 1개</h3>
+        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성이고, 재생 명령은 전부 PlaybackCommand enum으로 들어와 handle 하나가 받습니다.<br>handle은 async throws 명령이고, 성공해도 최종 상태 확정은 outputStream 신호를 Core가 해석해서 만듭니다. 미지원 명령은 unsupportedCommand로 시끄럽게 실패합니다.<br>Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막 같은 기능 지원 여부는 supports 신고로 드러납니다. handle과 supports 둘 다 default 없는 exhaustive switch라, 새 명령이 생기면 모든 엔진이 컴파일 에러로 “구현할지 거절할지”를 강제로 결정하게 됩니다. Media3의 Player.Commands와 같은 구조입니다.</p>
         <p><strong>전환:</strong> 이 기본 계약 위에서 엔진별 기능 차이를 어떻게 다루는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 코드는 runtimeTraits, prepare, play/pause, seek, stop, outputStream 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 유일한 단방향 출력입니다.<br>4. 마지막 takeaway는 기본 계약 밖의 기능은 ability protocol로 확장한다는 뜻입니다.</p>
+        <p><strong>화면:</strong><br>1. 코드는 runtimeTraits, outputStream, handle, supports 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 유일한 단방향 출력입니다.<br>4. 마지막 takeaway는 exhaustive switch가 갱신 누락을 컴파일 에러로 바꾼다는 뜻입니다.</p>
     </aside>
 </section>
 
@@ -1961,8 +1960,8 @@ reduce(currentState, input):
                     <text x="106" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">배속 버튼</text>
                     <line x1="158" y1="73" x2="198" y2="73" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
                     <rect x="200" y="43" width="196" height="60" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
-                    <text x="298" y="68" text-anchor="middle" font-size="12.5" font-weight="700" fill="#171717">EnginePlaybackRateAbility</text>
-                    <text x="298" y="87" text-anchor="middle" font-size="13" fill="#4d4d4d">채택?</text>
+                    <text x="298" y="68" text-anchor="middle" font-size="12.5" font-weight="700" fill="#171717">supports(.playbackRate)</text>
+                    <text x="298" y="87" text-anchor="middle" font-size="13" fill="#4d4d4d">신고?</text>
                     <line x1="396" y1="73" x2="438" y2="73" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
                     <rect x="440" y="43" width="160" height="60" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
                     <text x="520" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">Host 정책</text>
@@ -2001,9 +2000,9 @@ reduce(currentState, input):
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 11. 기능 차이는 availability와 runtime traits로 관리</h3>
-        <p><strong>말할 내용:</strong> 여기서는 기능 차이를 두 질문으로 나눕니다.<br>첫 번째는 “버튼을 보여줄까?”입니다. 배속 버튼은 엔진이 EnginePlaybackRateAbility를 채택하고 Host 정책도 배속을 허용해야 보입니다. 둘 중 하나라도 아니면 Skin에서 아예 노출하지 않습니다.<br>이 노출 조건은 화면 코드가 if로 들고 있지 않습니다. 블록이 requiredFeatures로 자기 조건을 신고하고, 엔진이 확정되면 skin이 일괄 게이팅합니다. 엔진이 ability 채택으로 능력을 신고하듯, 블록은 requiredFeatures로 수요를 신고하는 대칭 구조입니다.<br>두 번째는 “보여준 뒤 실제로 안전하게 동작할까?”입니다. 예를 들어 Host가 백그라운드 재생을 허용해도, 엔진이 surface 없이 재생을 유지할 수 없으면 Core는 런타임 effectivePolicy에서 백그라운드 재생을 false로 낮춥니다. 그리고 policyDowngraded 이벤트로 Host에 알려줍니다.<br>즉 하향 조정은 Host 설정을 몰래 바꾸는 게 아니라, 현재 엔진으로 지킬 수 없는 약속을 런타임에서 안전한 동작으로 줄이는 것입니다.</p>
+        <p><strong>말할 내용:</strong> 여기서는 기능 차이를 두 질문으로 나눕니다.<br>첫 번째는 “버튼을 보여줄까?”입니다. 배속 버튼은 엔진이 supports(.playbackRate)로 지원을 신고하고 Host 정책도 배속을 허용해야 보입니다. 둘 중 하나라도 아니면 Skin에서 아예 노출하지 않습니다.<br>이 노출 조건은 화면 코드가 if로 들고 있지 않습니다. 블록이 requiredFeatures로 자기 조건을 신고하고, 엔진이 확정되면 skin이 일괄 게이팅합니다. 엔진이 supports로 능력을 신고하듯, 블록은 requiredFeatures로 수요를 신고하는 대칭 구조입니다.<br>두 번째는 “보여준 뒤 실제로 안전하게 동작할까?”입니다. 예를 들어 Host가 백그라운드 재생을 허용해도, 엔진이 surface 없이 재생을 유지할 수 없으면 Core는 런타임 effectivePolicy에서 백그라운드 재생을 false로 낮춥니다. 그리고 policyDowngraded 이벤트로 Host에 알려줍니다.<br>즉 하향 조정은 Host 설정을 몰래 바꾸는 게 아니라, 현재 엔진으로 지킬 수 없는 약속을 런타임에서 안전한 동작으로 줄이는 것입니다.</p>
         <p><strong>전환:</strong> 이제 이 기능 게이트를 서비스별 UI 조립에서 어떻게 쓰는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 위 레인은 배속 버튼 노출 조건입니다. ability 채택과 Host 정책이 모두 필요합니다.<br>2. 아래 레인은 백그라운드 재생 예시입니다. Host는 허용했지만 EngineRuntimeTraits의 surface.continuesWithoutSurface가 false면 Core가 effectivePolicy를 false로 낮춥니다.<br>3. 마지막 문장은 이 슬라이드의 결론입니다. availability는 화면 노출, runtime traits는 노출된 뒤의 안전한 동작 방식을 결정합니다.</p>
+        <p><strong>화면:</strong><br>1. 위 레인은 배속 버튼 노출 조건입니다. supports 신고와 Host 정책이 모두 필요합니다.<br>2. 아래 레인은 백그라운드 재생 예시입니다. Host는 허용했지만 EngineRuntimeTraits의 surface.continuesWithoutSurface가 false면 Core가 effectivePolicy를 false로 낮춥니다.<br>3. 마지막 문장은 이 슬라이드의 결론입니다. availability는 화면 노출, runtime traits는 노출된 뒤의 안전한 동작 방식을 결정합니다.</p>
     </aside>
 </section>
 
@@ -2109,7 +2108,7 @@ reduce(currentState, input):
                 <tbody>
                     <tr><td>더 좋은 VOD SDK 도입</td><td>새 EngineAdapter 추가</td></tr>
                     <tr><td>서비스별 UI 요구</td><td>Skin block/theme 추가</td></tr>
-                    <tr><td>기능 지원 차이</td><td>PlayerFeature case와 ability protocol 추가 — exhaustive switch가 갱신 지점 안내</td></tr>
+                    <tr><td>기능 지원 차이</td><td>PlaybackCommand·PlayerFeature case 추가 — 모든 엔진의 handle/supports exhaustive switch가 갱신 지점 안내</td></tr>
                     <tr><td>다운로드 정책 변경</td><td>DownloadCenter contract 확장</td></tr>
                     <tr><td>해외 서비스 요구</td><td>Host policy와 localization 주입</td></tr>
                 </tbody>
@@ -2119,9 +2118,9 @@ reduce(currentState, input):
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 14. 미래 확장은 정해진 경계로 흡수</h3>
-        <p><strong>말할 내용:</strong> 앞으로의 확장은 Host 전체 수정이 아니라 정해진 경계의 확장으로 처리합니다.<br>더 좋은 VOD SDK가 나오면 새 EngineAdapter를 추가하고, UI 요구는 Skin block이나 theme으로 받습니다.<br>다운로드 정책과 해외 서비스 요구는 DownloadCenter, policy, localization 주입으로 대응합니다.<br>새 기능 추가는 PlayerFeature에 case 하나를 더하는 것으로 시작합니다. 지원 검사와 정책 판단이 default 없는 switch라서, 갱신해야 할 곳을 전부 컴파일 에러가 알려줍니다. 체크리스트를 사람이 기억하지 않습니다.</p>
+        <p><strong>말할 내용:</strong> 앞으로의 확장은 Host 전체 수정이 아니라 정해진 경계의 확장으로 처리합니다.<br>더 좋은 VOD SDK가 나오면 새 EngineAdapter를 추가하고, UI 요구는 Skin block이나 theme으로 받습니다.<br>다운로드 정책과 해외 서비스 요구는 DownloadCenter, policy, localization 주입으로 대응합니다.<br>새 기능 추가는 PlaybackCommand와 PlayerFeature에 case 하나씩 더하는 것으로 시작합니다. 모든 엔진의 handle·supports와 정책 판단이 default 없는 switch라서, 갱신해야 할 곳을 전부 컴파일 에러가 알려줍니다. 체크리스트를 사람이 기억하지 않습니다.</p>
         <p><strong>전환:</strong> 공통 모듈이 되려면 검증 경계도 함께 분리되어야 합니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 PlayerFeature case와 ability protocol로 확장합니다. exhaustive switch 덕에 누락은 컴파일 에러로 드러납니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 PlaybackCommand·PlayerFeature case로 확장합니다. exhaustive switch 덕에 누락은 컴파일 에러로 드러납니다.</p>
     </aside>
 </section>
 
@@ -2147,7 +2146,7 @@ reduce(currentState, input):
             <div class="card">
                 <h3>남은 한계</h3>
                 <ul class="feature-list" style="margin-top:0.6rem;">
-                    <li>Kollus PiP는 현재 의도적으로 열지 않습니다(EnginePiPAbility 미채택).</li>
+                    <li>Kollus PiP는 현재 의도적으로 열지 않습니다(supports(.pictureInPicture) = false 신고).</li>
                     <li>다운로드 E2E는 현재 URL 부재로 불가하며, host/API 제공 URL 확보 후 실기기 QA로 닫습니다.</li>
                     <li>고등 서비스 기준 UX와 새 Skin의 제스처/HUD 정렬이 더 필요합니다.</li>
                 </ul>

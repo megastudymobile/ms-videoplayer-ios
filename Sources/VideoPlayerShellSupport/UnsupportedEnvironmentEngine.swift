@@ -55,36 +55,69 @@ public actor UnsupportedEnvironmentEngine: PlayerEngineAdapter {
         renderSurface = nil
     }
 
-    // MARK: - PlayerPlaybackEngine (no-op)
+    // MARK: - PlayerPlaybackEngine
 
-    public func prepare(source: PlaybackSource) async throws {}
-    public func play() async throws {}
-    public func pause() async throws {}
-    public func seek(to time: TimeInterval) async throws {}
-    public func stop(reason: PlayerStopReason) async throws {}
-}
-
-// MARK: - EngineTitledBookmarkAbility (시뮬레이터 in-memory 북마크 — 콘솔 테스트용)
-
-extension UnsupportedEnvironmentEngine: EngineTitledBookmarkAbility {
-    public func addBookmark(at time: TimeInterval) async throws {
-        try await addBookmark(at: time, title: "")
+    public func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .load,
+             .play,
+             .pause,
+             .seek,
+             .seekWithOrigin,
+             .setSkipInterval,
+             .stop:
+            break
+        case .addBookmark(let time):
+            addBookmark(at: time, title: "")
+        case .addBookmarkWithTitle(let time, let title):
+            addBookmark(at: time, title: title)
+        case .removeBookmark(let time):
+            removeBookmark(at: time)
+        case .setPlaybackRate,
+             .setSubtitleVisible,
+             .selectSubtitleTrack,
+             .setCaptionFontSize,
+             .selectSubtitleFile,
+             .setDisplayLocked,
+             .setDisplayScaleMode,
+             .setDisplayScaled,
+             .toggleDisplayScaleMode,
+             .toggleDisplayScaling,
+             .scroll,
+             .stopScroll,
+             .changeBandwidth:
+            throw PlayerError.unsupportedCommand("UnsupportedEnvironmentEngine does not support \(command)")
+        }
     }
 
-    public func addBookmark(at time: TimeInterval, title: String) async throws {
+    public nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .bookmarks, .titledBookmarks:
+            return true
+        case .playbackRate,
+             .subtitles,
+             .externalSubtitles,
+             .zoom,
+             .scroll,
+             .adaptiveStreaming,
+             .pictureInPicture,
+             .displayScaling,
+             .displayLock,
+             .seekPreview:
+            return false
+        }
+    }
+
+    private func addBookmark(at time: TimeInterval, title: String) {
         let bookmark = Bookmark(position: time, title: title, kind: .user, createdAt: Date())
         bookmarks.append(bookmark)
         bookmarks.sort { $0.position < $1.position }
         emitBookmarks()
     }
 
-    public func removeBookmark(at time: TimeInterval) async throws {
+    private func removeBookmark(at time: TimeInterval) {
         bookmarks.removeAll { $0.position == time }
         emitBookmarks()
-    }
-
-    public func currentBookmarks() async -> [Bookmark] {
-        bookmarks
     }
 
     private func emitBookmarks() {

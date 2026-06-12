@@ -14,31 +14,28 @@ import VideoPlayerCore
 /// 라우팅, 재생 상태 동기화를 모듈이 자체 수행한다.
 ///
 /// `PlayerStateBinder.bind(core:nowPlaying:...)`로 연결하면 상태 동기화에 host 배선이
-/// 필요 없다. 제목/썸네일은 엔진(`EngineContentMetadataAbility`)에서 직접 조회하고,
-/// 엔진이 메타데이터를 제공하지 못하면 `fallbackTitle`만 표시한다.
+/// 필요 없다. 제목/썸네일은 엔진이 `outputStream` 이벤트로 제공하고,
+/// 메타데이터 이벤트가 오지 않으면 `fallbackTitle`만 표시한다.
 ///
 /// - Important: 화면을 닫을 때 `stop()`을 호출해야 잠금화면 플레이어가 제거된다.
 @MainActor
 public final class PlayerNowPlayingCoordinator {
     private let core: PlayerCore
-    private let metadataProvider: EngineContentMetadataAbility?
     private let skipInterval: TimeInterval
     private let fallbackTitle: String?
 
     private var lastState: PlaybackState = .idle
     private var playbackRate: Double = 1.0
     private var hasLoadedMetadata = false
-    private var metadataTask: Task<Void, Never>?
+    private var artworkTask: Task<Void, Never>?
     private var isStarted = false
 
     public init(
         core: PlayerCore,
-        metadataProvider: EngineContentMetadataAbility?,
         skipInterval: TimeInterval,
         fallbackTitle: String? = nil
     ) {
         self.core = core
-        self.metadataProvider = metadataProvider
         self.skipInterval = max(1, skipInterval)
         self.fallbackTitle = fallbackTitle
     }
@@ -58,8 +55,8 @@ public final class PlayerNowPlayingCoordinator {
     public func stop() {
         guard isStarted else { return }
         isStarted = false
-        metadataTask?.cancel()
-        metadataTask = nil
+        artworkTask?.cancel()
+        artworkTask = nil
         hasLoadedMetadata = false
         unregisterCommands()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -69,15 +66,19 @@ public final class PlayerNowPlayingCoordinator {
     public func apply(state: PlaybackState) {
         guard isStarted else { return }
         lastState = state
-        if state.status == .readyToPlay || state.status == .playing {
-            loadMetadataIfNeeded()
-        }
 
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         info[MPMediaItemPropertyPlaybackDuration] = state.duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = state.currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = state.status == .playing ? playbackRate : 0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    /// `PlayerStateBinder`가 event 스트림 fan-out으로 호출한다.
+    public func apply(event: PlayerEvent) {
+        guard isStarted else { return }
+        guard case .contentMetadataDidLoad(let content) = event else { return }
+        apply(content: content)
     }
 
     /// 배속 변경 통지 — `PlayerEvent`에 배속 이벤트가 없어 명령 경로에서 알려줘야
@@ -161,22 +162,21 @@ public final class PlayerNowPlayingCoordinator {
 
     // MARK: - Metadata
 
-    private func loadMetadataIfNeeded() {
-        guard hasLoadedMetadata == false, metadataTask == nil, let metadataProvider else { return }
-        metadataTask = Task { @MainActor [weak self] in
-            defer { self?.metadataTask = nil }
-            guard let content = await metadataProvider.currentContent() else { return }
-            guard let self, self.isStarted else { return }
-            self.hasLoadedMetadata = true
+    private func apply(content: DownloadedContent) {
+        guard hasLoadedMetadata == false else { return }
+        hasLoadedMetadata = true
 
-            if content.title.isEmpty == false {
-                var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-                info[MPMediaItemPropertyTitle] = content.title
-                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
-            }
-            // thumbnailPath는 시크 프리뷰용 스프라이트 시트일 수 있어 artwork로 쓰지 않는다.
-            if let path = content.snapshotPath, path.isEmpty == false {
-                await self.loadArtwork(from: path)
+        if content.title.isEmpty == false {
+            var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+            info[MPMediaItemPropertyTitle] = content.title
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        }
+
+        if let path = content.snapshotPath, path.isEmpty == false {
+            artworkTask?.cancel()
+            artworkTask = Task { @MainActor [weak self] in
+                await self?.loadArtwork(from: path)
+                self?.artworkTask = nil
             }
         }
     }

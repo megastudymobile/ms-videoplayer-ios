@@ -11,16 +11,20 @@
 public protocol PlayerPlaybackEngine: Actor {
     nonisolated static var runtimeTraits: EngineRuntimeTraits { get }
 
-    func prepare(source: PlaybackSource) async throws
-    func play() async throws
-    func pause() async throws
-    func seek(to time: TimeInterval) async throws
-    func stop(reason: PlayerStopReason) async throws
-
     // 코어가 reducer 입력을 받는 유일한 통로
     var outputStream: AsyncStream<PlayerEngineOutput> { get }
+
+    /// 단일 명령 싱크. 구현체는 모든 PlaybackCommand case를 exhaustive switch로 명시 처리하고,
+    /// 미지원 명령은 PlayerError.unsupportedCommand를 던진다.
+    func handle(_ command: PlaybackCommand) async throws
+
+    /// Host/UI 버튼 노출용 기능 지원 신고. exhaustive switch라 새 feature 추가 시
+    /// 모든 엔진이 컴파일 에러로 결정을 강제받는다.
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool
 }
 ```
+
+엔진 = **"명령이 들어오고(`handle`), 스트림이 나간다(`outputStream`)"**. 새 엔진 작성자가 외울 계약은 이 둘 + `supports` 신고가 전부입니다.
 
 엔진은 상태를 직접 노출하지 않습니다. `outputStream`이 유일한 출력이고, 상태(`PlaybackState`)는
 Core가 reducer로 만들어 소유합니다. 엔진 내부 `state`는 어디까지나 SDK 신호 해석용 내부 캐시입니다.
@@ -34,29 +38,46 @@ public enum PlayerEngineOutput: Sendable {
 }
 ```
 
-### 부가 기능은 ability 프로토콜로
+### 부가 기능도 같은 명령 싱크로 — supports 신고와 짝
 
-자막, 배속, 북마크 같은 기능은 엔진마다 지원 여부가 다릅니다. 그래서 별도 프로토콜로 쪼개고, 엔진이 **채택하면 지원**으로 간주합니다.
+자막, 배속, 북마크 같은 기능은 엔진마다 지원 여부가 다릅니다. 기능별 명령은 전부 `PlaybackCommand` case이고, 엔진의 `handle` exhaustive switch가 case마다 **구현 또는 `unsupportedCommand` throw**를 명시적으로 결정합니다. 지원 여부는 `supports(_:)`로 신고합니다.
 
 ```swift
-public protocol EnginePlaybackRateAbility: Actor {
-    func setPlaybackRate(_ rate: Double) async throws
+// 엔진 구현 모양 — handle과 supports가 같은 파일에 인접해 불일치가 리뷰에서 보인다
+public func handle(_ command: PlaybackCommand) async throws {
+    switch command {                       // default 없음 — 새 case 추가 시 컴파일 에러
+    case .setPlaybackRate(let rate): try await setPlaybackRate(rate)
+    case .setSubtitleVisible(let on): try await setSubtitleVisible(on)
+    case .setDisplayLocked:
+        throw PlayerError.unsupportedCommand("… does not support displayLock")
+    // …
+    }
 }
-public protocol EngineSubtitleAbility: Actor {
-    func setSubtitleVisible(_ isVisible: Bool) async throws
-    func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws
-    func setCaptionFontSize(_ fontSize: Int) async throws
+
+public nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+    switch feature {                       // 역시 exhaustive — 기능마다 명시적 결정 강제
+    case .playbackRate, .subtitles, …: return true
+    case .displayLock, .pictureInPicture: return false
+    }
 }
-public protocol EngineBookmarkAbility: Actor {
-    func addBookmark(at time: TimeInterval) async throws
-}
-// EngineTitledBookmarkAbility, EngineDisplayAbility, EngineZoomAbility,
-// EngineScrollAbility, EngineAdaptiveStreamingAbility, EnginePiPAbility,
-// EngineContentMetadataAbility(제목/썸네일 조회 — NowPlaying 등 부가 UI용),
-// EngineSeekPreviewAbility(스크럽 중 특정 시각의 프리뷰 프레임 — 실패는 nil로 통일) …
 ```
 
-`PlayerCore`는 `engine as? EngineSubtitleAbility` 캐스팅으로 위임하고, 채택 여부는 `PlayerFeature.available(for: engine)`이 init 시점에 한 번 조사해 화면에 알려줍니다(버튼 노출 게이팅).
+`PlayerCore`는 정책 검증(`validateAgainstPolicy`) 후 명령을 그대로 `engine.handle(command)`로 통과시키고, `PlayerFeature.available(for: engine)`이 init 시점에 `supports`를 전 case 순회해 화면에 알려줍니다(버튼 노출 게이팅). `supports` 신고와 `handle` 처리의 일치는 `PlayerEngineFeatureCommandSnapshotTests`가 검증합니다.
+
+조회형 데이터(북마크 목록, 스트림 목록, 콘텐츠 메타데이터)는 pull API가 아니라 `outputStream` 이벤트(`bookmarksDidLoad` / `streamInfoListDidLoad` / `contentMetadataDidLoad`)로 push됩니다.
+
+명령 enum으로 표현할 수 없는 예외 2개만 protocol로 남습니다:
+
+```swift
+// 핀치 줌 — UIPinchGestureRecognizer가 non-Sendable + 매 이벤트 동기 적용 필요(actor hop 시 추적 끊김)
+public protocol EngineSynchronousZoomAbility {
+    func applyZoomGesture(_ recognizer: UIPinchGestureRecognizer)
+}
+// 시킹 스크럽 프리뷰 — time → UIImage? 요청-응답이라 push로 못 바꾼다. 실패는 nil로 통일
+public protocol EngineSeekPreviewAbility: Actor {
+    func seekPreviewImage(at time: TimeInterval) async -> UIImage?
+}
+```
 
 화면 부착용 프로토콜은 ShellSupport에 있습니다 (UIKit이 필요해서 Core에 둘 수 없음):
 
@@ -73,8 +94,7 @@ public protocol PlayerEngineAdapter: PlayerPlaybackEngine {
 `Sources/VideoPlayerEngineNative/AVPlayerAdapter.swift` — 가장 단순한 엔진이라 구조 학습에 최적입니다.
 
 ```swift
-public actor AVPlayerAdapter: PlayerEngineAdapter,
-                              EnginePlaybackRateAbility, EngineDisplayScalingAbility {
+public actor AVPlayerAdapter: PlayerEngineAdapter, EngineSeekPreviewAbility {
     // .avPlayer preset: surface 분리 후에도 재생 유지,
     // stateAuthority는 .commandSuccessClosesState → play/pause는 Core가 command-origin으로 닫음
     public nonisolated static let runtimeTraits: EngineRuntimeTraits = .avPlayer
@@ -178,8 +198,10 @@ enum AVPlayerSignalMapper {
 
 ### prepare / seek 구현 요점
 
+`handle`이 case별로 private 구현 메서드에 위임하는 구조라, 실제 재생 로직은 기존과 같은 모양입니다.
+
 ```swift
-public func prepare(source: PlaybackSource) async throws {
+private func prepare(source: PlaybackSource) async throws {   // handle(.load)가 호출
     guard case .url(let url) = source.kind else {
         throw PlayerError.engineError("AVPlayerAdapter는 url source만 지원합니다.")
     }
@@ -194,7 +216,7 @@ public func prepare(source: PlaybackSource) async throws {
     )))
 }
 
-public func seek(to time: TimeInterval) async throws {
+private func seek(to time: TimeInterval) async throws {       // handle(.seek)가 호출
     let targetTime = CMTime(seconds: max(0, time), preferredTimescale: 600)
     try await withCheckedThrowingContinuation { continuation in
         player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { finished in

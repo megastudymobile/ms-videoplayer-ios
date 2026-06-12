@@ -94,11 +94,8 @@ private actor ContractFakeEngine: PlayerPlaybackEngine {
         outputContinuation.finish()
     }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {}
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { false }
 
     func emitStateInput(_ input: PlaybackStateInput) {
         outputContinuation.yield(.stateInput(input))

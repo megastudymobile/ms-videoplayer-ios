@@ -12,8 +12,8 @@ import VideoPlayerCore
 /// Kollus SDK 신호를 Core가 이해하는 `PlayerEngineOutput`으로 번역하는 순수 매퍼.
 ///
 /// 상태를 움직이는 신호는 `.stateInput(PlaybackStateInput)`으로, 상태와 무관한 신호는
-/// `.event(PlayerEvent)` passthrough로 바꾼다. 상태도 이벤트도 만들지 않는 신호(scroll/zoom 등)는
-/// `nil`을 반환한다. 상태 전이 자체는 매퍼가 결정하지 않고 Core의 `PlaybackStateReducer`가 한다.
+/// `.event(PlayerEvent)` passthrough로 바꾼다. 상태 전이 자체는 매퍼가 결정하지 않고
+/// Core의 `PlaybackStateReducer`가 한다.
 ///
 /// polling 시작/정지, prepare continuation resume, next-episode 검사 같은 부수효과는 매퍼가 아니라
 /// `KollusPlayerAdapter`가 수행한다.
@@ -101,10 +101,12 @@ enum KollusSignalMapper {
         case .hlsBitrateChanged(let bitrate):
             return .event(.bitrateDidChange(bitrate))
 
+        case .zoomChanged(let value):
+            return .event(.zoomDidChange(value))
+
         // MARK: - 상태도 이벤트도 만들지 않는 신호
 
         case .scrollChanged,
-             .zoomChanged,
              .contentModeChanged,
              .playbackRateChanged,
              .repeatChanged,

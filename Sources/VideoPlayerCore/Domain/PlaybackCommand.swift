@@ -6,6 +6,7 @@
 //  Copyright © 2026 megastudyedu. All rights reserved.
 //
 
+import CoreGraphics
 import Foundation
 
 public enum PlaybackCommand: Equatable, Sendable {
@@ -28,5 +29,8 @@ public enum PlaybackCommand: Equatable, Sendable {
     case setDisplayScaled(Bool)
     case toggleDisplayScaleMode
     case toggleDisplayScaling
+    case scroll(by: CGPoint)
+    case stopScroll
+    case changeBandwidth(Int)
     case stop
 }

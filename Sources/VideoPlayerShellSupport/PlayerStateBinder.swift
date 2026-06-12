@@ -34,6 +34,7 @@ public final class PlayerStateBinder {
 
         eventTask = Task { @MainActor in
             for await event in core.eventStream {
+                nowPlaying?.apply(event: event)
                 onEvent(event)
             }
         }

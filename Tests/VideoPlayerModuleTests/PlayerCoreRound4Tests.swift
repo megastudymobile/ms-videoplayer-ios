@@ -346,7 +346,29 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
         seekError = error
     }
 
-    func prepare(source: PlaybackSource) async throws {
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .load(let source):
+            try await prepare(source: source)
+        case .play:
+            try await play()
+        case .pause:
+            pause()
+        case .seek(let time), .seekWithOrigin(let time, _):
+            try seek(to: time)
+        case .stop:
+            stop()
+        case .setPlaybackRate, .setSkipInterval, .setSubtitleVisible, .selectSubtitleTrack,
+             .setCaptionFontSize, .addBookmark, .addBookmarkWithTitle, .removeBookmark,
+             .selectSubtitleFile, .setDisplayLocked, .setDisplayScaleMode, .setDisplayScaled,
+             .toggleDisplayScaleMode, .toggleDisplayScaling, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
+    }
+
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { false }
+
+    private func prepare(source: PlaybackSource) async throws {
         prepareCount += 1
         preparedSourceKeys.append(source.testKey)
 
@@ -370,7 +392,7 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
         }
     }
 
-    func play() async throws {
+    private func play() async throws {
         if let playError {
             throw playError
         }
@@ -379,12 +401,12 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
         continuation.yield(.stateInput(.playStarted))
     }
 
-    func pause() async throws {
+    private func pause() {
         state = state.updating(status: .paused, isBuffering: false)
         continuation.yield(.stateInput(.pauseStarted))
     }
 
-    func seek(to time: TimeInterval) async throws {
+    private func seek(to time: TimeInterval) throws {
         if let seekError {
             throw seekError
         }
@@ -392,7 +414,7 @@ private actor TestPlayerEngineAdapter: PlayerPlaybackEngine {
         continuation.yield(.stateInput(.positionChanged(time: time, duration: state.duration)))
     }
 
-    func stop(reason: PlayerStopReason) async throws {
+    private func stop() {
         stopCount += 1
         state = .idle
     }

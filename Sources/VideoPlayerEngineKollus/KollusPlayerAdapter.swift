@@ -24,22 +24,12 @@ extension KollusPlayerType {
 
 public actor KollusPlayerAdapter:
     PlayerEngineAdapter,
-    EnginePlaybackRateAbility,
-    EngineTitledBookmarkAbility,
-    EngineSubtitleAbility,
-    EngineExternalSubtitleAbility,
-    EngineDisplayScalingAbility,
-    EngineZoomAbility,
     EngineSynchronousZoomAbility,
-    EngineScrollAbility,
-    EngineAdaptiveStreamingAbility,
-    EngineContentMetadataAbility,
     EngineSeekPreviewAbility {
     // stateAuthority = .engineEventsAreAuthoritative: Kollus는 playStarted/pauseStarted/stopStarted
     // 권위 콜백을 낸다. 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고
     // outputStream의 .stateInput만 신뢰한다(이중 적용 방지).
     public nonisolated static let runtimeTraits: EngineRuntimeTraits = .kollus
-    private let logger: any PlayerLogger
 
     /// 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
     public let outputStream: AsyncStream<PlayerEngineOutput>
@@ -50,6 +40,7 @@ public actor KollusPlayerAdapter:
     private let observer: KollusObserver?
     private let diagnostics: KollusDiagnosticsSink?
     private let playerType: KollusPlayerType
+    private let logger: any PlayerLogger
 
     private var state: PlaybackState
     private weak var renderSurface: PlayerRenderSurface?
@@ -86,7 +77,6 @@ public actor KollusPlayerAdapter:
 
     /// 재생 위치 주기 폴러 — playStarted에 시작, pause/stop에 중지. (KollusPositionPoller 참조)
     private var positionPoller: KollusPositionPoller?
-        logger: any PlayerLogger = NoopPlayerLogger(),
 
     // MARK: - Initializers
 
@@ -96,6 +86,7 @@ public actor KollusPlayerAdapter:
         environment: KollusEnvironment,
         observer: KollusObserver? = nil,
         diagnostics: KollusDiagnosticsSink? = nil,
+        logger: any PlayerLogger = NoopPlayerLogger(),
         playerType: KollusPlayerType = KollusPlayerType(rawValue: 1)!
     ) {
         var bridgeContinuation: AsyncStream<BridgeEvent>.Continuation?
@@ -103,7 +94,6 @@ public actor KollusPlayerAdapter:
             bridgeContinuation = $0
         }
         self.bridgeEventContinuation = bridgeContinuation!
-        self.logger = logger
         var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
         self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
             outputContinuation = $0
@@ -113,6 +103,7 @@ public actor KollusPlayerAdapter:
         self.environment = environment
         self.observer = observer
         self.diagnostics = diagnostics
+        self.logger = logger
         self.playerType = playerType
         self.state = .idle
         self.signalConsumerTask = nil
@@ -142,9 +133,77 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - PlayerEngineAdapter
+    // MARK: - PlayerPlaybackEngine
 
-    public func prepare(source: PlaybackSource) async throws {
+    public func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .load(let source):
+            try await prepare(source: source)
+        case .play:
+            try await play()
+        case .pause:
+            try await pause()
+        case .seek(let time), .seekWithOrigin(let time, _):
+            try await seek(to: time)
+        case .setPlaybackRate(let rate):
+            try await setPlaybackRate(rate)
+        case .setSkipInterval:
+            break
+        case .setSubtitleVisible(let isVisible):
+            try await setSubtitleVisible(isVisible)
+        case .selectSubtitleTrack(let trackID):
+            try await selectSubtitleTrack(trackID)
+        case .setCaptionFontSize(let fontSize):
+            try await setCaptionFontSize(fontSize)
+        case .addBookmark(let time):
+            try await addBookmark(at: time)
+        case .addBookmarkWithTitle(let time, let title):
+            try await addBookmark(at: time, title: title)
+        case .removeBookmark(let time):
+            try await removeBookmark(at: time)
+        case .selectSubtitleFile(let fileURL):
+            try await selectSubtitleFile(fileURL)
+        case .setDisplayLocked:
+            throw PlayerError.unsupportedCommand("KollusPlayerAdapter does not support displayLock")
+        case .setDisplayScaleMode(let mode):
+            try await setDisplayScaleMode(mode)
+        case .setDisplayScaled(let isScaled):
+            try await setDisplayScaled(isScaled)
+        case .toggleDisplayScaleMode:
+            try await toggleDisplayScaleMode()
+        case .toggleDisplayScaling:
+            try await toggleDisplayScaling()
+        case .scroll(let distance):
+            try await scroll(by: distance)
+        case .stopScroll:
+            try await stopScroll()
+        case .changeBandwidth(let bps):
+            try await changeBandwidth(bps)
+        case .stop:
+            try await stop(reason: .userClosed)
+        }
+    }
+
+    public nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .playbackRate,
+             .subtitles,
+             .externalSubtitles,
+             .bookmarks,
+             .titledBookmarks,
+             .zoom,
+             .scroll,
+             .adaptiveStreaming,
+             .displayScaling,
+             .seekPreview:
+            return true
+        case .pictureInPicture,
+             .displayLock:
+            return false
+        }
+    }
+
+    private func prepare(source: PlaybackSource) async throws {
         seekPreviewSource = nil
         seekPreviewSnapshot = nil
         guard bootstrapper != nil else {
@@ -153,15 +212,15 @@ public actor KollusPlayerAdapter:
         try await prepareWithBootstrappedStorage(source: source)
     }
 
-    public func play() async throws {
+    private func play() async throws {
         try await performPlay()
     }
 
-    public func pause() async throws {
+    private func pause() async throws {
         try await performPause()
     }
 
-    public func seek(to time: TimeInterval) async throws {
+    private func seek(to time: TimeInterval) async throws {
         let clampedTime = max(0, time)
         // playerView가 없으면(idle 등) 옵셔널 체이닝으로 조용히 무시하지 않고 throw한다.
         // 과거엔 seek가 무시되고도 가짜 timeDidChange를 emit해 상태를 오염시켰다.
@@ -228,7 +287,7 @@ public actor KollusPlayerAdapter:
         await seekPreviewSource?.warmUp()
     }
 
-    public func stop(reason: PlayerStopReason) async throws {
+    private func stop(reason: PlayerStopReason) async throws {
         try await performStop()
         let nextState = stateAfterStop(reason: reason)
         transition(to: nextState)
@@ -237,9 +296,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - EnginePlaybackRateAbility
-
-    public func setPlaybackRate(_ rate: Double) async throws {
+    private func setPlaybackRate(_ rate: Double) async throws {
         guard rate > 0 else {
             throw PlayerError.engineError("Kollus playback rate must be greater than 0. rate=\(rate)")
         }
@@ -254,13 +311,11 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - EngineBookmarkAbility / EngineTitledBookmarkAbility
-
-    public func addBookmark(at time: TimeInterval) async throws {
+    private func addBookmark(at time: TimeInterval) async throws {
         try await addBookmark(at: time, title: "")
     }
 
-    public func addBookmark(at time: TimeInterval, title: String) async throws {
+    private func addBookmark(at time: TimeInterval, title: String) async throws {
         guard time >= 0 else {
             throw PlayerError.engineError("Kollus bookmark time must be greater than or equal to 0. time=\(time)")
         }
@@ -277,7 +332,7 @@ public actor KollusPlayerAdapter:
         publishBookmarks(bookmarkStore.addOptimistically(position: time, title: title))
     }
 
-    public func removeBookmark(at time: TimeInterval) async throws {
+    private func removeBookmark(at time: TimeInterval) async throws {
         guard time >= 0 else {
             throw PlayerError.engineError("Kollus bookmark time must be greater than or equal to 0. time=\(time)")
         }
@@ -294,7 +349,7 @@ public actor KollusPlayerAdapter:
         publishBookmarks(bookmarkStore.removeOptimistically(position: time))
     }
 
-    public func currentBookmarks() async -> [Bookmark] {
+    private func currentBookmarks() async -> [Bookmark] {
         await MainActor.run { [weak self] () -> [Bookmark] in
             guard let playerView = self?.playerView,
                   let raw = playerView.bookmarks else {
@@ -318,19 +373,17 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - EngineSubtitleAbility / EngineExternalSubtitleAbility
-
-    public func setSubtitleVisible(_ isVisible: Bool) async throws {
+    private func setSubtitleVisible(_ isVisible: Bool) async throws {
         // KollusSDK는 자막 가시성 직접 API를 노출하지 않는다. 정책 다운그레이드 이벤트로 surfacing.
         publish(event: .policyDowngraded(reason: .custom("Kollus SDK는 자막 가시성 토글을 지원하지 않습니다. isVisible=\(isVisible)")))
     }
 
-    public func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {
+    private func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {
         // trackID.rawValue를 자막 파일 path로 해석한다(외부 자막 path 기반 모델).
         try await applySubtitlePath(trackID?.rawValue)
     }
 
-    public func setCaptionFontSize(_ fontSize: Int) async throws {
+    private func setCaptionFontSize(_ fontSize: Int) async throws {
         guard fontSize > 0 else {
             throw PlayerError.engineError("Kollus caption font size must be > 0. size=\(fontSize)")
         }
@@ -338,7 +391,7 @@ public actor KollusPlayerAdapter:
         publish(event: .policyDowngraded(reason: .custom("Kollus SDK는 자막 폰트 크기 조절을 지원하지 않습니다. requested=\(fontSize)pt")))
     }
 
-    public func selectSubtitleFile(_ fileURL: URL?) async throws {
+    private func selectSubtitleFile(_ fileURL: URL?) async throws {
         try await applySubtitlePath(fileURL?.path)
     }
 
@@ -359,9 +412,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - EngineZoomAbility
-
-    public func zoom(_ recognizer: UIPinchGestureRecognizer) async throws {
+    private func zoom(_ recognizer: UIPinchGestureRecognizer) async throws {
         let scale = try await MainActor.run {
             guard let playerView else {
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
@@ -383,17 +434,17 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    public func setZoomOutDisabled(_ disabled: Bool) async {
+    private func setZoomOutDisabled(_ disabled: Bool) async {
         await MainActor.run {
             playerView?.setDisableZoomOut(disabled)
         }
     }
 
-    public func zoomValue() async -> CGFloat {
+    private func zoomValue() async -> CGFloat {
         currentZoom
     }
 
-    public var isZoomedIn: Bool {
+    private var isZoomedIn: Bool {
         get async {
             await MainActor.run {
                 playerView?.isZoomedIn ?? false
@@ -401,9 +452,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - EngineScrollAbility
-
-    public func scroll(by distance: CGPoint) async throws {
+    private func scroll(by distance: CGPoint) async throws {
         try await MainActor.run {
             guard let playerView else {
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
@@ -412,7 +461,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    public func stopScroll() async throws {
+    private func stopScroll() async throws {
         try await MainActor.run {
             guard let playerView else {
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
@@ -421,9 +470,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // MARK: - EngineAdaptiveStreamingAbility
-
-    public func changeBandwidth(_ bps: Int) async throws {
+    private func changeBandwidth(_ bps: Int) async throws {
         try await MainActor.run {
             guard let playerView else {
                 throw PlayerError.engineError("Kollus playerView가 준비되지 않았습니다.")
@@ -432,7 +479,7 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    public func streamInfoList() async -> [StreamInfo] {
+    private func streamInfoList() async -> [StreamInfo] {
         await MainActor.run {
             guard let raw = playerView?.streamInfoList as? [Any] else { return [] }
             return raw.compactMap { item -> StreamInfo? in
@@ -449,17 +496,11 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    // PiP는 미구현이므로 `EnginePiPAbility`를 채택하지 않는다.
-    // 채택 + 가짜 구현은 capability 협상(availability probe)이 거짓 보고를 하게 만든다.
-    // 실 구현 시 host AVPictureInPictureController 통합과 함께 채택을 복원한다.
-
-    // MARK: - EngineDisplayScalingAbility
-
-    public func setDisplayScaled(_ isScaled: Bool) async throws {
+    private func setDisplayScaled(_ isScaled: Bool) async throws {
         try await setDisplayScaleMode(isScaled ? .aspectFill : .aspectFit)
     }
 
-    public func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
+    private func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
         self.displayScaleMode = mode
         await MainActor.run {
             guard let playerView = self.playerView else { return }
@@ -474,11 +515,11 @@ public actor KollusPlayerAdapter:
         }
     }
 
-    public func toggleDisplayScaling() async throws {
+    private func toggleDisplayScaling() async throws {
         try await toggleDisplayScaleMode()
     }
 
-    public func toggleDisplayScaleMode() async throws {
+    private func toggleDisplayScaleMode() async throws {
         let fallbackMode = displayScaleMode.next
         let nextMode = await MainActor.run {
             if let playerView {
@@ -714,6 +755,7 @@ public actor KollusPlayerAdapter:
                 let snapshot = await readyStateSnapshot()
                 transition(to: snapshot)
                 completePendingPrepare(with: .success(()))
+                await publishPreparedMetadata()
                 scheduleSeekPreviewWarmUp()
             }
 
@@ -808,8 +850,8 @@ public actor KollusPlayerAdapter:
             seekPreviewSnapshot = nil
             scheduleSeekPreviewWarmUp()
 
-        case .scrollChanged,
-             .zoomChanged,
+        case .zoomChanged,
+             .scrollChanged,
              .contentModeChanged,
              .playbackRateChanged,
              .repeatChanged,
@@ -828,6 +870,17 @@ public actor KollusPlayerAdapter:
 
     private func publishBookmarks(_ bookmarks: [Bookmark]) {
         publish(event: .bookmarksDidLoad(bookmarks))
+    }
+
+    private func publishPreparedMetadata() async {
+        let streams = await streamInfoList()
+        if streams.isEmpty == false {
+            publish(event: .streamInfoListDidLoad(streams))
+        }
+
+        if let content = await currentContent() {
+            publish(event: .contentMetadataDidLoad(content))
+        }
     }
 
     /// 신호를 매퍼로 정규화해 outputStream에 발행한다(Core 권위 경로).
@@ -950,7 +1003,7 @@ public actor KollusPlayerAdapter:
     }
 
     /// 현재 컨텐츠 메타데이터 (중립 모델).
-    public func currentContent() async -> DownloadedContent? {
+    private func currentContent() async -> DownloadedContent? {
         await MainActor.run {
             guard let content = playerView?.content else { return nil }
             return Self.snapshot(from: content).toDownloadedContent()

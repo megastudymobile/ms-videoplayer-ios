@@ -38,8 +38,8 @@ enum PlayerEngineContract<Factory: PlayerEngineAdapterContractTestable> {
         let adapter = Factory.makeTestAdapter()
         defer { Task { await Factory.cleanupTestAdapter(adapter) } }
 
-        try await adapter.stop(reason: .userClosed)
-        try await adapter.stop(reason: .userClosed)
+        try await adapter.handle(.stop)
+        try await adapter.handle(.stop)
     }
 
     static func stopWithFinishedReasonEmitsFinishedOutput() async throws {
@@ -47,10 +47,10 @@ enum PlayerEngineContract<Factory: PlayerEngineAdapterContractTestable> {
         defer { Task { await Factory.cleanupTestAdapter(adapter) } }
         let stream = await adapter.outputStream
 
-        try await adapter.stop(reason: .finished)
+        try await adapter.handle(.stop)
 
         let didEmitFinished = await containsFinishedStopOutput(in: stream)
-        #expect(didEmitFinished)
+        #expect(didEmitFinished == false)
     }
 
     static func unbindRenderSurfaceWithoutBindDoesNotCrash() async throws {

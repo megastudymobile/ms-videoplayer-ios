@@ -25,6 +25,8 @@ public enum PlayerError: Error, Equatable, Sendable {
     case contentNotFound(String)
     /// SDK/DRM 미지원 기기.
     case deviceNotSupported(String)
+    /// 현재 엔진이 지원하지 않는 명령.
+    case unsupportedCommand(String)
     case unknown(String)
 }
 
@@ -41,6 +43,7 @@ extension PlayerError: LocalizedError {
              .downloadConflict(let message),
              .contentNotFound(let message),
              .deviceNotSupported(let message),
+             .unsupportedCommand(let message),
              .unknown(let message):
             return message
         }

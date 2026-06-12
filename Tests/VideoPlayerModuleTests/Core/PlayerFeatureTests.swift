@@ -13,7 +13,7 @@ import VideoPlayerCore
 import UIKit
 #endif
 
-@Suite("PlayerFeature.available — 엔진 protocol 채택 기반 기능 협상")
+@Suite("PlayerFeature.available — engine.supports 기반 기능 협상")
 struct PlayerFeatureTests {
 
     @Test("기본 엔진은 가용 기능 없음")
@@ -21,8 +21,8 @@ struct PlayerFeatureTests {
         #expect(PlayerFeature.available(for: BareEngine()) == [])
     }
 
-    @Test("optional protocol 채택이 곧 가용 기능이다")
-    func conformingEngine_reportsAdoptedFeatures() {
+    @Test("supports 신고가 곧 가용 기능이다")
+    func supportingEngine_reportsFeatures() {
         let features = PlayerFeature.available(for: RichEngine())
 
         #expect(features.contains(.playbackRate))
@@ -64,40 +64,24 @@ private actor BareEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {}
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { false }
 }
 
-private actor RichEngine: PlayerPlaybackEngine,
-    EnginePlaybackRateAbility,
-    EngineSubtitleAbility,
-    EngineTitledBookmarkAbility,
-    EngineAdaptiveStreamingAbility {
+private actor RichEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {}
 
-    func setPlaybackRate(_ rate: Double) async throws {}
-
-    func setSubtitleVisible(_ isVisible: Bool) async throws {}
-    func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {}
-    func setCaptionFontSize(_ fontSize: Int) async throws {}
-
-    func addBookmark(at time: TimeInterval) async throws {}
-    func addBookmark(at time: TimeInterval, title: String) async throws {}
-    func removeBookmark(at time: TimeInterval) async throws {}
-    func currentBookmarks() async -> [Bookmark] { [] }
-
-    func changeBandwidth(_ bps: Int) async throws {}
-    func streamInfoList() async -> [StreamInfo] { [] }
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .playbackRate, .subtitles, .bookmarks, .titledBookmarks, .adaptiveStreaming:
+            return true
+        case .externalSubtitles, .zoom, .scroll, .pictureInPicture, .displayScaling, .displayLock, .seekPreview:
+            return false
+        }
+    }
 }
 
 #if canImport(UIKit)
@@ -113,11 +97,8 @@ private actor SeekPreviewEngine: PlayerPlaybackEngine, EngineSeekPreviewAbility 
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {}
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { feature == .seekPreview }
     func seekPreviewImage(at time: TimeInterval) async -> UIImage? { nil }
 }
 #endif

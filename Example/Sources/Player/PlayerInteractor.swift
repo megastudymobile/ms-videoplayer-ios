@@ -5,8 +5,7 @@
 //  Created by JunyoungJung on 2026/06/05.
 //
 //  모듈 수명(setUp/start/tearDown) + 사용자 액션 → PlaybackCommand 변환.
-//  PlaybackCommand 밖 기능은 capability protocol 캐스트로만 접근한다 —
-//  구체 어댑터 타입 다운캐스트 금지 (캐스트 실패 = 해당 기능 비활성).
+//  PlaybackCommand 밖 기능은 예외 capability protocol로만 접근한다.
 //
 
 import UIKit
@@ -50,7 +49,6 @@ final class PlayerInteractor {
     // capability protocol 캐스트 — 시뮬레이터(UnsupportedEnvironmentEngine)에서는 nil.
     private var zoomEngine: EngineSynchronousZoomAbility?
     private var seekPreviewEngine: (any EngineSeekPreviewAbility)?
-    private var scrollEngine: EngineScrollAbility?
     private var pendingScrollDistance = CGPoint.zero
     private var shouldStopScroll = false
     private var scrollTask: Task<Void, Never>?
@@ -96,7 +94,6 @@ final class PlayerInteractor {
         availableFeatures = module.availableFeatures
         zoomEngine = module.engine as? EngineSynchronousZoomAbility
         seekPreviewEngine = module.engine as? any EngineSeekPreviewAbility
-        scrollEngine = module.engine as? EngineScrollAbility
 
         let coordinator = PlayerLifecycleCoordinator(
             core: module.core,
@@ -111,7 +108,6 @@ final class PlayerInteractor {
         if featurePolicy.allowsBackgroundPlayback {
             let nowPlaying = PlayerNowPlayingCoordinator(
                 core: module.core,
-                metadataProvider: module.engine as? EngineContentMetadataAbility,
                 skipInterval: featurePolicy.skipInterval,
                 fallbackTitle: "VideoPlayer Example"
             )
@@ -143,7 +139,6 @@ final class PlayerInteractor {
         binder.unbind()
         zoomEngine = nil
         seekPreviewEngine = nil
-        scrollEngine = nil
         pendingScrollDistance = .zero
         shouldStopScroll = false
         scrollTaskGeneration += 1
@@ -248,29 +243,25 @@ final class PlayerInteractor {
     }
 
     func refreshZoomState() {
-        Task { @MainActor [weak self] in
-            guard let self, let module = self.playerModule else { return }
-            guard let zoomEngine = module.engine as? EngineZoomAbility else { return }
-            self.isZoomedIn = await zoomEngine.isZoomedIn
-        }
+        // zoom 상태는 엔진 이벤트(`zoomDidChange`)로 갱신된다.
     }
 
     func scroll(by distance: CGPoint) {
-        guard let scrollEngine else { return }
+        guard playerModule != nil else { return }
         shouldStopScroll = false
         pendingScrollDistance.x += distance.x
         pendingScrollDistance.y += distance.y
-        drainScrollQueue(using: scrollEngine)
+        drainScrollQueue()
     }
 
     func stopScroll() {
-        guard let scrollEngine else { return }
+        guard playerModule != nil else { return }
         pendingScrollDistance = .zero
         shouldStopScroll = true
-        drainScrollQueue(using: scrollEngine)
+        drainScrollQueue()
     }
 
-    private func drainScrollQueue(using scrollEngine: EngineScrollAbility) {
+    private func drainScrollQueue() {
         guard scrollTask == nil else { return }
         scrollTaskGeneration += 1
         let taskGeneration = scrollTaskGeneration
@@ -283,16 +274,18 @@ final class PlayerInteractor {
             guard let self else { return }
 
             while Task.isCancelled == false {
+                guard let module = self.playerModule else { return }
+
                 if self.hasPendingScrollDistance {
                     let distance = self.pendingScrollDistance
                     self.pendingScrollDistance = .zero
-                    try? await scrollEngine.scroll(by: distance)
+                    try? await module.core.execute(command: .scroll(by: distance))
                     continue
                 }
 
                 if self.shouldStopScroll {
                     self.shouldStopScroll = false
-                    try? await scrollEngine.stopScroll()
+                    try? await module.core.execute(command: .stopScroll)
                     continue
                 }
 
@@ -351,6 +344,8 @@ final class PlayerInteractor {
             latestPlaybackState = latestPlaybackState.updating(currentTime: currentTime, duration: duration)
         case .bufferingDidChange(let isBuffering):
             latestPlaybackState = latestPlaybackState.updating(isBuffering: isBuffering)
+        case .zoomDidChange(let value):
+            isZoomedIn = value > 1
         default:
             break
         }

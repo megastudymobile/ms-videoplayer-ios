@@ -13,7 +13,7 @@ import Foundation
 @Suite("PlayerCore 명령 라우팅 커버리지")
 struct PlayerCoreCommandCoverageTests {
 
-    @Test("미지원 엔진에서 addBookmarkWithTitle은 engineError를 던진다")
+    @Test("미지원 엔진에서 addBookmarkWithTitle은 unsupportedCommand를 던진다")
     func addBookmarkWithTitle_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
         let core = PlayerCore(engine: engine, engineRuntimeTraits: .default)
@@ -21,8 +21,8 @@ struct PlayerCoreCommandCoverageTests {
         await #expect {
             try await core.execute(command: .addBookmarkWithTitle(at: 10, title: "test"))
         } throws: { error in
-            guard case let PlayerError.engineError(message) = error else { return false }
-            return message.contains("Bookmark")
+            guard case PlayerError.unsupportedCommand = error else { return false }
+            return true
         }
     }
 
@@ -39,7 +39,7 @@ struct PlayerCoreCommandCoverageTests {
         #expect(recorded.first?.title == "chapter1")
     }
 
-    @Test("미지원 엔진에서 removeBookmark는 engineError를 던진다")
+    @Test("미지원 엔진에서 removeBookmark는 unsupportedCommand를 던진다")
     func removeBookmark_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
         let core = PlayerCore(engine: engine, engineRuntimeTraits: .default)
@@ -47,8 +47,8 @@ struct PlayerCoreCommandCoverageTests {
         await #expect {
             try await core.execute(command: .removeBookmark(at: 10))
         } throws: { error in
-            guard case let PlayerError.engineError(message) = error else { return false }
-            return message.contains("Bookmark removal")
+            guard case PlayerError.unsupportedCommand = error else { return false }
+            return true
         }
     }
 
@@ -63,7 +63,7 @@ struct PlayerCoreCommandCoverageTests {
         #expect(removed == [45])
     }
 
-    @Test("미지원 엔진에서 selectSubtitleFile은 engineError를 던진다")
+    @Test("미지원 엔진에서 selectSubtitleFile은 unsupportedCommand를 던진다")
     func selectSubtitleFile_throwsWhenEngineDoesNotConform() async throws {
         let engine = PlaybackOnlyEngine()
         let core = PlayerCore(engine: engine, engineRuntimeTraits: .default)
@@ -71,8 +71,8 @@ struct PlayerCoreCommandCoverageTests {
         await #expect {
             try await core.execute(command: .selectSubtitleFile(URL(string: "https://example.com/a.srt")))
         } throws: { error in
-            guard case let PlayerError.engineError(message) = error else { return false }
-            return message.contains("subtitle")
+            guard case PlayerError.unsupportedCommand = error else { return false }
+            return true
         }
     }
 
@@ -151,14 +151,22 @@ private actor PlaybackOnlyEngine: PlayerPlaybackEngine {
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize,
+             .addBookmark, .addBookmarkWithTitle, .removeBookmark, .selectSubtitleFile,
+             .setDisplayLocked, .setDisplayScaleMode, .setDisplayScaled, .toggleDisplayScaleMode,
+             .toggleDisplayScaling, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
+    }
+
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { false }
 }
 
-private actor TitledBookmarkEngine: PlayerPlaybackEngine, EngineTitledBookmarkAbility {
+private actor TitledBookmarkEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     private(set) var recorded: [(time: TimeInterval, title: String)] = []
@@ -167,47 +175,63 @@ private actor TitledBookmarkEngine: PlayerPlaybackEngine, EngineTitledBookmarkAb
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
-
-    func addBookmark(at time: TimeInterval) async throws {
-        recorded.append((time: time, title: ""))
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .addBookmark(let time):
+            recorded.append((time: time, title: ""))
+        case .addBookmarkWithTitle(let time, let title):
+            recorded.append((time: time, title: title))
+        case .removeBookmark(let time):
+            removedTimes.append(time)
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize,
+             .selectSubtitleFile, .setDisplayLocked, .setDisplayScaleMode, .setDisplayScaled,
+             .toggleDisplayScaleMode, .toggleDisplayScaling, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
     }
 
-    func addBookmark(at time: TimeInterval, title: String) async throws {
-        recorded.append((time: time, title: title))
-    }
-
-    func removeBookmark(at time: TimeInterval) async throws {
-        removedTimes.append(time)
-    }
-
-    func currentBookmarks() async -> [Bookmark] {
-        bookmarks
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .bookmarks, .titledBookmarks:
+            return true
+        case .playbackRate, .subtitles, .externalSubtitles, .zoom, .scroll, .adaptiveStreaming,
+             .pictureInPicture, .displayScaling, .displayLock, .seekPreview:
+            return false
+        }
     }
 }
 
-private actor ExternalSubtitleEngine: PlayerPlaybackEngine, EngineExternalSubtitleAbility {
+private actor ExternalSubtitleEngine: PlayerPlaybackEngine {
     nonisolated static let runtimeTraits: EngineRuntimeTraits = .default
 
     private(set) var selectedURLs: [URL?] = []
 
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
 
-    func prepare(source: PlaybackSource) async throws {}
-    func play() async throws {}
-    func pause() async throws {}
-    func seek(to time: TimeInterval) async throws {}
-    func stop(reason: PlayerStopReason) async throws {}
+    func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .selectSubtitleFile(let fileURL):
+            selectedURLs.append(fileURL)
+        case .setSubtitleVisible, .selectSubtitleTrack, .setCaptionFontSize:
+            break
+        case .load, .play, .pause, .seek, .seekWithOrigin, .setSkipInterval, .stop:
+            break
+        case .setPlaybackRate, .addBookmark, .addBookmarkWithTitle, .removeBookmark,
+             .setDisplayLocked, .setDisplayScaleMode, .setDisplayScaled, .toggleDisplayScaleMode,
+             .toggleDisplayScaling, .scroll, .stopScroll, .changeBandwidth:
+            throw PlayerError.unsupportedCommand("unsupported")
+        }
+    }
 
-    func setSubtitleVisible(_ isVisible: Bool) async throws {}
-    func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {}
-    func setCaptionFontSize(_ fontSize: Int) async throws {}
-
-    func selectSubtitleFile(_ fileURL: URL?) async throws {
-        selectedURLs.append(fileURL)
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .subtitles, .externalSubtitles:
+            return true
+        case .playbackRate, .bookmarks, .titledBookmarks, .zoom, .scroll, .adaptiveStreaming,
+             .pictureInPicture, .displayScaling, .displayLock, .seekPreview:
+            return false
+        }
     }
 }

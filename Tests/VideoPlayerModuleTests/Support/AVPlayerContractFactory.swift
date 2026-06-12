@@ -21,7 +21,7 @@ enum AVPlayerContractFactory: PlayerEngineAdapterContractTestable {
     }
 
     static func cleanupTestAdapter(_ adapter: PlayerEngineAdapter) async {
-        try? await adapter.stop(reason: .userClosed)
+        try? await adapter.handle(.stop)
     }
 
     static var maxPreparationSeconds: TimeInterval { 3 }
@@ -52,7 +52,7 @@ struct AVPlayerEngineContractTests {
         try await Contract.stopFromIdleDoesNotCrash()
     }
 
-    @Test("finished 사유 stop은 finished output을 방출한다")
+    @Test("stop 명령은 finished output을 방출하지 않는다")
     func stopWithFinishedReasonEmitsFinishedOutput() async throws {
         try await Contract.stopWithFinishedReasonEmitsFinishedOutput()
     }

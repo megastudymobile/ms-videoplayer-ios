@@ -43,7 +43,7 @@ struct KollusPlayerModuleFactoryTests {
         let source = PlaybackSource.url(URL(string: "https://example.com/video.mp4")!)
 
         await #expect {
-            try await adapter.prepare(source: source)
+            try await adapter.handle(.load(source))
         } throws: { error in
             guard case let PlayerError.engineError(message) = error else { return false }
             return message.contains("startStorage")
@@ -57,17 +57,13 @@ private actor FactoryTestEngineAdapter: PlayerEngineAdapter {
     let outputStream: AsyncStream<PlayerEngineOutput> = AsyncStream { $0.finish() }
     private(set) var stopCount = 0
 
-    func prepare(source: PlaybackSource) async throws {}
-
-    func play() async throws {}
-
-    func pause() async throws {}
-
-    func seek(to time: TimeInterval) async throws {}
-
-    func stop(reason: PlayerStopReason) async throws {
-        stopCount += 1
+    func handle(_ command: PlaybackCommand) async throws {
+        if command == .stop {
+            stopCount += 1
+        }
     }
+
+    nonisolated func supports(_ feature: PlayerFeature) -> Bool { false }
 
     func bind(renderSurface: PlayerRenderSurface) {}
 

@@ -75,7 +75,7 @@ enum PlayerErrorPresentation {
             )
         case .decodingError(let detail):
             return Message(title: "재생 오류", body: detail, recoverySuggestion: "잠시 후 다시 시도해 주세요.")
-        case .engineError(let detail), .unknown(let detail):
+        case .engineError(let detail), .unsupportedCommand(let detail), .unknown(let detail):
             return Message(title: "재생 오류", body: detail, recoverySuggestion: nil)
         }
     }

@@ -11,7 +11,7 @@ import UIKit
 import VideoPlayerCore
 import VideoPlayerShellSupport
 
-public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, EngineDisplayScalingAbility, EngineSeekPreviewAbility {
+public actor AVPlayerAdapter: PlayerEngineAdapter, EngineSeekPreviewAbility {
     // Native는 play/pause/seek 권위 콜백이 부족해 Core command-origin이 상태를 닫는다.
     public nonisolated static let runtimeTraits: EngineRuntimeTraits = .avPlayer
 
@@ -116,7 +116,62 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         }
     }
 
-    public func prepare(source: PlaybackSource) async throws {
+    public func handle(_ command: PlaybackCommand) async throws {
+        switch command {
+        case .load(let source):
+            try await prepare(source: source)
+        case .play:
+            try await play()
+        case .pause:
+            try await pause()
+        case .seek(let time), .seekWithOrigin(let time, _):
+            try await seek(to: time)
+        case .setPlaybackRate(let rate):
+            try await setPlaybackRate(rate)
+        case .setDisplayScaleMode(let mode):
+            try await setDisplayScaleMode(mode)
+        case .setDisplayScaled(let isScaled):
+            try await setDisplayScaled(isScaled)
+        case .toggleDisplayScaleMode:
+            try await toggleDisplayScaleMode()
+        case .toggleDisplayScaling:
+            try await toggleDisplayScaling()
+        case .stop:
+            try await stop(reason: .userClosed)
+        case .setSkipInterval,
+             .setSubtitleVisible,
+             .selectSubtitleTrack,
+             .setCaptionFontSize,
+             .addBookmark,
+             .addBookmarkWithTitle,
+             .removeBookmark,
+             .selectSubtitleFile,
+             .setDisplayLocked,
+             .scroll,
+             .stopScroll,
+             .changeBandwidth:
+            throw PlayerError.unsupportedCommand("AVPlayerAdapter does not support \(command)")
+        }
+    }
+
+    public nonisolated func supports(_ feature: PlayerFeature) -> Bool {
+        switch feature {
+        case .playbackRate, .displayScaling, .seekPreview:
+            return true
+        case .subtitles,
+             .externalSubtitles,
+             .bookmarks,
+             .titledBookmarks,
+             .zoom,
+             .scroll,
+             .adaptiveStreaming,
+             .pictureInPicture,
+             .displayLock:
+            return false
+        }
+    }
+
+    private func prepare(source: PlaybackSource) async throws {
         let url: URL
         switch source.kind {
         case .url(let sourceURL):
@@ -149,7 +204,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         )))
     }
 
-    public func play() async throws {
+    private func play() async throws {
         await MainActor.run { [player] in
             player.play()
         }
@@ -158,7 +213,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         transition(to: nextState)
     }
 
-    public func pause() async throws {
+    private func pause() async throws {
         await MainActor.run { [player] in
             player.pause()
         }
@@ -167,7 +222,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         transition(to: nextState)
     }
 
-    public func seek(to time: TimeInterval) async throws {
+    private func seek(to time: TimeInterval) async throws {
         let clampedTime = max(0, time)
         let targetTime = CMTime(seconds: clampedTime, preferredTimescale: 600)
 
@@ -228,7 +283,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         }
     }
 
-    public func stop(reason: PlayerStopReason) async throws {
+    private func stop(reason: PlayerStopReason) async throws {
         imageGenerator?.cancelAllCGImageGeneration()
         imageGenerator = nil
         imageGeneratorAsset = nil
@@ -261,7 +316,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         }
     }
 
-    public func setPlaybackRate(_ rate: Double) async throws {
+    private func setPlaybackRate(_ rate: Double) async throws {
         guard rate > 0 else {
             throw PlayerError.engineError("AVPlayer playback rate must be greater than 0. rate=\(rate)")
         }
@@ -271,22 +326,22 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         }
     }
 
-    public func setDisplayScaled(_ isScaled: Bool) async throws {
+    private func setDisplayScaled(_ isScaled: Bool) async throws {
         try await setDisplayScaleMode(isScaled ? .aspectFill : .aspectFit)
     }
 
-    public func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
+    private func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
         self.displayScaleMode = mode
         await MainActor.run {
             self.playerLayer?.videoGravity = Self.videoGravity(mode: mode)
         }
     }
 
-    public func toggleDisplayScaling() async throws {
+    private func toggleDisplayScaling() async throws {
         try await toggleDisplayScaleMode()
     }
 
-    public func toggleDisplayScaleMode() async throws {
+    private func toggleDisplayScaleMode() async throws {
         try await setDisplayScaleMode(displayScaleMode.next)
     }
 

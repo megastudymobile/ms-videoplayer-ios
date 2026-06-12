@@ -11,7 +11,7 @@ import Foundation
 public actor PlayerCore {
     public nonisolated let stateStream: AsyncStream<PlaybackState>
     public nonisolated let eventStream: AsyncStream<PlayerEvent>
-    /// 엔진의 optional protocol 채택으로 산출한 가용 기능 — UI 버튼 사전 게이트용.
+    /// 엔진의 supports 신고로 산출한 가용 기능 — UI 버튼 사전 게이트용.
     public nonisolated let availableFeatures: Set<PlayerFeature>
 
     private let engine: PlayerPlaybackEngine
@@ -101,7 +101,7 @@ public actor PlayerCore {
         // 정상 경로는 viewWillDisappear의 `.stop`이 이미 선행되지만(중복 stop은 무해),
         // 비정상 종료(.stop 누락)에서는 이 호출이 playerView/proxy 세션 잔류와
         // KollusProxyPlayerView 타이머 크래시를 막는 최종 방어선이다.
-        try? await engine.stop(reason: .appLifecycle)
+        try? await engine.handle(.stop)
 
         engineEventTask?.cancel()
         engineEventTask = nil
@@ -173,19 +173,21 @@ public actor PlayerCore {
     }
 
     public func execute(command: PlaybackCommand) async throws {
+        try validateAgainstPolicy(command)
+
         switch command {
         case .load(let source):
             try await start(source: source, policy: currentPolicy)
         case .play:
             try await executeEngineCommand {
-                try await engine.play()
+                try await engine.handle(command)
             }
             // 권위 콜백 엔진(Kollus)은 outputStream `.playStarted`가 상태를 만든다.
             // 권위 콜백이 없는 엔진(Native)은 Core가 command-origin으로 닫는다.
             applyCommandOriginIfNeeded(.playStarted)
         case .pause:
             try await executeEngineCommand {
-                try await engine.pause()
+                try await engine.handle(command)
             }
             applyCommandOriginIfNeeded(.pauseStarted)
         case .seek(let time):
@@ -195,7 +197,7 @@ public actor PlayerCore {
             seekInProgressValue = nil
             apply(stateReducer.reduce(.seeking(time: time), state: currentState))
             try await executeEngineCommand {
-                try await engine.seek(to: time)
+                try await engine.handle(command)
             }
         case .seekWithOrigin(let time, let origin):
             // 연타 skip은 chase 패턴(단일 in-flight)으로 처리한다. actor 재진입 때문에 await-per-tap으로는
@@ -203,55 +205,46 @@ public actor PlayerCore {
             // 누적하고 in-flight seek 완료 시 그쪽으로 chase한다.
             let base = chaseTime ?? seekInProgressValue ?? currentState.currentTime
             requestSeek(to: seekTargetTime(for: time, origin: origin, base: base))
-        case .setPlaybackRate(let rate):
-            try await setPlaybackRate(rate)
         case .setSkipInterval(let interval):
-            try setSkipInterval(interval)
-        case .setSubtitleVisible(let isVisible):
-            try await setSubtitleVisible(isVisible)
-        case .selectSubtitleTrack(let trackID):
-            try await selectSubtitleTrack(trackID)
-        case .setCaptionFontSize(let fontSize):
-            try await setCaptionFontSize(fontSize)
-        case .addBookmark(let time):
-            try await addBookmark(at: time, title: "")
-        case .addBookmarkWithTitle(let time, let title):
-            try await addBookmark(at: time, title: title)
-        case .removeBookmark(let time):
-            try await removeBookmark(at: time)
-        case .selectSubtitleFile(let fileURL):
-            try await selectSubtitleFile(fileURL)
-        case .setDisplayLocked(let isLocked):
-            try await setDisplayLocked(isLocked)
-        case .setDisplayScaleMode(let mode):
-            try await setDisplayScaleMode(mode)
-        case .setDisplayScaled(let isScaled):
-            try await setDisplayScaled(isScaled)
-        case .toggleDisplayScaleMode:
-            try await toggleDisplayScaleMode()
-        case .toggleDisplayScaling:
-            try await toggleDisplayScaling()
+            applySkipInterval(interval)
         case .stop:
             pendingPrepareTask?.cancel()
             pendingPrepareTask = nil
             try await executeEngineCommand {
-                try await engine.stop(reason: .userClosed)
+                try await engine.handle(command)
             }
             currentSource = nil
             chaseTime = nil
             seekInProgressValue = nil
             // stop은 양쪽 엔진 모두 command-origin으로 닫아도 안전(.idle은 멱등).
             apply(stateReducer.reduce(.stopped(.userClosed), state: currentState))
+        case .setPlaybackRate,
+             .setSubtitleVisible,
+             .selectSubtitleTrack,
+             .setCaptionFontSize,
+             .addBookmark,
+             .addBookmarkWithTitle,
+             .removeBookmark,
+             .selectSubtitleFile,
+             .setDisplayLocked,
+             .setDisplayScaleMode,
+             .setDisplayScaled,
+             .toggleDisplayScaleMode,
+             .toggleDisplayScaling,
+             .scroll,
+             .stopScroll,
+             .changeBandwidth:
+            try await engine.handle(command)
         }
     }
 
     private func performStart(source: PlaybackSource, policy: PlayerFeaturePolicy) async throws {
         try Task.checkCancellation()
-        try await engine.prepare(source: source)
+        try await engine.handle(.load(source))
         try Task.checkCancellation()
 
         if policy.allowsAutoplay {
-            try await engine.play()
+            try await engine.handle(.play)
         }
     }
 
@@ -361,7 +354,7 @@ public actor PlayerCore {
         pendingSeekTask = Task { [weak self] in
             guard let self else { return }
             do {
-                try await self.engine.seek(to: target)
+                try await self.engine.handle(.seek(to: target))
             } catch {
                 guard !Task.isCancelled else { return }
                 await self.handleSeekFailure(error)
@@ -415,27 +408,7 @@ public actor PlayerCore {
         return (policy, nil)
     }
 
-    private func setPlaybackRate(_ rate: Double) async throws {
-        guard rate > 0 else {
-            throw PlayerError.engineError("Playback rate must be greater than 0. rate=\(rate)")
-        }
-
-        guard currentPolicy.allowsPlaybackRate(rate) else {
-            throw PlayerError.engineError("Playback rate \(rate)x is not allowed by policy. allowed=\(currentPolicy.allowedPlaybackRates)")
-        }
-
-        guard let rateEngine = engine as? any EnginePlaybackRateAbility else {
-            throw PlayerError.engineError("Playback rate \(rate)x is not supported by the current playback engine.")
-        }
-
-        try await rateEngine.setPlaybackRate(rate)
-    }
-
-    private func setSkipInterval(_ interval: TimeInterval) throws {
-        guard interval > 0 else {
-            throw PlayerError.engineError("Skip interval must be greater than 0. interval=\(interval)")
-        }
-
+    private func applySkipInterval(_ interval: TimeInterval) {
         currentPolicy = PlayerFeaturePolicy(
             allowsBackgroundPlayback: currentPolicy.allowsBackgroundPlayback,
             allowedPlaybackRates: currentPolicy.allowedPlaybackRates,
@@ -445,102 +418,48 @@ public actor PlayerCore {
         )
     }
 
-    private func setSubtitleVisible(_ isVisible: Bool) async throws {
-        guard let subtitleEngine = engine as? any EngineSubtitleAbility else {
-            throw PlayerError.engineError("Subtitle visibility is not supported by the current playback engine.")
+    private func validateAgainstPolicy(_ command: PlaybackCommand) throws {
+        switch command {
+        case .load,
+             .play,
+             .pause,
+             .seek,
+             .seekWithOrigin,
+             .setSubtitleVisible,
+             .selectSubtitleTrack,
+             .addBookmarkWithTitle,
+             .selectSubtitleFile,
+             .setDisplayLocked,
+             .setDisplayScaleMode,
+             .setDisplayScaled,
+             .toggleDisplayScaleMode,
+             .toggleDisplayScaling,
+             .scroll,
+             .stopScroll,
+             .changeBandwidth,
+             .stop:
+            break
+        case .setPlaybackRate(let rate):
+            guard rate > 0 else {
+                throw PlayerError.engineError("Playback rate must be greater than 0. rate=\(rate)")
+            }
+            guard currentPolicy.allowsPlaybackRate(rate) else {
+                throw PlayerError.engineError("Playback rate \(rate)x is not allowed by policy. allowed=\(currentPolicy.allowedPlaybackRates)")
+            }
+        case .setSkipInterval(let interval):
+            guard interval > 0 else {
+                throw PlayerError.engineError("Skip interval must be greater than 0. interval=\(interval)")
+            }
+        case .setCaptionFontSize(let fontSize):
+            guard fontSize > 0 else {
+                throw PlayerError.engineError("Caption font size must be greater than 0. fontSize=\(fontSize)")
+            }
+        case .addBookmark(let time),
+             .removeBookmark(let time):
+            guard time >= 0 else {
+                throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
+            }
         }
-
-        try await subtitleEngine.setSubtitleVisible(isVisible)
-    }
-
-    private func selectSubtitleTrack(_ trackID: PlayerSubtitleTrackID?) async throws {
-        guard let subtitleEngine = engine as? any EngineSubtitleAbility else {
-            throw PlayerError.engineError("Subtitle track selection is not supported by the current playback engine.")
-        }
-
-        try await subtitleEngine.selectSubtitleTrack(trackID)
-    }
-
-    private func setCaptionFontSize(_ fontSize: Int) async throws {
-        guard fontSize > 0 else {
-            throw PlayerError.engineError("Caption font size must be greater than 0. fontSize=\(fontSize)")
-        }
-
-        guard let subtitleEngine = engine as? any EngineSubtitleAbility else {
-            throw PlayerError.engineError("Caption font size is not supported by the current playback engine.")
-        }
-
-        try await subtitleEngine.setCaptionFontSize(fontSize)
-    }
-
-    private func addBookmark(at time: TimeInterval, title: String) async throws {
-        guard time >= 0 else {
-            throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
-        }
-
-        guard let bookmarkEngine = engine as? any EngineBookmarkAbility else {
-            throw PlayerError.engineError("Bookmark mutation is not supported by the current playback engine.")
-        }
-
-        if title.isEmpty {
-            try await bookmarkEngine.addBookmark(at: time)
-        } else if let titledEngine = bookmarkEngine as? any EngineTitledBookmarkAbility {
-            try await titledEngine.addBookmark(at: time, title: title)
-        } else {
-            try await bookmarkEngine.addBookmark(at: time)
-        }
-    }
-
-    private func removeBookmark(at time: TimeInterval) async throws {
-        guard time >= 0 else {
-            throw PlayerError.engineError("Bookmark time must be greater than or equal to 0. time=\(time)")
-        }
-
-        guard let bookmarkEngine = engine as? any EngineTitledBookmarkAbility else {
-            throw PlayerError.engineError("Bookmark removal is not supported by the current playback engine.")
-        }
-
-        try await bookmarkEngine.removeBookmark(at: time)
-    }
-
-    private func selectSubtitleFile(_ fileURL: URL?) async throws {
-        guard let subtitleEngine = engine as? any EngineExternalSubtitleAbility else {
-            throw PlayerError.engineError("External subtitle file selection is not supported by the current playback engine.")
-        }
-
-        try await subtitleEngine.selectSubtitleFile(fileURL)
-    }
-
-    private func setDisplayLocked(_ isLocked: Bool) async throws {
-        guard let displayEngine = engine as? any EngineDisplayLockAbility else {
-            throw PlayerError.engineError("Display lock is not supported by the current playback engine.")
-        }
-
-        try await displayEngine.setDisplayLocked(isLocked)
-    }
-
-    private func setDisplayScaled(_ isScaled: Bool) async throws {
-        try await setDisplayScaleMode(isScaled ? .aspectFill : .aspectFit)
-    }
-
-    private func setDisplayScaleMode(_ mode: PlayerDisplayScaleMode) async throws {
-        guard let displayEngine = engine as? any EngineDisplayScalingAbility else {
-            throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
-        }
-
-        try await displayEngine.setDisplayScaleMode(mode)
-    }
-
-    private func toggleDisplayScaling() async throws {
-        try await toggleDisplayScaleMode()
-    }
-
-    private func toggleDisplayScaleMode() async throws {
-        guard let displayEngine = engine as? any EngineDisplayScalingAbility else {
-            throw PlayerError.engineError("Display scaling is not supported by the current playback engine.")
-        }
-
-        try await displayEngine.toggleDisplayScaleMode()
     }
 
     private func seekTargetTime(
