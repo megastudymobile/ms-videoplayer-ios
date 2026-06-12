@@ -304,6 +304,9 @@ td:first-child { color: var(--ink); font-weight: 500; }
 .skin-state-slide .takeaway {
     margin-top: clamp(0.35rem, 1vh, 0.7rem);
 }
+.skin-responsibility-slide .skin-gate-rail {
+    gap: clamp(0.28rem, 0.65vw, 0.45rem);
+}
 .skin-gate-rail {
     display: grid;
     grid-template-columns: 1fr;
@@ -372,6 +375,13 @@ td:first-child { color: var(--ink); font-weight: 500; }
     color: var(--mute);
     font-size: var(--small-size);
     line-height: 1.32;
+}
+.gate-card .gate-index {
+    display: grid;
+    place-items: center;
+    margin-top: 0;
+    color: var(--on-primary);
+    line-height: 1;
 }
 .gate-card .gate-answer {
     color: var(--link);
@@ -1388,6 +1398,9 @@ body.script-editing .keyboard-hint::after {
     .skin-gate-arrow {
         line-height: 1;
     }
+    .skin-responsibility-slide .takeaway {
+        display: none;
+    }
     .decision-slide .split-visual,
     .after-tap-slide .split-visual {
         grid-template-columns: 1fr;
@@ -1591,6 +1604,12 @@ body.script-editing .keyboard-hint::after {
         display: none;
     }
     .skin-state-slide .takeaway {
+        display: none;
+    }
+    .skin-responsibility-slide .skin-gate-step span {
+        display: none;
+    }
+    .skin-responsibility-slide .skin-gate-arrow {
         display: none;
     }
     .split-visual > .grid {
@@ -2122,12 +2141,76 @@ window.__initialSlideHash = window.location.hash;
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 07. 서비스별 차이는 주입 지점으로 분리</h3>
         <p><strong>말할 내용:</strong> 서비스별 차이는 공통 코드의 if문이 아니라 정해진 protocol과 주입 지점에 넣어야 합니다.<br>이 모듈은 policy, theme, block, engine 같은 경계로 차이를 받습니다.<br>커스텀은 허용하지만 SDK나 내부 상태를 직접 만지는 방식은 막습니다.</p>
-        <p><strong>전환:</strong> 주입 지점이 정리되면 다음은 SDK가 들어오는 product 경계입니다.</p>
+        <p><strong>전환:</strong> 여기서 보인 Skin theme과 block 주입은 다음 슬라이드에서 실제 slot 조립 화면으로 바로 확대해서 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 다이어그램은 Host가 policy, theme, block, engine을 넣는 구조입니다.<br>2. 오른쪽 코드는 policy와 blueprint를 조립하는 예시입니다.<br>3. configuration은 초기 정책을 모듈에 전달하는 지점입니다.</p>
     </aside>
 </section>
 
-<!-- 8. product 경계 -->
+<!-- 8. Skin 주입 확대 -->
+<section class="slide skin-state-slide skin-injection-slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">skin injection · slot/block</div>
+        <h2 class="reveal">Skin 주입은 slot과 block 조립으로 보입니다</h2>
+        <div class="split-visual reveal">
+            <svg class="svg-frame skin-slot-image" viewBox="58 50 644 274" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PlayerSkin slot layout">
+                    <rect x="58" y="50" width="644" height="252" rx="14" fill="#171717"/>
+                    <rect x="82" y="74" width="112" height="34" rx="8" fill="#d3e5ff" stroke="#0070f3"/>
+                    <text x="100" y="96" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#171717">topLeading</text>
+                    <rect x="214" y="74" width="226" height="34" rx="8" fill="#ffffff" stroke="#ebebeb"/>
+                    <text x="285" y="96" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#171717">topCenter</text>
+                    <rect x="460" y="74" width="218" height="34" rx="8" fill="#ffefcf" stroke="#f5a623"/>
+                    <text x="525" y="96" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#171717">topTrailing</text>
+                    <rect x="82" y="130" width="58" height="116" rx="10" fill="#aaffec" stroke="#29bc9b"/>
+                    <text x="111" y="178" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">left</text>
+                    <text x="111" y="194" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">Rail</text>
+                    <rect x="160" y="128" width="440" height="118" rx="12" fill="#ffffff" stroke="#ebebeb"/>
+                    <circle cx="336" cy="187" r="24" fill="#171717"/>
+                    <polygon points="329,174 329,200 350,187" fill="#ffffff"/>
+                    <text x="380" y="193" font-family="Geist, Arial, sans-serif" font-size="15" font-weight="600" fill="#171717">centerControls</text>
+                    <rect x="620" y="130" width="58" height="116" rx="10" fill="#d8ccf1" stroke="#7928ca"/>
+                    <text x="649" y="178" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">right</text>
+                    <text x="649" y="194" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">Rail</text>
+                    <rect x="82" y="264" width="420" height="18" rx="9" fill="#d3e5ff" stroke="#0070f3"/>
+                    <circle cx="286" cy="273" r="8" fill="#0070f3"/>
+                    <text x="96" y="258" font-family="Geist Mono, monospace" font-size="11" fill="#a1a1a1">bottomBar / ProgressBarBlock</text>
+                    <rect x="520" y="254" width="158" height="38" rx="10" fill="#171717"/>
+                    <text x="599" y="278" text-anchor="middle" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#ffffff">floatingBottomTrailing</text>
+                    <rect x="216" y="306" width="326" height="18" rx="9" fill="#f5f5f5" stroke="#ebebeb"/>
+                    <text x="379" y="319" text-anchor="middle" font-family="Geist Mono, monospace" font-size="11" fill="#4d4d4d">visibleSlots decides which slots render per layout mode</text>
+            </svg>
+            <div class="skin-gate-visual">
+                <div class="visual-panel">
+                    <div class="mini-title">host injection → skin layout</div>
+                    <div class="skin-gate-rail">
+                        <div class="skin-gate-step">
+                            <strong>1. Host builds blueprint</strong>
+                            <span>서비스는 theme, block, visibleSlots로 UI 차이를 주입합니다.</span>
+                        </div>
+                        <div class="skin-gate-arrow">↓</div>
+                        <div class="skin-gate-step">
+                            <strong>2. Blocks sit in slots</strong>
+                            <span>topCenter, bottomBar, centerControls 같은 자리에 block을 배치합니다.</span>
+                        </div>
+                        <div class="skin-gate-arrow">↓</div>
+                        <div class="skin-gate-step">
+                            <strong>3. Layout mode chooses slots</strong>
+                            <span>inline/fullscreen 모드마다 visibleSlots가 렌더링할 자리를 고릅니다.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="takeaway reveal">여기서는 “어떤 UI를 어디에 놓을지”만 정합니다. 버튼 노출과 재생 상태 확정은 뒤에서 분리해서 봅니다.</p>
+    </div>
+    <aside class="speaker-script" aria-label="발표 스크립트">
+        <h3>Script 08. Skin 주입 지점은 slot 조립으로 보입니다</h3>
+        <p><strong>말할 내용:</strong> 방금 본 주입 지점 중 Skin theme과 block을 확대해서 보겠습니다.<br>서비스는 SDK를 직접 만지는 대신 blueprint로 어떤 block을 어느 slot에 둘지 정합니다. topCenter에는 제목, bottomBar에는 진행바, centerControls에는 재생 버튼 같은 식입니다.<br>visibleSlots는 layout mode별로 실제로 보일 slot을 고릅니다. 그래서 서비스별 UI 차이는 Skin 조립 단계에서 흡수됩니다.</p>
+        <p><strong>전환:</strong> 이제 UI 조립이 SDK 경계와 어떻게 분리되는지 보겠습니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 그림은 slot이 자리이고 block이 부품이라는 점을 보여줍니다.<br>2. 오른쪽 흐름은 Host blueprint가 Skin layout으로 바뀌는 과정입니다.<br>3. 아직 상태 확정 이야기는 하지 않습니다. 여기서는 UI 조립까지만 봅니다.</p>
+    </aside>
+</section>
+
+<!-- 9. product 경계 -->
 <section class="slide boundary-slide">
     <div class="slide-content">
         <div class="eyebrow reveal">module boundary</div>
@@ -2162,14 +2245,14 @@ window.__initialSlideHash = window.location.hash;
         <p class="boundary-takeaway reveal">결론: vendor 변경과 Kollus 전용 이슈는 Kollus Engine 내부에서 끝나고, Host/Core/Skin 계약은 유지됩니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 08. Kollus SDK는 여기까지만 들어옵니다</h3>
+        <h3>Script 09. Kollus SDK는 여기까지만 들어옵니다</h3>
         <p><strong>말할 내용:</strong> 이 슬라이드에서 볼 것은 의존성 전체가 아니라 SDK가 멈추는 위치입니다.<br>왼쪽은 Host와 공통 플레이어 영역입니다. 이쪽 코드는 Kollus나 PallyCon을 import하지 않습니다.<br>오른쪽 VideoPlayerEngineKollus만 KollusSDK와 PallyCon binary를 압니다.<br>즉 SDK callback, DRM, 다운로드 처리는 오른쪽에서 끝나고, 왼쪽에는 PlayerEngine 계약으로 번역된 결과만 넘어옵니다.</p>
         <p><strong>전환:</strong> 이제 SDK 신호가 공통 상태로 바뀐 뒤, 최종 상태를 누가 결정하는지 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽은 SDK 비의존 영역입니다.<br>2. 가운데 Engine Contract가 경계입니다.<br>3. 오른쪽만 vendor binary를 직접 압니다.<br>4. 기억할 문장은 하나입니다. SDK는 Kollus Engine 안에서 끝납니다.</p>
     </aside>
 </section>
 
-<!-- 9. 상태 소유권 -->
+<!-- 10. 상태 소유권 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">state ownership</div>
@@ -2239,14 +2322,14 @@ reduce(currentState, input):
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 09. 상태 결정은 Core reducer가 소유</h3>
+        <h3>Script 10. 상태 결정은 Core reducer가 소유</h3>
         <p><strong>말할 내용:</strong> SDK 콜백은 Engine이 신호로 바꾸고, 최종 상태 결정은 Core reducer가 해야 합니다.<br>같은 buffering 입력이라도 playing에서는 상태 전이, paused에서는 플래그 변경, finished에서는 무시처럼 현재 상태가 결정에 참여합니다.<br>일시정지 중 buffering 종료를 무조건 playing으로 바꾸면 일시정지가 재생으로 둔갑하기 때문에 reducer가 필요합니다.</p>
         <p><strong>전환:</strong> 이 원칙이 담긴 엔진 계약을 직접 보겠습니다. 다만 엔진마다 play/pause 콜백의 권위가 다르기 때문에, 상태 확정 방식은 runtimeTraits가 알려줍니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 pseudo code는 reducer가 currentState와 input을 함께 본다는 점을 보여줍니다.<br>2. 오른쪽 표는 같은 buffering 입력도 현재 상태에 따라 결정이 달라지는 예입니다.<br>3. 아래 타임라인은 finished 뒤 늦은 buffering이 reducer에서 차단되어 Host 상태가 흔들리지 않는 흐름입니다.</p>
     </aside>
 </section>
 
-<!-- 10. engine contract -->
+<!-- 11. engine contract -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">engine contract</div>
@@ -2278,14 +2361,14 @@ reduce(currentState, input):
         <p class="takeaway reveal">엔진 = “명령이 들어오고(handle), 관찰 결과가 나가며(outputStream), Core 판단에 필요한 런타임 특성을 선언한다(runtimeTraits)”.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 10. 엔진 계약은 명령 싱크 1개와 출력 1개</h3>
-        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성입니다. 각 엔진 타입이 자기 모듈에서 직접 선언하므로 Core는 엔진 이름을 모르고, 새 엔진 추가 시 Core 수정이 없습니다.<br>재생 명령은 전부 PlaybackCommand enum으로 들어와 handle 하나가 받습니다.<br>handle은 async throws 명령이고, 엔진이 관찰한 결과는 outputStream으로 나갑니다. 다만 play/pause 같은 명령 성공 후 상태를 누가 확정하는지는 runtimeTraits.stateAuthority가 결정합니다. Kollus처럼 권위 콜백이 있으면 outputStream 신호를 기다리고, Native처럼 권위 콜백이 부족하면 Core가 command-origin 입력으로 상태를 닫습니다.<br>미지원 명령은 unsupportedCommand로 시끄럽게 실패합니다. Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막 같은 기능 지원 여부는 supports 선언으로 드러납니다.</p>
+        <h3>Script 11. 엔진 계약은 명령 싱크 1개와 출력 1개</h3>
+        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성입니다. 각 엔진 타입이 자기 모듈에서 직접 선언하므로 Core는 엔진 이름을 모르고, 새 엔진 추가 시 Core 수정이 없습니다.<br>재생 명령은 전부 PlaybackCommand enum으로 들어와 handle 하나가 받습니다.<br>handle은 async throws 명령이고, 엔진이 관찰한 결과는 outputStream으로 나갑니다. 다만 play/pause 같은 명령 성공 후 상태를 누가 확정하는지는 runtimeTraits.stateAuthority가 결정합니다. Kollus처럼 권위 콜백이 있으면 outputStream 신호를 기다리고, Native처럼 권위 콜백이 부족하면 Core가 command-origin 입력으로 상태를 확정합니다.<br>미지원 명령은 unsupportedCommand로 시끄럽게 실패합니다. Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막 같은 기능 지원 여부는 supports 선언으로 드러납니다.</p>
         <p><strong>전환:</strong> 이 기본 계약 위에서 엔진별 기능 차이를 어떻게 다루는지 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. 코드는 runtimeTraits, outputStream, handle, supports 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 관찰 결과입니다.<br>4. runtimeTraits는 Core가 엔진 이름 없이 정책과 상태 확정 방식을 판단하게 해줍니다.</p>
     </aside>
 </section>
 
-<!-- 11. capability -->
+<!-- 12. capability -->
 <section class="slide decision-slide">
     <div class="slide-content">
         <div class="eyebrow reveal">availability · 버튼 노출</div>
@@ -2334,18 +2417,18 @@ skin.apply(availableFeatures: module.availableFeatures)
         <p class="takeaway reveal">availability는 엔진 확정 직후 Skin에 주입되는 “노출 가능 기능 목록”입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 11. 먼저 버튼을 보여도 되는지 판단</h3>
+        <h3>Script 12. 먼저 버튼을 보여도 되는지 판단</h3>
         <p><strong>말할 내용:</strong> 여기서는 아직 재생 상태 이야기가 아닙니다. 엔진이 정해진 직후, 어떤 버튼을 보여도 되는지만 먼저 결정합니다.<br>왼쪽 코드 흐름을 보면 Host가 module을 만들고, Skin을 조립한 다음, module.availableFeatures를 Skin에 한 번 주입합니다. 이 값은 Core가 engine.supports 전체를 훑어서 만든 기능 목록입니다.<br>그 다음 Skin 내부에서 각 block의 requiredFeatures와 비교합니다. 조건이 맞으면 보이고, 맞지 않으면 view.isHidden으로 숨깁니다. 그래서 미지원 버튼이 잠깐 보였다 사라지는 깜빡임도 막습니다.</p>
         <p><strong>전환:</strong> 이제 버튼이 보였고, 사용자가 play를 눌렀다고 가정하겠습니다. 명령이 성공하면 곧바로 playing으로 보면 될까요?</p>
         <p><strong>화면:</strong><br>1. 왼쪽 코드는 언제 어디서 쓰이는지 보여줍니다. Host setup 직후 skin.apply를 호출합니다.<br>2. 오른쪽 그림은 module → apply → block 비교 → 숨김/노출 순서입니다.<br>3. 마지막 검은 박스가 결론입니다. 여기서는 버튼 노출까지만 결정합니다.</p>
     </aside>
 </section>
 
-<!-- 12. runtimeTraits -->
+<!-- 13. runtimeTraits -->
 <section class="slide after-tap-slide">
     <div class="slide-content">
         <div class="eyebrow reveal">after tap · 상태 확정</div>
-        <h2 class="reveal">다음 질문: play 성공을 누가 playing으로 닫나?</h2>
+        <h2 class="reveal">다음 질문: play 성공 후 playing은 누가 확정하나?</h2>
         <div class="split-visual reveal">
             <div class="code-editor compact">
                 <span class="filename">PlayerCore.swift · play 명령 성공 후</span>
@@ -2372,14 +2455,14 @@ skin.apply(availableFeatures: module.availableFeatures)
                         <div class="flow-hint">↓</div>
                         <div class="route-step highlight"><strong>Core가 .playStarted 입력</strong><span>command-origin으로 reducer 호출</span></div>
                         <div class="flow-hint">↓</div>
-                        <div class="route-step dark"><strong>PlaybackState.playing</strong><span>상태가 바로 닫힘</span></div>
+                        <div class="route-step dark"><strong>PlaybackState.playing</strong><span>상태가 바로 확정됨</span></div>
                     </div>
                 </div>
                 <div class="route-card kollus">
                     <div class="route-label">Kollus SDK</div>
                     <strong>SDK 이벤트가 상태 입력</strong>
                     <div class="route-flow">
-                        <div class="route-step"><strong>play 성공</strong><span>아직 Core가 상태를 닫지 않음</span></div>
+                        <div class="route-step"><strong>play 성공</strong><span>아직 Core가 상태를 확정하지 않음</span></div>
                         <div class="flow-hint">↓</div>
                         <div class="route-step highlight"><strong>SDK playStarted 도착</strong><span>outputStream으로 reducer 입력 전달</span></div>
                         <div class="flow-hint">↓</div>
@@ -2391,56 +2474,49 @@ skin.apply(availableFeatures: module.availableFeatures)
         <p class="takeaway reveal">이 차이를 엔진이 선언한 값이 <code>runtimeTraits.stateAuthority</code>입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 12. play 성공 뒤 상태 확정 방식</h3>
-        <p><strong>말할 내용:</strong> 이제 버튼을 눌렀고 play 명령도 성공했다고 보겠습니다. 왼쪽은 실제 Core 흐름을 줄인 코드입니다. execute(command:)의 .play 분기에서 엔진에 play를 보내고, 성공하면 applyCommandOriginIfNeeded(.playStarted)를 호출합니다.<br>그 안에서 stateAuthority를 봅니다. Native처럼 commandSuccessClosesState이면 Core가 .playStarted를 reducer에 넣어 playing으로 닫습니다.<br>반대로 Kollus는 SDK가 playStarted 이벤트를 다시 알려줍니다. 그래서 guard에서 빠져나가고, outputStream으로 들어온 SDK 이벤트를 기다립니다. 이중 적용을 막기 위해서입니다.</p>
+        <h3>Script 13. play 성공 뒤 상태 확정 방식</h3>
+        <p><strong>말할 내용:</strong> 이제 play 버튼을 눌렀고, engine.handle(.play)도 성공했다고 보겠습니다. 이 시점에 재생 명령은 이미 엔진에 들어갔습니다. 다만 Core의 공통 상태를 언제 playing으로 확정할지는 별도 문제입니다.<br>applyCommandOriginIfNeeded는 그 결정을 하는 분기입니다. “명령 성공만 보고 Core가 .playStarted를 직접 넣어도 되는가?”를 stateAuthority로 확인합니다. Native는 commandSuccessClosesState라서 Core가 바로 reducer에 넣고 playing으로 확정합니다.<br>Kollus는 다릅니다. Kollus는 engineEventsAreAuthoritative라서 여기서는 guard에서 return합니다. Core가 직접 확정하지 않고, 나중에 SDK delegate에서 실제 playStarted가 오면 Adapter가 outputStream의 .stateInput(.playStarted)로 전달하고, 그때 Core가 playing을 확정합니다.<br>이렇게 분리해야 명령 성공으로 한 번, SDK 이벤트로 한 번, 같은 playStarted가 두 번 적용되는 일을 막을 수 있습니다.</p>
         <p><strong>전환:</strong> 이제 이 기능 게이트를 서비스별 UI 조립에서 어떻게 쓰는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 코드는 어디서 쓰이는지 보여줍니다. .play 분기에서 명령 성공 후 applyCommandOriginIfNeeded로 들어갑니다.<br>2. guard가 핵심입니다. Native만 reducer를 즉시 호출합니다.<br>3. 오른쪽 두 레인은 같은 play 성공 뒤 Native와 Kollus가 다르게 닫히는 흐름입니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 코드는 어디서 쓰이는지 보여줍니다. .play 분기에서 명령 성공 후 applyCommandOriginIfNeeded로 들어갑니다.<br>2. guard가 핵심입니다. Native만 reducer를 즉시 호출합니다.<br>3. 오른쪽 두 레인은 같은 play 성공 뒤 Native와 Kollus가 다르게 확정되는 흐름입니다.</p>
     </aside>
 </section>
 
-<!-- 13. Skin 커스텀 -->
-<section class="slide skin-state-slide">
+<!-- 14. Skin 책임 회수 -->
+<section class="slide skin-state-slide skin-responsibility-slide">
     <div class="slide-content">
-        <div class="eyebrow reveal">develop · skin customization</div>
-        <h2 class="reveal">Skin은 노출을 조립하고, Core는 상태를 확정합니다</h2>
+        <div class="eyebrow reveal">responsibility · skin vs core</div>
+        <h2 class="reveal">Skin은 노출까지만, 상태 확정은 Core가 합니다</h2>
         <div class="split-visual reveal">
-            <svg class="svg-frame skin-slot-image" viewBox="58 50 644 274" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PlayerSkin slot layout">
-                    <rect x="58" y="50" width="644" height="252" rx="14" fill="#171717"/>
-                    <rect x="82" y="74" width="112" height="34" rx="8" fill="#d3e5ff" stroke="#0070f3"/>
-                    <text x="100" y="96" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#171717">topLeading</text>
-                    <rect x="214" y="74" width="226" height="34" rx="8" fill="#ffffff" stroke="#ebebeb"/>
-                    <text x="285" y="96" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#171717">topCenter</text>
-                    <rect x="460" y="74" width="218" height="34" rx="8" fill="#ffefcf" stroke="#f5a623"/>
-                    <text x="525" y="96" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#171717">topTrailing</text>
-                    <rect x="82" y="130" width="58" height="116" rx="10" fill="#aaffec" stroke="#29bc9b"/>
-                    <text x="111" y="178" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">left</text>
-                    <text x="111" y="194" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">Rail</text>
-                    <rect x="160" y="128" width="440" height="118" rx="12" fill="#ffffff" stroke="#ebebeb"/>
-                    <circle cx="336" cy="187" r="24" fill="#171717"/>
-                    <polygon points="329,174 329,200 350,187" fill="#ffffff"/>
-                    <text x="380" y="193" font-family="Geist, Arial, sans-serif" font-size="15" font-weight="600" fill="#171717">centerControls</text>
-                    <rect x="620" y="130" width="58" height="116" rx="10" fill="#d8ccf1" stroke="#7928ca"/>
-                    <text x="649" y="178" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">right</text>
-                    <text x="649" y="194" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12" fill="#171717">Rail</text>
-                    <rect x="82" y="264" width="420" height="18" rx="9" fill="#d3e5ff" stroke="#0070f3"/>
-                    <circle cx="286" cy="273" r="8" fill="#0070f3"/>
-                    <text x="96" y="258" font-family="Geist Mono, monospace" font-size="11" fill="#a1a1a1">bottomBar / ProgressBarBlock</text>
-                    <rect x="520" y="254" width="158" height="38" rx="10" fill="#171717"/>
-                    <text x="599" y="278" text-anchor="middle" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#ffffff">floatingBottomTrailing</text>
-                    <rect x="216" y="306" width="326" height="18" rx="9" fill="#f5f5f5" stroke="#ebebeb"/>
-                    <text x="379" y="319" text-anchor="middle" font-family="Geist Mono, monospace" font-size="11" fill="#4d4d4d">visibleSlots decides which slots render per layout mode</text>
-            </svg>
+            <div class="visual-panel">
+                <div class="mini-title">responsibility boundary</div>
+                <div class="skin-gate-rail">
+                    <div class="skin-gate-step">
+                        <strong>Skin</strong>
+                        <span>block과 availability를 보고 버튼을 보여줄지 결정합니다.</span>
+                    </div>
+                    <div class="skin-gate-arrow">↓</div>
+                    <div class="skin-gate-step">
+                        <strong>Core</strong>
+                        <span>보이는 버튼이 눌리면 command를 받아 engine.handle로 보냅니다.</span>
+                    </div>
+                    <div class="skin-gate-arrow">↓</div>
+                    <div class="skin-gate-step">
+                        <strong>runtimeTraits.stateAuthority</strong>
+                        <span>명령 성공으로 확정할지, 엔진 이벤트를 기다릴지 Core에 알려줍니다.</span>
+                    </div>
+                </div>
+            </div>
             <div class="skin-gate-visual">
                 <div class="visual-panel">
-                    <div class="mini-title">render path</div>
+                    <div class="mini-title">after visible button tap</div>
                     <div class="skin-gate-rail">
                         <div class="skin-gate-step">
-                            <strong>1. Block declares requiredFeatures</strong>
+                            <strong>1. Skin checks availability</strong>
                             <span>예: play/pause, 배속, 북마크처럼 이 UI가 필요한 기능을 block이 직접 말합니다.</span>
                         </div>
                         <div class="skin-gate-arrow">↓</div>
                         <div class="skin-gate-step">
-                            <strong>2. Skin checks availability</strong>
+                            <strong>2. Button becomes visible</strong>
                             <span>engine.supports + Host policy + requiredFeatures가 모두 맞을 때만 slot에 렌더링합니다.</span>
                         </div>
                         <div class="skin-gate-arrow">↓</div>
@@ -2450,24 +2526,24 @@ skin.apply(availableFeatures: module.availableFeatures)
                         </div>
                         <div class="skin-gate-arrow">↓</div>
                         <div class="skin-gate-step">
-                            <strong>4. stateAuthority closes state</strong>
+                            <strong>4. stateAuthority confirms state</strong>
                             <span>Native는 command-origin, Kollus는 outputStream 이벤트로 PlaybackState 입력을 확정합니다.</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <p class="takeaway reveal">Skin은 “보이는가”까지만 책임지고, play/pause 이후 상태 권위는 runtimeTraits가 Core에 알려줍니다.</p>
+        <p class="takeaway reveal">앞에서 본 slot 조립은 UI 노출 책임이고, play/pause 이후 PlaybackState 확정은 Core 책임입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 13. 서비스별 UI는 Skin blueprint로 조립</h3>
-        <p><strong>말할 내용:</strong> 서비스별 UI는 Skin blueprint, block, theme을 바꿔서 대응합니다. 왼쪽은 slot layout입니다. 서비스는 topCenter, centerControls, bottomBar 같은 자리에 block을 배치하고, layout mode별 visibleSlots를 정합니다.<br>오른쪽은 책임 흐름입니다. block은 requiredFeatures로 자신이 필요한 기능을 선언하고, Skin은 availability를 확인해 버튼을 보여줄지 결정합니다. 하지만 버튼을 눌렀을 때 play/pause 상태를 Skin이 직접 바꾸지는 않습니다. 명령은 Core로 가고, Core는 runtimeTraits.stateAuthority를 보고 Native처럼 command-origin으로 닫을지, Kollus처럼 outputStream 이벤트를 기다릴지 결정합니다.</p>
+        <h3>Script 14. Skin은 노출, Core는 상태 확정</h3>
+        <p><strong>말할 내용:</strong> 앞에서 Skin 주입 지점은 slot과 block 조립으로 봤습니다. 이제 그 UI가 실제로 눌렸을 때 책임이 어디로 넘어가는지 회수하겠습니다.<br>Skin은 block의 requiredFeatures와 availability를 보고 버튼을 보여줄지 결정합니다. 여기까지가 Skin 책임입니다.<br>하지만 보이는 버튼을 눌렀다고 Skin이 play/pause 상태를 직접 바꾸지는 않습니다. 명령은 Core로 들어가고, Core는 runtimeTraits.stateAuthority를 보고 Native처럼 command-origin으로 확정할지, Kollus처럼 outputStream 이벤트를 기다릴지 결정합니다.</p>
         <p><strong>전환:</strong> 이 구조가 실제로 어떻게 보이는지는 Example app에서 확인합니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 그림에서 slot은 자리이고 block은 그 자리에 들어가는 부품입니다.<br>2. 오른쪽 흐름은 requiredFeatures → availability → Core command → stateAuthority입니다.<br>3. 결론은 Skin은 노출, Core는 상태 확정이라는 책임 분리입니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽은 책임 경계입니다. Skin은 노출, Core는 command와 상태 확정입니다.<br>2. 오른쪽은 visible button tap 이후 흐름입니다.<br>3. 결론은 UI 조립과 PlaybackState 확정을 같은 객체가 하지 않는다는 점입니다.</p>
     </aside>
 </section>
 
-<!-- 14. Demo -->
+<!-- 15. Demo -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">example app · live demo</div>
@@ -2486,14 +2562,14 @@ skin.apply(availableFeatures: module.availableFeatures)
         <p class="takeaway reveal">Example app은 이 모듈을 서비스에서 어떻게 조립할지 보여주는 레퍼런스입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 14. 데모에서 확인할 구조</h3>
+        <h3>Script 15. 데모에서 확인할 구조</h3>
         <p><strong>말할 내용:</strong> 데모에서 확인할 것은 기능 하나가 아니라 앞에서 말한 경계가 실제로 유지되는지입니다.<br>HLS, Kollus, DownloadCenter, Skin 제스처가 같은 command/state 표면으로 연결되는지 봅니다.<br>다만 현재 데모앱에는 실제 다운로드에 사용할 Kollus URL이 없어서, DownloadCenter는 계약과 상태 모델, URL-missing 처리까지만 확인합니다. 실다운로드 E2E는 host/API가 유효한 다운로드 URL을 제공한 뒤 닫습니다.</p>
         <p><strong>전환:</strong> 경계가 유지되면 앞으로의 확장 방식도 달라집니다.</p>
         <p><strong>화면:</strong><br>1. HLS 재생은 Native engine과 state 흐름을 봅니다.<br>2. Kollus 실재생은 실기기에서 SDK 격리와 engine 교체를 봅니다.<br>3. DownloadCenter는 현재 URL 부재로 계약, 상태 모델, URL-missing 처리까지만 확인합니다.<br>4. Skin 제스처는 UI 조립 가능성을 봅니다.</p>
     </aside>
 </section>
 
-<!-- 15. 미래 확장 -->
+<!-- 16. 미래 확장 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">future extension</div>
@@ -2513,14 +2589,14 @@ skin.apply(availableFeatures: module.availableFeatures)
         <p class="takeaway reveal">미래 변화는 adapter, PlayerFeature, DownloadCenter, skin block으로 흡수합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 15. 미래 확장은 정해진 경계로 흡수</h3>
+        <h3>Script 16. 미래 확장은 정해진 경계로 흡수</h3>
         <p><strong>말할 내용:</strong> 앞으로의 확장은 Host 전체 수정이 아니라 정해진 경계의 확장으로 처리합니다.<br>더 좋은 VOD SDK가 나오면 새 EngineAdapter를 추가하고, UI 요구는 Skin block이나 theme으로 받습니다.<br>다운로드 정책과 해외 서비스 요구는 DownloadCenter, policy, localization 주입으로 대응합니다.<br>새 기능 추가는 PlaybackCommand와 PlayerFeature에 case 하나씩 더하는 것으로 시작합니다. 모든 엔진의 handle·supports와 정책 판단이 default 없는 switch라서, 갱신해야 할 곳을 전부 컴파일 에러가 알려줍니다. 체크리스트를 사람이 기억하지 않습니다.</p>
         <p><strong>전환:</strong> 공통 모듈이 되려면 검증 경계도 함께 분리되어야 합니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 PlaybackCommand·PlayerFeature case로 확장합니다. exhaustive switch 덕에 누락은 컴파일 에러로 드러납니다.</p>
     </aside>
 </section>
 
-<!-- 16. 검증 전략 -->
+<!-- 17. 검증 전략 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">verification strategy</div>
@@ -2550,14 +2626,14 @@ skin.apply(availableFeatures: module.availableFeatures)
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 16. 공통 모듈의 검증 경계</h3>
+        <h3>Script 17. 공통 모듈의 검증 경계</h3>
         <p><strong>말할 내용:</strong> 검증 경계는 순수 상태 전이, SDK 신호 매핑, 모듈 경계, 실기기 QA로 나눕니다.<br>상태 전이는 reducer pure test로 보고, SDK 이벤트 매핑은 signal mapper test로 봅니다.<br>Kollus 재생과 DRM, 백그라운드 오디오는 실기기 QA로 닫습니다. 다운로드는 현재 데모앱에 실제 URL이 없어서 URL-missing 처리와 local-state/unit test까지만 닫고, host/API가 유효한 다운로드 URL을 제공한 뒤 E2E를 추가합니다.</p>
         <p><strong>전환:</strong> 그래서 오늘 결정할 것은 세부 구현 전체가 아니라 다음 단계입니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 표는 테스트 경계를 보여줍니다.<br>2. 오른쪽 카드는 아직 남은 한계를 보여줍니다.<br>3. 다운로드는 URL 확보 전과 확보 후 검증 범위를 분리합니다.</p>
     </aside>
 </section>
 
-<!-- 17. 결정 -->
+<!-- 18. 결정 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">decision request</div>
@@ -2570,14 +2646,14 @@ skin.apply(availableFeatures: module.availableFeatures)
         <p class="takeaway reveal">오늘은 구조 승인과 파일럿 착수를 결정하는 자리입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 17. 오늘 결정할 세 가지</h3>
+        <h3>Script 18. 오늘 결정할 세 가지</h3>
         <p><strong>말할 내용:</strong> 오늘 결정할 것은 세부 구현 전체가 아니라 방향, 파일럿 범위, 정책 차이의 원칙입니다.<br>이 구조로 진행할지, 어디까지 작게 적용할지, Host override를 어디까지 허용할지 정하면 됩니다.<br>그 결정이 있어야 다음 단계로 넘어갈 수 있습니다.</p>
         <p><strong>전환:</strong> 결정을 돕기 위해 파일럿의 성공 기준과 롤백 계획을 함께 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. D1은 Core/Engine/Skin 구조 승인입니다.<br>2. D2는 host 1개 화면부터 feature flag로 적용하는 파일럿입니다.<br>3. D3는 기존 UX 기준과 Host override 허용입니다.</p>
     </aside>
 </section>
 
-<!-- 18. 파일럿 성공 기준과 롤백 계획 -->
+<!-- 19. 파일럿 성공 기준과 롤백 계획 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">pilot guardrails</div>
@@ -2616,14 +2692,14 @@ skin.apply(availableFeatures: module.availableFeatures)
         <p class="takeaway reveal">파일럿은 작게 열고, 같은 기준으로 검증하며, 즉시 되돌릴 수 있어야 합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 18. 파일럿 성공 기준과 롤백 계획</h3>
+        <h3>Script 19. 파일럿 성공 기준과 롤백 계획</h3>
         <p><strong>말할 내용:</strong> 이 슬라이드는 결정을 돕기 위한 안전장치입니다.<br>파일럿은 Example app에서 먼저 확인하고, host 1개 화면을 feature flag로 열어 실기기 QA까지 확인합니다.<br>성공 기준과 롤백 기준을 먼저 합의하면 전면 교체가 아니라 통제 가능한 적용으로 진행할 수 있습니다.</p>
         <p><strong>전환:</strong> 마지막으로 이 구조로 얻고 싶은 결론을 정리하겠습니다.</p>
         <p><strong>화면:</strong><br>1. 표는 Example app, host 1개 화면, 실기기 QA, 확장 판단 순서로 읽습니다.<br>2. 성공 기준 카드는 기존 시나리오 통과와 회귀 없음, 모듈 경계 안 수정 가능성을 봅니다.<br>3. 롤백 계획 카드는 feature flag off와 host 분리 구조를 봅니다.</p>
     </aside>
 </section>
 
-<!-- 19. 마무리 -->
+<!-- 20. 마무리 -->
 <section class="slide">
     <div class="mesh" aria-hidden="true"></div>
     <div class="slide-content" style="align-items:center; text-align:center;">
@@ -2639,7 +2715,7 @@ skin.apply(availableFeatures: module.availableFeatures)
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 19. 여러 서비스가 다시 만들지 않는 구조</h3>
+        <h3>Script 20. 여러 서비스가 다시 만들지 않는 구조</h3>
         <p><strong>말할 내용:</strong> 여러 서비스가 다시 만들지 않게 하려면 공통 재생 구조를 팀 자산으로 만들어야 합니다.<br>목표는 멋있는 플레이어 하나를 더 만드는 것이 아니라, 같은 플레이어 문제를 반복해서 풀지 않는 것입니다.<br>파일럿은 되돌릴 수 있게 작게 시작합니다.</p>
         <p><strong>전환:</strong> 이 구조로 파일럿을 시작할 수 있을지 결정하고 싶습니다.</p>
         <p><strong>화면:</strong><br>1. 큰 문장 “여러 서비스가 다시 만들지 않도록”을 먼저 읽습니다.<br>2. 아래 단계는 Example app, host 1개 화면, 실기기 QA, 확장 여부 결정입니다.<br>3. 마지막 버튼은 오늘 요청하는 구조 승인과 파일럿 착수입니다.</p>
