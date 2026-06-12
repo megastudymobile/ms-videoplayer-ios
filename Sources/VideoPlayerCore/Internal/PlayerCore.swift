@@ -35,7 +35,8 @@ public actor PlayerCore {
     private var prepareGeneration: Int = 0
     private var engineEventTask: Task<Void, Never>?
     private var currentState: PlaybackState
-    private var currentPolicy: PlayerFeaturePolicy
+    /// 현재 적용 중인 effective 정책. 쓰기는 Core 내부 전용 — 읽기는 테스트 검증을 위해 internal.
+    private(set) var currentPolicy: PlayerFeaturePolicy
     private var currentSource: PlaybackSource?
     private let stateContinuation: AsyncStream<PlaybackState>.Continuation
     private let eventContinuation: AsyncStream<PlayerEvent>.Continuation
@@ -393,29 +394,14 @@ public actor PlayerCore {
         }
 
         guard engineRuntimeTraits.surface.continuesWithoutSurface else {
-            return (
-                PlayerFeaturePolicy(
-                    allowsBackgroundPlayback: false,
-                    allowedPlaybackRates: policy.allowedPlaybackRates,
-                    allowsAutoplay: policy.allowsAutoplay,
-                    skipInterval: policy.skipInterval,
-                    nextEpisodeButtonLeadTime: policy.nextEpisodeButtonLeadTime
-                ),
-                .missingContinuesWithoutSurface
-            )
+            return (policy.withBackgroundPlayback(false), .missingContinuesWithoutSurface)
         }
 
         return (policy, nil)
     }
 
     private func applySkipInterval(_ interval: TimeInterval) {
-        currentPolicy = PlayerFeaturePolicy(
-            allowsBackgroundPlayback: currentPolicy.allowsBackgroundPlayback,
-            allowedPlaybackRates: currentPolicy.allowedPlaybackRates,
-            allowsAutoplay: currentPolicy.allowsAutoplay,
-            skipInterval: interval,
-            nextEpisodeButtonLeadTime: currentPolicy.nextEpisodeButtonLeadTime
-        )
+        currentPolicy = currentPolicy.withSkipInterval(interval)
     }
 
     private func validateAgainstPolicy(_ command: PlaybackCommand) throws {

@@ -53,6 +53,30 @@ public struct PlayerFeaturePolicy: Equatable, Sendable {
         allowedPlaybackRates.contains { abs($0 - rate) < 0.001 }
     }
 
+    /// 나머지 정책 필드를 보존한 채 background 재생 허용만 바꾼 사본.
+    public func withBackgroundPlayback(_ allowsBackgroundPlayback: Bool) -> PlayerFeaturePolicy {
+        PlayerFeaturePolicy(
+            allowsBackgroundPlayback: allowsBackgroundPlayback,
+            allowedPlaybackRates: allowedPlaybackRates,
+            allowsAutoplay: allowsAutoplay,
+            skipInterval: skipInterval,
+            nextEpisodeButtonLeadTime: nextEpisodeButtonLeadTime,
+            allowsSeekPreview: allowsSeekPreview
+        )
+    }
+
+    /// 나머지 정책 필드를 보존한 채 skip 간격만 바꾼 사본.
+    public func withSkipInterval(_ skipInterval: TimeInterval) -> PlayerFeaturePolicy {
+        PlayerFeaturePolicy(
+            allowsBackgroundPlayback: allowsBackgroundPlayback,
+            allowedPlaybackRates: allowedPlaybackRates,
+            allowsAutoplay: allowsAutoplay,
+            skipInterval: skipInterval,
+            nextEpisodeButtonLeadTime: nextEpisodeButtonLeadTime,
+            allowsSeekPreview: allowsSeekPreview
+        )
+    }
+
     /// 정책이 이 기능의 UI 노출을 허용하는가.
     /// default 없는 switch — 새 feature 추가 시 정책 판단을 컴파일러가 강제한다.
     public func allows(_ feature: PlayerFeature) -> Bool {
