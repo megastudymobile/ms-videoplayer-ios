@@ -227,6 +227,207 @@ td:first-child { color: var(--ink); font-weight: 500; }
     padding-bottom: 0.6em; border-bottom: 1px solid #2a2a2a;
 }
 .code-editor pre { white-space: pre; overflow: hidden; }
+.runtime-code-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(0.65rem, 1.4vw, 1rem);
+    align-items: stretch;
+}
+.runtime-code-grid .code-editor {
+    min-height: 0;
+    height: 100%;
+}
+.runtime-code-grid .code-editor pre {
+    line-height: 1.5;
+}
+.authority-visual,
+.skin-gate-visual {
+    display: grid;
+    gap: clamp(0.55rem, 1.2vw, 0.85rem);
+}
+.authority-visual {
+    grid-template-columns: minmax(0, 1fr);
+}
+.authority-slide .visual-panel {
+    padding: clamp(0.55rem, 1.15vw, 0.9rem);
+}
+.authority-slide .svg-frame {
+    max-height: min(44vh, 340px);
+}
+.authority-caption-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(0.45rem, 1vw, 0.65rem);
+}
+.authority-caption,
+.skin-gate-step {
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    background: var(--canvas);
+    padding: clamp(0.55rem, 1vw, 0.75rem);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.authority-caption strong,
+.skin-gate-step strong {
+    display: block;
+    color: var(--ink);
+    font-size: clamp(0.8rem, 1.15vw, 0.95rem);
+    line-height: 1.2;
+}
+.authority-caption span,
+.skin-gate-step span {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--mute);
+    font-size: var(--small-size);
+    line-height: 1.35;
+}
+.skin-gate-visual {
+    align-self: stretch;
+}
+.skin-gate-visual .visual-panel {
+    height: 100%;
+}
+.skin-state-slide .split-visual {
+    align-items: stretch;
+}
+.skin-state-slide .visual-panel {
+    padding: clamp(0.55rem, 1.1vw, 0.9rem);
+}
+.skin-slot-image {
+    align-self: center;
+    width: 100%;
+    max-height: min(54vh, 390px);
+    object-fit: contain;
+}
+.skin-state-slide .takeaway {
+    margin-top: clamp(0.35rem, 1vh, 0.7rem);
+}
+.skin-gate-rail {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(0.35rem, 0.8vw, 0.55rem);
+}
+.skin-gate-arrow {
+    align-self: center;
+    justify-self: center;
+    color: var(--mute);
+    font-family: var(--mono);
+    font-size: var(--small-size);
+}
+.decision-slide .split-visual,
+.after-tap-slide .split-visual {
+    grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.04fr);
+    align-items: stretch;
+}
+.decision-map,
+.state-routes {
+    display: grid;
+    gap: clamp(0.5rem, 1.05vw, 0.8rem);
+}
+.gate-card,
+.route-card,
+.route-step,
+.decision-result {
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    background: var(--canvas);
+    padding: clamp(0.55rem, 1vw, 0.75rem);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.gate-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.55rem;
+}
+.gate-index {
+    display: grid;
+    place-items: center;
+    width: clamp(1.35rem, 2.4vw, 1.75rem);
+    height: clamp(1.35rem, 2.4vw, 1.75rem);
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--on-primary);
+    font-family: var(--mono);
+    font-size: var(--small-size);
+}
+.gate-card strong,
+.route-card strong,
+.route-step strong,
+.decision-result strong {
+    display: block;
+    color: var(--ink);
+    font-size: clamp(0.82rem, 1.15vw, 0.95rem);
+    line-height: 1.18;
+}
+.gate-card span,
+.route-card span,
+.route-step span,
+.decision-result span {
+    display: block;
+    margin-top: 0.16rem;
+    color: var(--mute);
+    font-size: var(--small-size);
+    line-height: 1.32;
+}
+.gate-card .gate-answer {
+    color: var(--link);
+    font-family: var(--mono);
+    font-size: var(--small-size);
+    font-weight: 600;
+}
+.decision-result {
+    background: var(--ink);
+    color: var(--on-primary);
+}
+.decision-result strong { color: var(--on-primary); }
+.decision-result span { color: var(--hairline-strong); }
+.flow-hint {
+    align-self: center;
+    justify-self: center;
+    color: var(--mute);
+    font-family: var(--mono);
+    font-size: var(--small-size);
+    line-height: 1;
+}
+.state-routes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.route-card {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.45rem, 0.9vw, 0.65rem);
+    background: var(--canvas-soft);
+}
+.route-label {
+    font-family: var(--mono);
+    font-size: var(--small-size);
+    color: var(--mute);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.route-flow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+}
+.route-card.native .route-step.highlight {
+    border-color: rgba(0, 112, 243, 0.45);
+    background: #d3e5ff;
+}
+.route-card.kollus .route-step.highlight {
+    border-color: rgba(245, 166, 35, 0.55);
+    background: #ffefcf;
+}
+.route-step.dark {
+    background: var(--ink);
+    border-color: var(--ink);
+}
+.route-step.dark strong { color: var(--on-primary); }
+.route-step.dark span { color: var(--hairline-strong); }
 .kw { color: var(--pink); }
 .ty { color: var(--cyan); }
 .fn { color: #79b8ff; }
@@ -589,6 +790,7 @@ body.script-editing .keyboard-hint::after {
 .visual-panel {
     background: var(--canvas); border-radius: 8px; border: 1px solid var(--hairline);
     box-shadow: var(--shadow-2); padding: clamp(0.75rem, 1.6vw, 1.25rem);
+    min-width: 0;
 }
 .visual-panel.dark { background: var(--canvas); border-color: var(--hairline); }
 .takeaway {
@@ -989,12 +1191,13 @@ body.script-editing .keyboard-hint::after {
 .code-editor.compact pre { white-space: pre-wrap; }
 
 .split-visual { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(0.75rem, 1.6vw, 1.1rem); align-items: center; }
+.split-visual > * { min-width: 0; }
 .tag-row { display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; }
 .tag { font-family: var(--mono); font-size: var(--small-size); color: var(--body); border: 1px solid var(--hairline); background: var(--canvas); border-radius: 999px; padding: 0.3em 0.75em; }
 .slide.dark .tag { background: var(--canvas); border-color: var(--hairline); color: var(--body); }
 
 .mini-title { font-family: var(--mono); font-size: var(--small-size); color: var(--mute); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.55rem; }
-.svg-frame { width: 100%; height: auto; display: block; }
+.svg-frame { width: 100%; max-width: 100%; height: auto; display: block; }
 
 @media (max-width: 900px) {
     .story-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1158,6 +1361,97 @@ body.script-editing .keyboard-hint::after {
         font-size: clamp(2rem, 13vw, 3.6rem);
     }
     .layer-map, .split-visual { gap: 0.45rem; }
+    .authority-caption-grid {
+        grid-template-columns: 1fr;
+        gap: 0.35rem;
+    }
+    .authority-caption,
+    .skin-gate-step {
+        padding: 0.45rem 0.55rem;
+    }
+    .authority-caption strong,
+    .skin-gate-step strong {
+        font-size: clamp(0.72rem, 3.1vw, 0.84rem);
+    }
+    .authority-caption span,
+    .skin-gate-step span {
+        font-size: clamp(0.58rem, 2.6vw, 0.7rem);
+        line-height: 1.25;
+    }
+    .authority-slide .svg-frame,
+    .skin-state-slide .svg-frame {
+        max-height: none;
+    }
+    .skin-gate-rail {
+        gap: 0.28rem;
+    }
+    .skin-gate-arrow {
+        line-height: 1;
+    }
+    .decision-slide .split-visual,
+    .after-tap-slide .split-visual {
+        grid-template-columns: 1fr;
+    }
+    .decision-slide .code-editor.compact,
+    .after-tap-slide .code-editor.compact {
+        font-size: clamp(0.5rem, 2.15vw, 0.62rem);
+        line-height: 1.25;
+        padding: 0.55rem;
+    }
+    .decision-map,
+    .state-routes {
+        gap: 0.32rem;
+    }
+    .after-tap-slide .takeaway {
+        display: none;
+    }
+    .state-routes {
+        grid-template-columns: 1fr;
+    }
+    .after-tap-slide .state-routes {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .gate-card,
+    .route-card,
+    .route-step,
+    .decision-result {
+        padding: 0.42rem 0.5rem;
+    }
+    .gate-card strong,
+    .route-card strong,
+    .route-step strong,
+    .decision-result strong {
+        font-size: clamp(0.68rem, 3vw, 0.82rem);
+    }
+    .gate-card span,
+    .route-card span,
+    .route-step span,
+    .decision-result span {
+        font-size: clamp(0.56rem, 2.5vw, 0.68rem);
+        line-height: 1.2;
+    }
+    .after-tap-slide .route-step span {
+        display: none;
+    }
+    .after-tap-slide .route-card {
+        gap: 0.24rem;
+    }
+    .after-tap-slide .route-flow {
+        gap: 0.18rem;
+    }
+    .runtime-code-grid {
+        grid-template-columns: 1fr;
+        gap: 0.45rem;
+    }
+    .runtime-code-grid .code-editor.compact {
+        font-size: clamp(0.46rem, 1.9vw, 0.58rem);
+        line-height: 1.24;
+        padding: 0.48rem;
+    }
+    .runtime-code-grid .code-editor .filename {
+        margin-bottom: 0.4em;
+        padding-bottom: 0.35em;
+    }
     .layer-stack { gap: 0.35rem; }
     .layer-item { padding: 0.55rem 0.7rem; }
     .split-visual > .grid {
@@ -1258,6 +1552,47 @@ body.script-editing .keyboard-hint::after {
         grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
         gap: 0.55rem;
     }
+    .decision-slide .takeaway,
+    .after-tap-slide .takeaway {
+        display: none;
+    }
+    .decision-slide .split-visual,
+    .after-tap-slide .split-visual {
+        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+        gap: 0.38rem;
+    }
+    .decision-slide .code-editor.compact,
+    .after-tap-slide .code-editor.compact {
+        font-size: clamp(0.4rem, 0.92vw, 0.54rem);
+        line-height: 1.18;
+        padding: 0.42rem;
+    }
+    .decision-map,
+    .state-routes {
+        gap: 0.24rem;
+    }
+    .state-routes {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .gate-card,
+    .route-card,
+    .route-step,
+    .decision-result {
+        padding: 0.32rem 0.38rem;
+    }
+    .route-card {
+        gap: 0.25rem;
+    }
+    .route-flow {
+        gap: 0.2rem;
+    }
+    .gate-card span,
+    .route-step span {
+        display: none;
+    }
+    .skin-state-slide .takeaway {
+        display: none;
+    }
     .split-visual > .grid {
         grid-template-columns: 1fr;
         gap: 0.35rem;
@@ -1266,6 +1601,19 @@ body.script-editing .keyboard-hint::after {
         font-size: clamp(0.48rem, 1vw, 0.62rem);
         line-height: 1.28;
         padding: 0.55rem;
+    }
+    .runtime-code-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.38rem;
+    }
+    .runtime-code-grid .code-editor.compact {
+        font-size: clamp(0.38rem, 0.88vw, 0.54rem);
+        line-height: 1.18;
+        padding: 0.42rem;
+    }
+    .runtime-code-grid .code-editor .filename {
+        margin-bottom: 0.32em;
+        padding-bottom: 0.3em;
     }
     .boundary-map {
         gap: 0.38rem;
@@ -1893,7 +2241,7 @@ reduce(currentState, input):
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 09. 상태 결정은 Core reducer가 소유</h3>
         <p><strong>말할 내용:</strong> SDK 콜백은 Engine이 신호로 바꾸고, 최종 상태 결정은 Core reducer가 해야 합니다.<br>같은 buffering 입력이라도 playing에서는 상태 전이, paused에서는 플래그 변경, finished에서는 무시처럼 현재 상태가 결정에 참여합니다.<br>일시정지 중 buffering 종료를 무조건 playing으로 바꾸면 일시정지가 재생으로 둔갑하기 때문에 reducer가 필요합니다.</p>
-        <p><strong>전환:</strong> 이 원칙이 담긴 엔진 계약을 직접 보겠습니다.</p>
+        <p><strong>전환:</strong> 이 원칙이 담긴 엔진 계약을 직접 보겠습니다. 다만 엔진마다 play/pause 콜백의 권위가 다르기 때문에, 상태 확정 방식은 runtimeTraits가 알려줍니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 pseudo code는 reducer가 currentState와 input을 함께 본다는 점을 보여줍니다.<br>2. 오른쪽 표는 같은 buffering 입력도 현재 상태에 따라 결정이 달라지는 예입니다.<br>3. 아래 타임라인은 finished 뒤 늦은 buffering이 reducer에서 차단되어 Host 상태가 흔들리지 않는 흐름입니다.</p>
     </aside>
 </section>
@@ -1909,7 +2257,7 @@ reduce(currentState, input):
 <pre><span class="kw">public protocol</span> <span class="ty">PlayerPlaybackEngine</span>: <span class="ty">Actor</span> {
     <span class="kw">nonisolated static var</span> runtimeTraits: <span class="ty">EngineRuntimeTraits</span> { <span class="kw">get</span> }
 
-    <span class="cm">// 엔진의 유일한 출력 — Core가 소비해 상태를 만든다</span>
+    <span class="cm">// 엔진의 유일한 출력 — 관찰 결과를 Core로 전달한다</span>
     <span class="callout-token">var outputStream: AsyncStream&lt;PlayerEngineOutput&gt; { get }</span>
 
     <span class="cm">// 단일 명령 싱크 — 모든 PlaybackCommand를 exhaustive switch로 명시 처리</span>
@@ -1920,102 +2268,143 @@ reduce(currentState, input):
 }</pre>
             </div>
             <ul class="feature-list">
-                <li><strong>runtimeTraits</strong> — 엔진 동작 특성. 각 엔진 타입이 자기 모듈에서 직접 선언하고(Core에 엔진별 preset 없음) Core가 정책 협상에 사용합니다.</li>
-                <li><strong>outputStream</strong> — 엔진의 유일한 출력. Core가 소비해 상태를 만듭니다.</li>
-                <li><strong>handle(command)</strong> — load·play·seek부터 자막·배속·북마크까지 전 명령의 단일 진입점. 성공해도 상태는 outputStream 신호로 확정됩니다.</li>
+                <li><strong>runtimeTraits</strong> — surface 지속 가능 여부와 상태 확정 권위를 선언합니다. Core에 엔진별 preset을 두지 않습니다.</li>
+                <li><strong>outputStream</strong> — 엔진이 관찰한 출력. Core가 소비해 reducer 입력과 이벤트로 나눕니다.</li>
+                <li><strong>handle(command)</strong> — 전 명령의 단일 진입점. 명령 성공 후 상태 확정 방식은 runtimeTraits.stateAuthority가 결정합니다.</li>
                 <li><strong>미지원 명령</strong> — 조용히 무시하지 않고 PlayerError.unsupportedCommand를 던집니다.</li>
                 <li><strong>supports(feature)</strong> — 기능 지원을 명시 선언. handle switch와 같은 파일에 인접해 불일치가 리뷰에서 보입니다.</li>
             </ul>
         </div>
-        <p class="takeaway reveal">엔진 = “명령이 들어오고(handle), 스트림이 나간다(outputStream)”. 두 switch 모두 default가 없어 새 명령·새 기능 추가가 모든 엔진에 컴파일 에러로 강제됩니다.</p>
+        <p class="takeaway reveal">엔진 = “명령이 들어오고(handle), 관찰 결과가 나가며(outputStream), Core 판단에 필요한 런타임 특성을 선언한다(runtimeTraits)”.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
         <h3>Script 10. 엔진 계약은 명령 싱크 1개와 출력 1개</h3>
-        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성입니다. 각 엔진 타입이 자기 모듈에서 직접 선언하므로 Core는 엔진 이름을 모르고, 새 엔진 추가 시 Core 수정이 없습니다.<br>재생 명령은 전부 PlaybackCommand enum으로 들어와 handle 하나가 받습니다.<br>handle은 async throws 명령이고, 성공해도 최종 상태 확정은 outputStream 신호를 Core가 해석해서 만듭니다. 미지원 명령은 unsupportedCommand로 시끄럽게 실패합니다.<br>Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막 같은 기능 지원 여부는 supports 선언으로 드러납니다. handle과 supports 둘 다 default 없는 exhaustive switch라, 새 명령이 생기면 모든 엔진이 컴파일 에러로 “구현할지 거절할지”를 강제로 결정하게 됩니다. Media3의 Player.Commands와 같은 구조입니다.</p>
+        <p><strong>말할 내용:</strong> 엔진 교체가 현실이 되려면 기본 계약이 단순해야 합니다.<br>runtimeTraits는 엔진 동작 특성입니다. 각 엔진 타입이 자기 모듈에서 직접 선언하므로 Core는 엔진 이름을 모르고, 새 엔진 추가 시 Core 수정이 없습니다.<br>재생 명령은 전부 PlaybackCommand enum으로 들어와 handle 하나가 받습니다.<br>handle은 async throws 명령이고, 엔진이 관찰한 결과는 outputStream으로 나갑니다. 다만 play/pause 같은 명령 성공 후 상태를 누가 확정하는지는 runtimeTraits.stateAuthority가 결정합니다. Kollus처럼 권위 콜백이 있으면 outputStream 신호를 기다리고, Native처럼 권위 콜백이 부족하면 Core가 command-origin 입력으로 상태를 닫습니다.<br>미지원 명령은 unsupportedCommand로 시끄럽게 실패합니다. Actor 격리는 엔진 내부 상태 변경 순서를 지키고, 배속·자막 같은 기능 지원 여부는 supports 선언으로 드러납니다.</p>
         <p><strong>전환:</strong> 이 기본 계약 위에서 엔진별 기능 차이를 어떻게 다루는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 코드는 runtimeTraits, outputStream, handle, supports 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 유일한 단방향 출력입니다.<br>4. 마지막 takeaway는 exhaustive switch가 갱신 누락을 컴파일 에러로 바꾼다는 뜻입니다.</p>
+        <p><strong>화면:</strong><br>1. 코드는 runtimeTraits, outputStream, handle, supports 순서로 읽습니다.<br>2. 오른쪽 리스트는 각 항목이 맡는 역할입니다.<br>3. async throws는 실패를 숨기지 않는 계약이고, outputStream은 엔진의 관찰 결과입니다.<br>4. runtimeTraits는 Core가 엔진 이름 없이 정책과 상태 확정 방식을 판단하게 해줍니다.</p>
     </aside>
 </section>
 
 <!-- 11. capability -->
-<section class="slide">
+<section class="slide decision-slide">
     <div class="slide-content">
-        <div class="eyebrow reveal">availability · runtime traits</div>
-        <h2 class="reveal">버튼 노출과 실제 동작은 따로 판단합니다</h2>
-        <div class="visual-panel reveal">
-            <svg class="svg-frame" viewBox="0 0 960 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="availability와 runtime traits가 각각 버튼 노출과 런타임 정책을 결정하는 흐름">
-                <rect width="960" height="250" fill="#ffffff"/>
-                <g font-family="Arial">
-                    <defs>
-                        <marker id="capabilityArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                            <path d="M0 0L8 4L0 8Z" fill="#a1a1a1"/>
-                        </marker>
-                        <marker id="capabilityNoArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                            <path d="M0 0L8 4L0 8Z" fill="#f5a623"/>
-                        </marker>
-                    </defs>
+        <div class="eyebrow reveal">availability · 버튼 노출</div>
+        <h2 class="reveal">먼저 묻는 질문: 이 버튼을 보여도 되나?</h2>
+        <div class="split-visual reveal">
+            <div class="code-editor compact">
+                <span class="filename">Host setup → AssembledPlayerSkin.apply</span>
+<pre><span class="cm">// 1. 엔진이 정해진 뒤 모듈을 만든다</span>
+<span class="kw">let</span> module = <span class="kw">await</span> factory.makeModule(...)
 
-                    <text x="32" y="30" font-size="15" font-weight="700" fill="#171717">버튼이 보이는가 · availability</text>
-                    <rect x="54" y="52" width="104" height="42" rx="9" fill="#fafafa" stroke="#e5e5e5"/>
-                    <text x="106" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">배속 버튼</text>
-                    <line x1="158" y1="73" x2="198" y2="73" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
-                    <rect x="200" y="43" width="196" height="60" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
-                    <text x="298" y="68" text-anchor="middle" font-size="12.5" font-weight="700" fill="#171717">supports(.playbackRate)</text>
-                    <text x="298" y="87" text-anchor="middle" font-size="13" fill="#4d4d4d">지원?</text>
-                    <line x1="396" y1="73" x2="438" y2="73" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
-                    <rect x="440" y="43" width="160" height="60" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
-                    <text x="520" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="#171717">Host 정책</text>
-                    <text x="520" y="87" text-anchor="middle" font-size="13" fill="#4d4d4d">허용?</text>
-                    <line x1="600" y1="73" x2="658" y2="73" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
-                    <rect x="660" y="52" width="128" height="42" rx="9" fill="#171717"/>
-                    <text x="724" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">Skin 버튼 노출</text>
-                    <line x1="298" y1="103" x2="298" y2="122" stroke="#f5a623" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#capabilityNoArrow)"/>
-                    <rect x="236" y="124" width="124" height="28" rx="8" fill="#ffefcf" stroke="#f5a623"/>
-                    <text x="298" y="143" text-anchor="middle" font-size="12" fill="#171717">아니오 → 비노출</text>
-                    <line x1="520" y1="103" x2="520" y2="122" stroke="#f5a623" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#capabilityNoArrow)"/>
-                    <rect x="458" y="124" width="124" height="28" rx="8" fill="#ffefcf" stroke="#f5a623"/>
-                    <text x="520" y="143" text-anchor="middle" font-size="12" fill="#171717">아니오 → 비노출</text>
+<span class="cm">// 2. Skin 조립 직후 한 번 주입한다</span>
+<span class="kw">let</span> skin = <span class="ty">AssembledPlayerSkin</span>(blueprint: .example)
+skin.apply(availableFeatures: module.availableFeatures)
 
-                    <text x="32" y="174" font-size="15" font-weight="700" fill="#171717">실제로 유지할 수 있는가 · runtime traits</text>
-                    <rect x="36" y="192" width="168" height="44" rx="9" fill="#fafafa" stroke="#e5e5e5"/>
-                    <text x="120" y="210" text-anchor="middle" font-size="12" fill="#4d4d4d">Host 정책</text>
-                    <text x="120" y="227" text-anchor="middle" font-size="13" font-weight="700" fill="#171717">백그라운드 허용</text>
-                    <line x1="204" y1="214" x2="248" y2="214" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
-                    <rect x="250" y="192" width="218" height="44" rx="10" fill="#d3e5ff" stroke="#0070f3" stroke-width="2"/>
-                    <text x="359" y="210" text-anchor="middle" font-size="12" fill="#4d4d4d">EngineRuntimeTraits 확인</text>
-                    <text x="359" y="227" text-anchor="middle" font-size="13" font-weight="700" fill="#171717">continuesWithoutSurface?</text>
-                    <line x1="468" y1="214" x2="510" y2="214" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
-                    <rect x="512" y="192" width="210" height="44" rx="10" fill="#ffefcf" stroke="#f5a623" stroke-width="2"/>
-                    <text x="617" y="210" text-anchor="middle" font-size="12" fill="#4d4d4d">없으면 안전하게</text>
-                    <text x="617" y="227" text-anchor="middle" font-size="13" font-weight="700" fill="#171717">effectivePolicy=false</text>
-                    <line x1="722" y1="214" x2="764" y2="214" stroke="#a1a1a1" stroke-width="2" marker-end="url(#capabilityArrow)"/>
-                    <rect x="766" y="192" width="158" height="44" rx="9" fill="#fafafa" stroke="#e5e5e5"/>
-                    <text x="845" y="210" text-anchor="middle" font-size="12" fill="#4d4d4d">알림 + 동작</text>
-                    <text x="845" y="227" text-anchor="middle" font-size="13" font-weight="700" fill="#171717">downgrade / pause</text>
-                </g>
-            </svg>
+<span class="cm">// 3. Skin 내부: 조건 블록만 숨김/노출</span>
+<span class="kw">for</span> block <span class="kw">in</span> blocks <span class="kw">where</span> !block.requiredFeatures.isEmpty {
+    block.view.isHidden =
+        !availableFeatures.isSuperset(of: block.requiredFeatures)
+}</pre>
+            </div>
+            <div class="decision-map" aria-label="버튼 노출 결정 흐름">
+                <div class="gate-card">
+                    <span class="gate-index">1</span>
+                    <div><strong>엔진이 정해졌나?</strong><span>Core가 engine.supports 전체를 훑어 availableFeatures를 만듭니다.</span></div>
+                    <span class="gate-answer">module</span>
+                </div>
+                <div class="flow-hint">↓</div>
+                <div class="gate-card">
+                    <span class="gate-index">2</span>
+                    <div><strong>Skin에 주입했나?</strong><span>Host는 조립 직후 skin.apply(availableFeatures:)를 한 번 호출합니다.</span></div>
+                    <span class="gate-answer">apply</span>
+                </div>
+                <div class="flow-hint">↓</div>
+                <div class="gate-card">
+                    <span class="gate-index">3</span>
+                    <div><strong>Block 조건을 만족하나?</strong><span>requiredFeatures가 모두 availableFeatures 안에 있어야 합니다.</span></div>
+                    <span class="gate-answer">block</span>
+                </div>
+                <div class="flow-hint">↓</div>
+                <div class="decision-result">
+                    <strong>만족하면 노출, 아니면 숨김</strong>
+                    <span>UIStackView가 hidden block을 배치에서 제외해 빈자리도 남지 않습니다.</span>
+                </div>
+            </div>
         </div>
-        <p class="body-text reveal" style="margin-top:0.55rem; max-width:860px;">Host 정책은 “허용하고 싶다”이고, runtime traits는 “이 엔진이 실제로 버틸 수 있다”입니다. 둘이 충돌하면 Core는 런타임에서 더 안전한 effective policy를 씁니다. 이때 충돌한 항목만 낮추고 나머지 정책 필드는 그대로 보존합니다.</p>
-        <p class="takeaway reveal">정리하면 availability는 화면 노출, runtime traits는 “노출된 뒤 안전하게 동작시키는 방식”을 결정합니다. 노출 조건은 블록이 requiredFeatures로 직접 선언합니다.</p>
+        <p class="takeaway reveal">availability는 엔진 확정 직후 Skin에 주입되는 “노출 가능 기능 목록”입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 11. 기능 차이는 availability와 runtime traits로 관리</h3>
-        <p><strong>말할 내용:</strong> 여기서는 기능 차이를 두 질문으로 나눕니다.<br>첫 번째는 “버튼을 보여줄까?”입니다. 배속 버튼은 엔진이 supports(.playbackRate)로 지원을 선언하고 Host 정책도 배속을 허용해야 보입니다. 둘 중 하나라도 아니면 Skin에서 아예 노출하지 않습니다.<br>이 노출 조건은 화면 코드가 if로 들고 있지 않습니다. 블록이 requiredFeatures로 자기 조건을 선언하고, 엔진이 확정되면 skin이 일괄 게이팅합니다. 엔진이 supports로 능력을 선언하듯, 블록은 requiredFeatures로 수요를 선언하는 대칭 구조입니다.<br>두 번째는 “보여준 뒤 실제로 안전하게 동작할까?”입니다. 예를 들어 Host가 백그라운드 재생을 허용해도, 엔진이 surface 없이 재생을 유지할 수 없으면 Core는 런타임 effectivePolicy에서 백그라운드 재생을 false로 낮춥니다. 그리고 policyDowngraded 이벤트로 Host에 알려줍니다.<br>즉 하향 조정은 Host 설정을 몰래 바꾸는 게 아니라, 현재 엔진으로 지킬 수 없는 약속을 런타임에서 안전한 동작으로 줄이는 것입니다.</p>
-        <p><strong>전환:</strong> 이제 이 기능 게이트를 서비스별 UI 조립에서 어떻게 쓰는지 보겠습니다.</p>
-        <p><strong>화면:</strong><br>1. 위 레인은 배속 버튼 노출 조건입니다. supports 선언과 Host 정책이 모두 필요합니다.<br>2. 아래 레인은 백그라운드 재생 예시입니다. Host는 허용했지만 EngineRuntimeTraits의 surface.continuesWithoutSurface가 false면 Core가 effectivePolicy를 false로 낮춥니다.<br>3. 마지막 문장은 이 슬라이드의 결론입니다. availability는 화면 노출, runtime traits는 노출된 뒤의 안전한 동작 방식을 결정합니다.</p>
+        <h3>Script 11. 먼저 버튼을 보여도 되는지 판단</h3>
+        <p><strong>말할 내용:</strong> 여기서는 아직 재생 상태 이야기가 아닙니다. 엔진이 정해진 직후, 어떤 버튼을 보여도 되는지만 먼저 결정합니다.<br>왼쪽 코드 흐름을 보면 Host가 module을 만들고, Skin을 조립한 다음, module.availableFeatures를 Skin에 한 번 주입합니다. 이 값은 Core가 engine.supports 전체를 훑어서 만든 기능 목록입니다.<br>그 다음 Skin 내부에서 각 block의 requiredFeatures와 비교합니다. 조건이 맞으면 보이고, 맞지 않으면 view.isHidden으로 숨깁니다. 그래서 미지원 버튼이 잠깐 보였다 사라지는 깜빡임도 막습니다.</p>
+        <p><strong>전환:</strong> 이제 버튼이 보였고, 사용자가 play를 눌렀다고 가정하겠습니다. 명령이 성공하면 곧바로 playing으로 보면 될까요?</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 코드는 언제 어디서 쓰이는지 보여줍니다. Host setup 직후 skin.apply를 호출합니다.<br>2. 오른쪽 그림은 module → apply → block 비교 → 숨김/노출 순서입니다.<br>3. 마지막 검은 박스가 결론입니다. 여기서는 버튼 노출까지만 결정합니다.</p>
     </aside>
 </section>
 
-<!-- 12. Skin 커스텀 -->
-<section class="slide">
+<!-- 12. runtimeTraits -->
+<section class="slide after-tap-slide">
+    <div class="slide-content">
+        <div class="eyebrow reveal">after tap · 상태 확정</div>
+        <h2 class="reveal">다음 질문: play 성공을 누가 playing으로 닫나?</h2>
+        <div class="split-visual reveal">
+            <div class="code-editor compact">
+                <span class="filename">PlayerCore.swift · play 명령 성공 후</span>
+<pre><span class="kw">case</span> .play:
+    <span class="kw">try await</span> executeEngineCommand {
+        <span class="kw">try await</span> engine.handle(command)
+    }
+    applyCommandOriginIfNeeded(.playStarted)
+
+<span class="kw">private func</span> applyCommandOriginIfNeeded(_ input: <span class="ty">PlaybackStateInput</span>) {
+    <span class="kw">guard</span> engineRuntimeTraits.stateAuthority
+        == .commandSuccessClosesState
+    <span class="kw">else</span> { <span class="kw">return</span> } <span class="cm">// Kollus는 SDK 이벤트를 기다림</span>
+
+    apply(stateReducer.reduce(input, state: currentState))
+}</pre>
+            </div>
+            <div class="state-routes" aria-label="play 성공 후 상태 확정 경로">
+                <div class="route-card native">
+                    <div class="route-label">Native / AVPlayer</div>
+                    <strong>명령 성공이 곧 상태 입력</strong>
+                    <div class="route-flow">
+                        <div class="route-step"><strong>play 성공</strong><span>권위 콜백이 부족함</span></div>
+                        <div class="flow-hint">↓</div>
+                        <div class="route-step highlight"><strong>Core가 .playStarted 입력</strong><span>command-origin으로 reducer 호출</span></div>
+                        <div class="flow-hint">↓</div>
+                        <div class="route-step dark"><strong>PlaybackState.playing</strong><span>상태가 바로 닫힘</span></div>
+                    </div>
+                </div>
+                <div class="route-card kollus">
+                    <div class="route-label">Kollus SDK</div>
+                    <strong>SDK 이벤트가 상태 입력</strong>
+                    <div class="route-flow">
+                        <div class="route-step"><strong>play 성공</strong><span>아직 Core가 상태를 닫지 않음</span></div>
+                        <div class="flow-hint">↓</div>
+                        <div class="route-step highlight"><strong>SDK playStarted 도착</strong><span>outputStream으로 reducer 입력 전달</span></div>
+                        <div class="flow-hint">↓</div>
+                        <div class="route-step dark"><strong>PlaybackState.playing</strong><span>이중 적용 없이 확정</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="takeaway reveal">이 차이를 엔진이 선언한 값이 <code>runtimeTraits.stateAuthority</code>입니다.</p>
+    </div>
+    <aside class="speaker-script" aria-label="발표 스크립트">
+        <h3>Script 12. play 성공 뒤 상태 확정 방식</h3>
+        <p><strong>말할 내용:</strong> 이제 버튼을 눌렀고 play 명령도 성공했다고 보겠습니다. 왼쪽은 실제 Core 흐름을 줄인 코드입니다. execute(command:)의 .play 분기에서 엔진에 play를 보내고, 성공하면 applyCommandOriginIfNeeded(.playStarted)를 호출합니다.<br>그 안에서 stateAuthority를 봅니다. Native처럼 commandSuccessClosesState이면 Core가 .playStarted를 reducer에 넣어 playing으로 닫습니다.<br>반대로 Kollus는 SDK가 playStarted 이벤트를 다시 알려줍니다. 그래서 guard에서 빠져나가고, outputStream으로 들어온 SDK 이벤트를 기다립니다. 이중 적용을 막기 위해서입니다.</p>
+        <p><strong>전환:</strong> 이제 이 기능 게이트를 서비스별 UI 조립에서 어떻게 쓰는지 보겠습니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 코드는 어디서 쓰이는지 보여줍니다. .play 분기에서 명령 성공 후 applyCommandOriginIfNeeded로 들어갑니다.<br>2. guard가 핵심입니다. Native만 reducer를 즉시 호출합니다.<br>3. 오른쪽 두 레인은 같은 play 성공 뒤 Native와 Kollus가 다르게 닫히는 흐름입니다.</p>
+    </aside>
+</section>
+
+<!-- 13. Skin 커스텀 -->
+<section class="slide skin-state-slide">
     <div class="slide-content">
         <div class="eyebrow reveal">develop · skin customization</div>
-        <h2 class="reveal">서비스별 UI는 Skin blueprint로 조립</h2>
+        <h2 class="reveal">Skin은 노출을 조립하고, Core는 상태를 확정합니다</h2>
         <div class="split-visual reveal">
-            <div class="visual-panel">
-                <svg class="svg-frame" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PlayerSkin slot layout">
-                    <rect width="760" height="360" rx="8" fill="#ffffff"/>
-                    <rect x="34" y="26" width="692" height="308" rx="18" fill="#fafafa" stroke="#ebebeb"/>
+            <svg class="svg-frame skin-slot-image" viewBox="58 50 644 274" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PlayerSkin slot layout">
                     <rect x="58" y="50" width="644" height="252" rx="14" fill="#171717"/>
                     <rect x="82" y="74" width="112" height="34" rx="8" fill="#d3e5ff" stroke="#0070f3"/>
                     <text x="100" y="96" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#171717">topLeading</text>
@@ -2040,38 +2429,45 @@ reduce(currentState, input):
                     <text x="599" y="278" text-anchor="middle" font-family="Geist, Arial, sans-serif" font-size="13" font-weight="600" fill="#ffffff">floatingBottomTrailing</text>
                     <rect x="216" y="306" width="326" height="18" rx="9" fill="#f5f5f5" stroke="#ebebeb"/>
                     <text x="379" y="319" text-anchor="middle" font-family="Geist Mono, monospace" font-size="11" fill="#4d4d4d">visibleSlots decides which slots render per layout mode</text>
-                </svg>
-            </div>
-            <div class="code-editor compact">
-                <span class="filename">ServiceSkin.swift</span>
-<pre><span class="kw">let</span> blueprint = <span class="ty">PlayerSkinBlueprint</span>(
-    blocks: [
-        .topCenter: [{ <span class="ty">TitleBlock</span>() }],
-        .centerControls: [{ <span class="ty">CenterPlaybackControlsBlock</span>() }],
-        .bottomBar: [{ <span class="ty">ProgressBarBlock</span>() }],
-        .floatingBottomTrailing: [{ <span class="ty">ExtraFloatingBlock</span>() }]
-    ],
-    visibleSlots: [
-        .fullScreen: [.topCenter, .centerControls, .bottomBar, .floatingBottomTrailing]
-    ]
-)
-
-<span class="kw">let</span> skin = <span class="ty">AssembledPlayerSkin</span>(
-    blueprint: blueprint,
-    theme: serviceTheme
-)</pre>
+            </svg>
+            <div class="skin-gate-visual">
+                <div class="visual-panel">
+                    <div class="mini-title">render path</div>
+                    <div class="skin-gate-rail">
+                        <div class="skin-gate-step">
+                            <strong>1. Block declares requiredFeatures</strong>
+                            <span>예: play/pause, 배속, 북마크처럼 이 UI가 필요한 기능을 block이 직접 말합니다.</span>
+                        </div>
+                        <div class="skin-gate-arrow">↓</div>
+                        <div class="skin-gate-step">
+                            <strong>2. Skin checks availability</strong>
+                            <span>engine.supports + Host policy + requiredFeatures가 모두 맞을 때만 slot에 렌더링합니다.</span>
+                        </div>
+                        <div class="skin-gate-arrow">↓</div>
+                        <div class="skin-gate-step">
+                            <strong>3. Command goes to Core</strong>
+                            <span>보이는 버튼을 눌러도 상태 확정은 Skin이 하지 않습니다. Core가 command를 보냅니다.</span>
+                        </div>
+                        <div class="skin-gate-arrow">↓</div>
+                        <div class="skin-gate-step">
+                            <strong>4. stateAuthority closes state</strong>
+                            <span>Native는 command-origin, Kollus는 outputStream 이벤트로 PlaybackState 입력을 확정합니다.</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+        <p class="takeaway reveal">Skin은 “보이는가”까지만 책임지고, play/pause 이후 상태 권위는 runtimeTraits가 Core에 알려줍니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 12. 서비스별 UI는 Skin blueprint로 조립</h3>
-        <p><strong>말할 내용:</strong> 서비스별 UI는 Skin blueprint, block, theme을 바꿔서 대응합니다.<br>Skin은 고정 UI를 강제하지 않습니다.<br>같은 Core와 state를 쓰더라도 버튼 배치, 오버레이, 테마를 서비스별로 다르게 가져갈 수 있습니다.</p>
+        <h3>Script 13. 서비스별 UI는 Skin blueprint로 조립</h3>
+        <p><strong>말할 내용:</strong> 서비스별 UI는 Skin blueprint, block, theme을 바꿔서 대응합니다. 왼쪽은 slot layout입니다. 서비스는 topCenter, centerControls, bottomBar 같은 자리에 block을 배치하고, layout mode별 visibleSlots를 정합니다.<br>오른쪽은 책임 흐름입니다. block은 requiredFeatures로 자신이 필요한 기능을 선언하고, Skin은 availability를 확인해 버튼을 보여줄지 결정합니다. 하지만 버튼을 눌렀을 때 play/pause 상태를 Skin이 직접 바꾸지는 않습니다. 명령은 Core로 가고, Core는 runtimeTraits.stateAuthority를 보고 Native처럼 command-origin으로 닫을지, Kollus처럼 outputStream 이벤트를 기다릴지 결정합니다.</p>
         <p><strong>전환:</strong> 이 구조가 실제로 어떻게 보이는지는 Example app에서 확인합니다.</p>
-        <p><strong>화면:</strong><br>1. 왼쪽 그림에서 slot은 자리입니다.<br>2. 오른쪽 코드에서 block은 그 자리에 들어가는 부품입니다.<br>3. visibleSlots는 layout mode별로 보일 자리를 정합니다.<br>4. theme은 서비스별 색과 스타일입니다.</p>
+        <p><strong>화면:</strong><br>1. 왼쪽 그림에서 slot은 자리이고 block은 그 자리에 들어가는 부품입니다.<br>2. 오른쪽 흐름은 requiredFeatures → availability → Core command → stateAuthority입니다.<br>3. 결론은 Skin은 노출, Core는 상태 확정이라는 책임 분리입니다.</p>
     </aside>
 </section>
 
-<!-- 13. Demo -->
+<!-- 14. Demo -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">example app · live demo</div>
@@ -2090,14 +2486,14 @@ reduce(currentState, input):
         <p class="takeaway reveal">Example app은 이 모듈을 서비스에서 어떻게 조립할지 보여주는 레퍼런스입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 13. 데모에서 확인할 구조</h3>
+        <h3>Script 14. 데모에서 확인할 구조</h3>
         <p><strong>말할 내용:</strong> 데모에서 확인할 것은 기능 하나가 아니라 앞에서 말한 경계가 실제로 유지되는지입니다.<br>HLS, Kollus, DownloadCenter, Skin 제스처가 같은 command/state 표면으로 연결되는지 봅니다.<br>다만 현재 데모앱에는 실제 다운로드에 사용할 Kollus URL이 없어서, DownloadCenter는 계약과 상태 모델, URL-missing 처리까지만 확인합니다. 실다운로드 E2E는 host/API가 유효한 다운로드 URL을 제공한 뒤 닫습니다.</p>
         <p><strong>전환:</strong> 경계가 유지되면 앞으로의 확장 방식도 달라집니다.</p>
         <p><strong>화면:</strong><br>1. HLS 재생은 Native engine과 state 흐름을 봅니다.<br>2. Kollus 실재생은 실기기에서 SDK 격리와 engine 교체를 봅니다.<br>3. DownloadCenter는 현재 URL 부재로 계약, 상태 모델, URL-missing 처리까지만 확인합니다.<br>4. Skin 제스처는 UI 조립 가능성을 봅니다.</p>
     </aside>
 </section>
 
-<!-- 14. 미래 확장 -->
+<!-- 15. 미래 확장 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">future extension</div>
@@ -2117,14 +2513,14 @@ reduce(currentState, input):
         <p class="takeaway reveal">미래 변화는 adapter, PlayerFeature, DownloadCenter, skin block으로 흡수합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 14. 미래 확장은 정해진 경계로 흡수</h3>
+        <h3>Script 15. 미래 확장은 정해진 경계로 흡수</h3>
         <p><strong>말할 내용:</strong> 앞으로의 확장은 Host 전체 수정이 아니라 정해진 경계의 확장으로 처리합니다.<br>더 좋은 VOD SDK가 나오면 새 EngineAdapter를 추가하고, UI 요구는 Skin block이나 theme으로 받습니다.<br>다운로드 정책과 해외 서비스 요구는 DownloadCenter, policy, localization 주입으로 대응합니다.<br>새 기능 추가는 PlaybackCommand와 PlayerFeature에 case 하나씩 더하는 것으로 시작합니다. 모든 엔진의 handle·supports와 정책 판단이 default 없는 switch라서, 갱신해야 할 곳을 전부 컴파일 에러가 알려줍니다. 체크리스트를 사람이 기억하지 않습니다.</p>
         <p><strong>전환:</strong> 공통 모듈이 되려면 검증 경계도 함께 분리되어야 합니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 열은 앞으로 생길 수 있는 요구입니다.<br>2. 오른쪽 열은 대응할 확장 지점입니다.<br>3. SDK는 EngineAdapter, UI는 Skin block/theme, 기능 차이는 PlaybackCommand·PlayerFeature case로 확장합니다. exhaustive switch 덕에 누락은 컴파일 에러로 드러납니다.</p>
     </aside>
 </section>
 
-<!-- 15. 검증 전략 -->
+<!-- 16. 검증 전략 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">verification strategy</div>
@@ -2154,14 +2550,14 @@ reduce(currentState, input):
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 15. 공통 모듈의 검증 경계</h3>
+        <h3>Script 16. 공통 모듈의 검증 경계</h3>
         <p><strong>말할 내용:</strong> 검증 경계는 순수 상태 전이, SDK 신호 매핑, 모듈 경계, 실기기 QA로 나눕니다.<br>상태 전이는 reducer pure test로 보고, SDK 이벤트 매핑은 signal mapper test로 봅니다.<br>Kollus 재생과 DRM, 백그라운드 오디오는 실기기 QA로 닫습니다. 다운로드는 현재 데모앱에 실제 URL이 없어서 URL-missing 처리와 local-state/unit test까지만 닫고, host/API가 유효한 다운로드 URL을 제공한 뒤 E2E를 추가합니다.</p>
         <p><strong>전환:</strong> 그래서 오늘 결정할 것은 세부 구현 전체가 아니라 다음 단계입니다.</p>
         <p><strong>화면:</strong><br>1. 왼쪽 표는 테스트 경계를 보여줍니다.<br>2. 오른쪽 카드는 아직 남은 한계를 보여줍니다.<br>3. 다운로드는 URL 확보 전과 확보 후 검증 범위를 분리합니다.</p>
     </aside>
 </section>
 
-<!-- 16. 결정 -->
+<!-- 17. 결정 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">decision request</div>
@@ -2174,14 +2570,14 @@ reduce(currentState, input):
         <p class="takeaway reveal">오늘은 구조 승인과 파일럿 착수를 결정하는 자리입니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 16. 오늘 결정할 세 가지</h3>
+        <h3>Script 17. 오늘 결정할 세 가지</h3>
         <p><strong>말할 내용:</strong> 오늘 결정할 것은 세부 구현 전체가 아니라 방향, 파일럿 범위, 정책 차이의 원칙입니다.<br>이 구조로 진행할지, 어디까지 작게 적용할지, Host override를 어디까지 허용할지 정하면 됩니다.<br>그 결정이 있어야 다음 단계로 넘어갈 수 있습니다.</p>
         <p><strong>전환:</strong> 결정을 돕기 위해 파일럿의 성공 기준과 롤백 계획을 함께 보겠습니다.</p>
         <p><strong>화면:</strong><br>1. D1은 Core/Engine/Skin 구조 승인입니다.<br>2. D2는 host 1개 화면부터 feature flag로 적용하는 파일럿입니다.<br>3. D3는 기존 UX 기준과 Host override 허용입니다.</p>
     </aside>
 </section>
 
-<!-- 17. 파일럿 성공 기준과 롤백 계획 -->
+<!-- 18. 파일럿 성공 기준과 롤백 계획 -->
 <section class="slide">
     <div class="slide-content">
         <div class="eyebrow reveal">pilot guardrails</div>
@@ -2220,14 +2616,14 @@ reduce(currentState, input):
         <p class="takeaway reveal">파일럿은 작게 열고, 같은 기준으로 검증하며, 즉시 되돌릴 수 있어야 합니다.</p>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 17. 파일럿 성공 기준과 롤백 계획</h3>
+        <h3>Script 18. 파일럿 성공 기준과 롤백 계획</h3>
         <p><strong>말할 내용:</strong> 이 슬라이드는 결정을 돕기 위한 안전장치입니다.<br>파일럿은 Example app에서 먼저 확인하고, host 1개 화면을 feature flag로 열어 실기기 QA까지 확인합니다.<br>성공 기준과 롤백 기준을 먼저 합의하면 전면 교체가 아니라 통제 가능한 적용으로 진행할 수 있습니다.</p>
         <p><strong>전환:</strong> 마지막으로 이 구조로 얻고 싶은 결론을 정리하겠습니다.</p>
         <p><strong>화면:</strong><br>1. 표는 Example app, host 1개 화면, 실기기 QA, 확장 판단 순서로 읽습니다.<br>2. 성공 기준 카드는 기존 시나리오 통과와 회귀 없음, 모듈 경계 안 수정 가능성을 봅니다.<br>3. 롤백 계획 카드는 feature flag off와 host 분리 구조를 봅니다.</p>
     </aside>
 </section>
 
-<!-- 18. 마무리 -->
+<!-- 19. 마무리 -->
 <section class="slide">
     <div class="mesh" aria-hidden="true"></div>
     <div class="slide-content" style="align-items:center; text-align:center;">
@@ -2243,7 +2639,7 @@ reduce(currentState, input):
         </div>
     </div>
     <aside class="speaker-script" aria-label="발표 스크립트">
-        <h3>Script 18. 여러 서비스가 다시 만들지 않는 구조</h3>
+        <h3>Script 19. 여러 서비스가 다시 만들지 않는 구조</h3>
         <p><strong>말할 내용:</strong> 여러 서비스가 다시 만들지 않게 하려면 공통 재생 구조를 팀 자산으로 만들어야 합니다.<br>목표는 멋있는 플레이어 하나를 더 만드는 것이 아니라, 같은 플레이어 문제를 반복해서 풀지 않는 것입니다.<br>파일럿은 되돌릴 수 있게 작게 시작합니다.</p>
         <p><strong>전환:</strong> 이 구조로 파일럿을 시작할 수 있을지 결정하고 싶습니다.</p>
         <p><strong>화면:</strong><br>1. 큰 문장 “여러 서비스가 다시 만들지 않도록”을 먼저 읽습니다.<br>2. 아래 단계는 Example app, host 1개 화면, 실기기 QA, 확장 여부 결정입니다.<br>3. 마지막 버튼은 오늘 요청하는 구조 승인과 파일럿 착수입니다.</p>
