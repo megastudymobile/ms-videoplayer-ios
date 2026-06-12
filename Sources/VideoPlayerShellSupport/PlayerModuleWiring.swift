@@ -38,7 +38,8 @@ public enum PlayerModuleWiring {
         let core = PlayerCore(
             engine: descriptor.engine,
             engineRuntimeTraits: descriptor.runtimeTraits,
-            initialPolicy: configuration.initialPolicy
+            initialPolicy: configuration.initialPolicy,
+            logger: configuration.logger
         )
 
         if configuration.autoActivateCore {

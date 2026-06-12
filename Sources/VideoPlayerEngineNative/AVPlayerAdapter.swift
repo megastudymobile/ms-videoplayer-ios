@@ -19,6 +19,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
     public let outputStream: AsyncStream<PlayerEngineOutput>
 
     private let player: AVPlayer
+    private let logger: any PlayerLogger
     private let outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation
     private var state: PlaybackState
     private weak var renderSurface: PlayerRenderSurface?
@@ -48,7 +49,10 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
     private nonisolated let observerEventContinuation: AsyncStream<ObserverEvent>.Continuation
     private var observerConsumerTask: Task<Void, Never>?
 
-    public init(player: AVPlayer = AVPlayer()) {
+    public init(
+        player: AVPlayer = AVPlayer(),
+        logger: any PlayerLogger = NoopPlayerLogger()
+    ) {
         var observerContinuation: AsyncStream<ObserverEvent>.Continuation?
         self.observerEventStream = AsyncStream<ObserverEvent>(bufferingPolicy: .unbounded) {
             observerContinuation = $0
@@ -60,6 +64,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         }
         self.outputContinuation = outputContinuation!
         self.player = player
+        self.logger = logger
         self.state = .idle
         self.observerConsumerTask = nil
         Task { await self.startObserverConsumerIfNeeded() }
@@ -138,9 +143,7 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         )
         transition(to: nextState)
         // Core reducer가 이 prepared 스냅샷을 받아 readyToPlay 상태를 만든다.
-        #if DEBUG
-        NSLog("[Native.out] prepared duration=%.3f", duration)
-        #endif
+        logger.debug("prepared duration=\(duration)", category: PlayerLogCategory.nativeEngine)
         outputContinuation.yield(.stateInput(.prepared(
             PlaybackPreparedSnapshot(position: 0, duration: duration, isLive: false, liveDuration: nil)
         )))
@@ -457,10 +460,8 @@ public actor AVPlayerAdapter: PlayerEngineAdapter, EnginePlaybackRateAbility, En
         guard let output = AVPlayerSignalMapper.normalize(signal) else {
             return
         }
-        #if DEBUG
         // device QA: AVPlayer observer 신호 → outputStream 발행 추적.
-        NSLog("[Native.out] %@ -> %@", String(describing: signal), String(describing: output))
-        #endif
+        logger.debug("\(signal) -> \(output)", category: PlayerLogCategory.nativeEngine)
         outputContinuation.yield(output)
     }
 

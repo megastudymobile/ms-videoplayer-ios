@@ -25,10 +25,10 @@ public struct PlayerModule {
 // factory가 환경에 따라 traits를 조정하면 (engine:runtimeTraits:)를 쓴다.
 public static func makeModule(
     descriptor: PlayerEngineDescriptor,
-    configuration: PlayerModuleConfiguration = .default   // initialPolicy + autoActivateCore
+    configuration: PlayerModuleConfiguration = .default   // initialPolicy + autoActivateCore + logger
 ) async -> PlayerModule {
     let core = PlayerCore(engine: descriptor.engine, engineRuntimeTraits: descriptor.runtimeTraits,
-                          initialPolicy: configuration.initialPolicy)
+                          initialPolicy: configuration.initialPolicy, logger: configuration.logger)
     if configuration.autoActivateCore {
         await core.activate()      // 엔진 출력 스트림 구독 시작
     }

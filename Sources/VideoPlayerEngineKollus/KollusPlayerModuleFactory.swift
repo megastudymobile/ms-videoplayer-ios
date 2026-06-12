@@ -22,7 +22,8 @@ public struct KollusPlayerModuleFactory {
     public init(
         environment: KollusEnvironment,
         observer: KollusObserver? = nil,
-        diagnostics: KollusDiagnosticsSink? = nil
+        diagnostics: KollusDiagnosticsSink? = nil,
+        logger: any PlayerLogger = NoopPlayerLogger()
     ) {
         let bootstrapper = KollusSessionBootstrapper(environment: environment)
         self.engineFactory = {
@@ -30,7 +31,8 @@ public struct KollusPlayerModuleFactory {
                 bootstrapper: bootstrapper,
                 environment: environment,
                 observer: observer,
-                diagnostics: diagnostics
+                diagnostics: diagnostics,
+                logger: logger
             )
         }
         self.engineRuntimeTraits = KollusPlayerAdapter.runtimeTraits.withSurface(

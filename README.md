@@ -364,6 +364,44 @@ for await state in module.core.stateStream {
 }
 ```
 
+## 로깅 주입
+
+모듈은 자체 로그를 남기지 않습니다(기본 `NoopPlayerLogger` — 무음). host가 쓰는 로깅 시스템을 `PlayerLogger` 어댑터 하나로 감싸 주입하면, 상태 전이 추적·transient 실패 같은 내부 로그가 host 로그로 흘러갑니다.
+
+```swift
+import os
+import VideoPlayerCore
+
+// host 로깅 시스템에 맞는 어댑터 — os.Logger 예시 (TraceKit/Firebase 등 무엇이든 가능)
+struct OSLogPlayerLogger: PlayerLogger {
+    func isEnabled(_ level: PlayerLogLevel) -> Bool {
+        level >= .warning   // 수집 레벨은 host가 결정
+    }
+
+    func log(_ entry: PlayerLogEntry) {
+        Logger(subsystem: "com.example.app", category: entry.category)
+            .log("\(entry.message) (\(entry.file):\(entry.line))")
+    }
+}
+
+// 주입 — configuration(코어)과 factory(엔진)에 같은 logger를 넘긴다
+let logger = OSLogPlayerLogger()
+let module = await PlayerModuleWiring.makeModule(
+    engine: AVPlayerAdapter(logger: logger),
+    configuration: PlayerModuleConfiguration(logger: logger)
+)
+// Kollus: KollusPlayerModuleFactory(environment: environment, logger: logger)
+```
+
+| 타입 | 역할 |
+| --- | --- |
+| `PlayerLogger` | host가 구현하는 로깅 계약. `log(_:)` 하나만 필수 |
+| `PlayerLogEntry` | level/category/message/file/function/line을 담은 불변 값 |
+| `PlayerLogLevel` | `.debug` < `.info` < `.warning` < `.error` |
+| `NoopPlayerLogger` | 기본값 — 아무것도 기록하지 않음 |
+
+`isEnabled(_:)`가 `false`를 반환하는 레벨은 메시지 문자열 생성 자체를 건너뛰므로(autoclosure), release에서 `.debug`를 꺼도 비용이 없습니다. SDK 신호 원본이 필요하면 Kollus 한정으로 `KollusDiagnosticsSink`를 함께 쓰세요 — `PlayerLogger`는 모듈 내부 로그, `KollusDiagnosticsSink`는 raw 신호 관찰용으로 역할이 다릅니다.
+
 ## Example 앱
 
 같은 레포의 Tuist 기반 데모 앱이 전체 와이어링(모듈 + Skin + 제스처 + 다운로드 + Observer 로그)을 보여줍니다.

@@ -39,6 +39,7 @@ public actor KollusPlayerAdapter:
     // 권위 콜백을 낸다. 따라서 Core는 play/pause/seek 명령 후 command-origin을 적용하지 않고
     // outputStream의 .stateInput만 신뢰한다(이중 적용 방지).
     public nonisolated static let runtimeTraits: EngineRuntimeTraits = .kollus
+    private let logger: any PlayerLogger
 
     /// 권위 경로. Core는 이 스트림을 소비해 reducer로 상태를 만든다.
     public let outputStream: AsyncStream<PlayerEngineOutput>
@@ -85,6 +86,7 @@ public actor KollusPlayerAdapter:
 
     /// 재생 위치 주기 폴러 — playStarted에 시작, pause/stop에 중지. (KollusPositionPoller 참조)
     private var positionPoller: KollusPositionPoller?
+        logger: any PlayerLogger = NoopPlayerLogger(),
 
     // MARK: - Initializers
 
@@ -101,6 +103,7 @@ public actor KollusPlayerAdapter:
             bridgeContinuation = $0
         }
         self.bridgeEventContinuation = bridgeContinuation!
+        self.logger = logger
         var outputContinuation: AsyncStream<PlayerEngineOutput>.Continuation?
         self.outputStream = AsyncStream<PlayerEngineOutput>(bufferingPolicy: .unbounded) {
             outputContinuation = $0
@@ -682,9 +685,7 @@ public actor KollusPlayerAdapter:
         // Core 권위 경로: polling 위치는 handleSignal 밖이라 별도로 outputStream에 발행해야
         // Core(outputStream 소비)가 재생바를 갱신한다.
         outputContinuation.yield(.stateInput(.positionChanged(time: polled, duration: nextState.duration)))
-        #if DEBUG
-        NSLog("[Kollus.out] poll positionChanged time=%.3f", polled)
-        #endif
+        logger.debug("poll positionChanged time=\(polled)", category: PlayerLogCategory.kollusEngine)
         emitNextEpisodeIfNeeded(currentTime: polled)
     }
 
@@ -841,10 +842,8 @@ public actor KollusPlayerAdapter:
         ) else {
             return
         }
-        #if DEBUG
         // 실기기 QA용 — Kollus 신호 → outputStream 발행 추적.
-        NSLog("[Kollus.out] %@ -> %@", String(describing: signal), String(describing: output))
-        #endif
+        logger.debug("\(signal) -> \(output)", category: PlayerLogCategory.kollusEngine)
         outputContinuation.yield(output)
     }
 
@@ -895,10 +894,10 @@ public actor KollusPlayerAdapter:
     /// 다음 회차 진입 시간 도달 검사. 판정은 KollusNextEpisodeEmitter(동기·산술 전용).
     private func emitNextEpisodeIfNeeded(currentTime: TimeInterval) {
         guard let info = nextEpisodeEmitter.takeDueInfo(currentTime: currentTime) else { return }
-#if DEBUG
-        NSLog("[KollusNextEpisode] publish nextEpisodeAvailable showAt=%.3f", info.showAt)
-        NSLog("[Kollus.out] event nextEpisodeAvailable showAt=%.3f", info.showAt)
-#endif
+        logger.debug(
+            "publish nextEpisodeAvailable showAt=\(info.showAt)",
+            category: PlayerLogCategory.kollusEngine
+        )
         publish(event: .nextEpisodeAvailable(info))
     }
 
@@ -1029,9 +1028,7 @@ public actor KollusPlayerAdapter:
         }
         let classified = Self.errorChain.classify(error, context: .playback)
         if case .unknown(let message) = classified {
-#if DEBUG
-            NSLog("[KollusEngine] %@ 실패: %@", operation, message)
-#endif
+            logger.error("\(operation) 실패: \(message)", category: PlayerLogCategory.kollusEngine)
             return .engineError(message)
         }
         return classified

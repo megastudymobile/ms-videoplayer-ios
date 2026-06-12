@@ -46,6 +46,7 @@ videoplayer-ios-ms/
 │   │   ├── Contract/              #    PlayerEngineAdapter(엔진 계약), PlayerEngineOutput
 │   │   ├── StateTransition/       #    PlaybackStateReducer (순수 함수 상태 전이)
 │   │   ├── Internal/              #    PlayerCore (actor — 명령 orchestrator)
+│   │   ├── Logging/               #    PlayerLogger(host 주입 로깅 계약), PlayerLogEntry, PlayerLogLevel
 │   │   └── Download/              #    PlayerDownloadCenter 프로토콜, DownloadedContent
 │   │
 │   ├── VideoPlayerShellSupport/   # ❷ 앱과 코어를 잇는 접착제

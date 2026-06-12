@@ -16,6 +16,7 @@ public actor PlayerCore {
 
     private let engine: PlayerPlaybackEngine
     private let engineRuntimeTraits: EngineRuntimeTraits
+    private let logger: any PlayerLogger
     private let stateReducer = PlaybackStateReducer()
     /// seek "chase" 정책 (Apple QA1820 패턴). 엔진 seek은 동시에 **1개만** in-flight.
     /// - `chaseTime`: 아직 엔진에 보내지 않은 최신 목표(연타 시 여기에 누적).
@@ -42,7 +43,8 @@ public actor PlayerCore {
     public init(
         engine: PlayerPlaybackEngine,
         engineRuntimeTraits: EngineRuntimeTraits,
-        initialPolicy: PlayerFeaturePolicy = .default
+        initialPolicy: PlayerFeaturePolicy = .default,
+        logger: any PlayerLogger = NoopPlayerLogger()
     ) {
         var stateContinuation: AsyncStream<PlaybackState>.Continuation?
         let stateStream = AsyncStream<PlaybackState>(bufferingPolicy: .bufferingNewest(8)) {
@@ -56,6 +58,7 @@ public actor PlayerCore {
 
         self.engine = engine
         self.engineRuntimeTraits = engineRuntimeTraits
+        self.logger = logger
         self.availableFeatures = PlayerFeature.available(for: engine)
         self.currentState = .idle
         self.currentPolicy = initialPolicy
@@ -260,9 +263,10 @@ public actor PlayerCore {
             // Kollus가 간헐적으로 _GenericObjCError를 throw). 이를 치명적 `.failed` 상태/alert로 만들면
             // 한 번의 transient throw로 플레이어가 실패에 갇힌다. 따라서 상태를 바꾸지 않고 삼킨다.
             // (영상 로드 자체의 실패는 prepare 경로 `start(...)`에서 별도로 치명적으로 처리된다.)
-            #if DEBUG
-            NSLog("[PlayerCore] transient engine command failure ignored: %@", String(describing: error))
-            #endif
+            logger.warning(
+                "transient engine command failure ignored: \(error)",
+                category: PlayerLogCategory.core
+            )
         }
     }
 
@@ -273,9 +277,10 @@ public actor PlayerCore {
             // 목표 근처에 도달하면 pending을 해제하고 통과시켜 로딩을 내린다.
             if case .positionChanged(let time, _) = input, let inProgress = seekInProgressValue {
                 guard abs(time - inProgress) <= Self.seekSettleThreshold else {
-                    #if DEBUG
-                    NSLog("[PlayerCore.out] drop stale position %.1f (seek in progress -> %.1f)", time, inProgress)
-                    #endif
+                    logger.debug(
+                        "drop stale position \(time) (seek in progress -> \(inProgress))",
+                        category: PlayerLogCategory.core
+                    )
                     return
                 }
                 // 이 leg는 목표에 도달(완료). 더 새 목표(chaseTime)가 있으면 그쪽으로 다시 seek.
@@ -293,14 +298,11 @@ public actor PlayerCore {
             }
             // 상태를 움직이는 입력은 reducer가 유일하게 다음 상태를 만든다.
             let reduced = stateReducer.reduce(input, state: currentState)
-            #if DEBUG
             // source 전환 후 늦게 도착한 stale `.prepared`가 새 상태를 덮는지 관찰하기 위한 추적 로그.
-            NSLog("[PlayerCore.out] %@ | %@ -> %@ | source=%@",
-                  String(describing: input),
-                  String(describing: currentState.status),
-                  String(describing: reduced.next.status),
-                  String(describing: currentSource))
-            #endif
+            logger.debug(
+                "\(input) | \(currentState.status) -> \(reduced.next.status) | source=\(String(describing: currentSource))",
+                category: PlayerLogCategory.core
+            )
             apply(reduced)
         case .event(.stateDidChange(let state)):
             // Compatibility guard: custom engine이 예전 full-state 이벤트를 보내도
@@ -308,9 +310,7 @@ public actor PlayerCore {
             transition(to: state)
         case .event(let event):
             // 상태를 움직이지 않는 이벤트는 passthrough.
-            #if DEBUG
-            NSLog("[PlayerCore.out] event %@", String(describing: event))
-            #endif
+            logger.debug("event \(event)", category: PlayerLogCategory.core)
             publish(event: event)
         }
     }
@@ -327,15 +327,13 @@ public actor PlayerCore {
     /// `.stateInput`이 상태를 만들므로 여기서 또 넣으면 이중 적용/경합이 된다.
     private func applyCommandOriginIfNeeded(_ input: PlaybackStateInput) {
         guard engineRuntimeTraits.stateAuthority == .commandSuccessClosesState else {
-            #if DEBUG
-            NSLog("[PlayerCore.cmd] skip command-origin (engine emits observed state): %@",
-                  String(describing: input))
-            #endif
+            logger.debug(
+                "skip command-origin (engine emits observed state): \(input)",
+                category: PlayerLogCategory.core
+            )
             return
         }
-        #if DEBUG
-        NSLog("[PlayerCore.cmd] command-origin %@", String(describing: input))
-        #endif
+        logger.debug("command-origin \(input)", category: PlayerLogCategory.core)
         apply(stateReducer.reduce(input, state: currentState))
     }
 
@@ -375,9 +373,10 @@ public actor PlayerCore {
         // seek 실패는 일시적이다(빠른 스크럽/프리뷰 중 Kollus가 간헐적으로 _GenericObjCError를 throw).
         // 치명적 `.failed` 상태/alert로 승격하지 않는다 — in-flight만 정리하고, 대기 중인 최신 목표가
         // 있으면 계속 chase한다. (한 번의 스크럽 throw로 플레이어 전체가 실패 상태에 갇히던 문제 수정.)
-        #if DEBUG
-        NSLog("[PlayerCore] transient seek failure ignored: %@", String(describing: error))
-        #endif
+        logger.warning(
+            "transient seek failure ignored: \(error)",
+            category: PlayerLogCategory.core
+        )
         seekInProgressValue = nil
         startChaseIfNeeded()
     }
